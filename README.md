@@ -1,13 +1,13 @@
 # Text Launcher
 
-Text Launcher is a minimal, distraction-free Android launcher for people who want their phone to feel calmer and more intentional. It replaces icon grids and engagement-heavy surfaces with a quiet text-first home screen, fast app search, lightweight planning prompts, and optional screen-time context.
+Text Launcher is a minimal, distraction-free Android launcher for people who want their phone to feel calmer and more intentional. It replaces icon grids and engagement-heavy surfaces with a quiet text-first home screen, fast app search, lightweight planning prompts, and optional screen-time context. The installed app label is `txt`.
 
 The goal is simple: make the phone useful without making it irresistible.
 
 ## Features
 
-- Text-first home screen with configurable app shortcuts.
-- Fuzzy app search for quickly opening the app you meant to find.
+- Text-first home screen with configurable app shortcuts, text alignment, and wallpaper dimming.
+- Fuzzy app search for quickly opening the app you meant to find, including Enter/Go to launch the top result.
 - Optional date, analog/digital clock behavior, and quick access actions.
 - Screen-time page with today usage, weekly usage, top-app recap, and daily average.
 - App blocking prompts that slow down impulsive launches.
@@ -16,6 +16,7 @@ The goal is simple: make the phone useful without making it irresistible.
 - Notes page for quick local notes.
 - Calendar page for upcoming events, with selectable calendars.
 - Configurable gestures for opening Screen Time or locking the screen.
+- Context menus for removing shortcuts, blocking apps, and starting Android's app uninstall flow.
 - Settings for hiding or showing launcher pages and adjusting shortcut limits.
 - Local-first storage using Android shared preferences.
 
@@ -27,11 +28,12 @@ This project is intentionally small, plain, and hackable. It favors Android plat
 
 ## Screens and Permissions
 
-Text Launcher can be set as your Android home app. Some features ask for optional permissions:
+Text Launcher can be set as your Android home app. Some features ask for optional permissions or use Android system capabilities:
 
 - Calendar access: used only to show upcoming calendar events in the launcher.
 - Usage access: used only to calculate screen-time summaries and app budget prompts.
 - Accessibility access: optional, used only when the lock-screen gesture is enabled and triggered. Text Launcher uses Android's lock-screen accessibility action instead of Device Admin so biometric unlock can continue to behave like a normal screen lock.
+- Package deletion request: used only when you choose Uninstall from an app context menu. Android still shows its normal uninstall confirmation flow, and Text Launcher removes shortcuts for apps after they are uninstalled.
 
 The app stores launcher settings, notes, shortcuts, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
 
