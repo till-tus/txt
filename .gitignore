@@ -1,0 +1,24 @@
+# Gradle / Android build outputs
+.gradle/
+.kotlin/
+build/
+*/build/
+
+# Local SDK and machine-specific configuration
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Signing and secrets
+*.jks
+*.keystore
+*.pem
+
+# Logs
+*.log
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
