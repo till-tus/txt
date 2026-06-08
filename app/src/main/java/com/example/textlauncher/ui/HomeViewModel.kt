@@ -28,6 +28,7 @@ class HomeViewModel(
             showDate = initialSettings.showDate,
             clockDisplayMode = initialSettings.clockDisplayMode,
             showQuickAccess = initialSettings.showQuickAccess,
+            wallpaperDimPercent = initialSettings.wallpaperDimPercent,
             maxShortcuts = initialSettings.maxShortcuts,
             openScreenTimeGesture = initialSettings.openScreenTimeGesture,
             lockScreenGesture = initialSettings.lockScreenGesture,
@@ -106,6 +107,14 @@ class HomeViewModel(
     fun setShowQuickAccess(showQuickAccess: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(showQuickAccess = showQuickAccess)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setWallpaperDimPercent(wallpaperDimPercent: Int) {
+        _uiState.update { state ->
+            val updated = state.copy(wallpaperDimPercent = wallpaperDimPercent.coerceIn(0, 100))
             settingsRepository.saveSettings(updated.toSettings())
             updated
         }
@@ -266,6 +275,7 @@ class HomeViewModel(
             showDate = showDate,
             clockDisplayMode = clockDisplayMode,
             showQuickAccess = showQuickAccess,
+            wallpaperDimPercent = wallpaperDimPercent,
             maxShortcuts = maxShortcuts,
             openScreenTimeGesture = openScreenTimeGesture,
             lockScreenGesture = lockScreenGesture,

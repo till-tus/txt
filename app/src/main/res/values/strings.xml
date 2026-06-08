@@ -17,6 +17,8 @@
     <string name="show_date">Show date</string>
     <string name="default_digital_clock">Digital clock by default</string>
     <string name="show_quick_access">Show quick access buttons</string>
+    <string name="wallpaper_dim">Wallpaper dim</string>
+    <string name="percentage_value">%1$d%%</string>
     <string name="max_shortcuts">App shortcuts</string>
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
     <string name="pages_section">Pages</string>

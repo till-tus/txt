@@ -15,6 +15,8 @@ class LauncherSettingsRepository(context: Context) {
                 ?.let(::runCatchingClockMode)
                 ?: ClockDisplayMode.Analog,
             showQuickAccess = preferences.getBoolean(KEY_SHOW_QUICK_ACCESS, false),
+            wallpaperDimPercent = preferences.getInt(KEY_WALLPAPER_DIM_PERCENT, DEFAULT_WALLPAPER_DIM_PERCENT)
+                .coerceIn(0, 100),
             maxShortcuts = preferences.getInt(KEY_MAX_SHORTCUTS, 5).coerceIn(3, 7),
             openScreenTimeGesture = loadGesture(
                 key = KEY_OPEN_SCREEN_TIME_GESTURE,
@@ -45,6 +47,7 @@ class LauncherSettingsRepository(context: Context) {
             .putBoolean(KEY_SHOW_DATE, settings.showDate)
             .putString(KEY_CLOCK_DISPLAY_MODE, settings.clockDisplayMode.name)
             .putBoolean(KEY_SHOW_QUICK_ACCESS, settings.showQuickAccess)
+            .putInt(KEY_WALLPAPER_DIM_PERCENT, settings.wallpaperDimPercent.coerceIn(0, 100))
             .putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
             .putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
             .putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
@@ -85,6 +88,7 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_SHOW_DATE = "showDate"
         const val KEY_CLOCK_DISPLAY_MODE = "clockDisplayMode"
         const val KEY_SHOW_QUICK_ACCESS = "showQuickAccess"
+        const val KEY_WALLPAPER_DIM_PERCENT = "wallpaperDimPercent"
         const val KEY_MAX_SHORTCUTS = "maxShortcuts"
         const val KEY_SHOW_SCREEN_TIME_PAGE = "showScreenTimePage"
         const val KEY_OPEN_SCREEN_TIME_GESTURE = "openScreenTimeGesture"
@@ -95,5 +99,6 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_BLOCKED_APP_PACKAGE_NAMES = "blockedAppPackageNames"
         const val KEY_APP_BUDGETS = "appBudgets"
         const val KEY_HAS_REQUESTED_CALENDAR_PERMISSION = "hasRequestedCalendarPermission"
+        const val DEFAULT_WALLPAPER_DIM_PERCENT = 70
     }
 }
