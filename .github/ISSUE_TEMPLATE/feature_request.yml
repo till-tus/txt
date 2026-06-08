@@ -1,0 +1,63 @@
+name: Feature request
+description: Suggest an improvement for intentional, distraction-free phone use.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Text Launcher aims to stay minimal, local-first, and calm.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem or distraction pattern would this solve?
+      placeholder: I keep opening an app unintentionally when...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Text Launcher do?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Are there simpler ways to solve the same problem?
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Home screen
+        - App search
+        - App shortcuts
+        - App blocking
+        - App budgets
+        - Screen time
+        - Notes
+        - Calendar
+        - Settings
+        - Accessibility
+        - Privacy
+        - Other
+  - type: textarea
+    id: minimalism
+    attributes:
+      label: Fit with the project
+      description: How does this keep the launcher calm, minimal, and intentional?
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues before opening this.
+          required: true
+        - label: I considered whether this can be done without adding a new permission or network dependency.
+          required: true
