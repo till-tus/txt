@@ -4,6 +4,7 @@ data class LauncherSettings(
     val showDate: Boolean = true,
     val clockDisplayMode: ClockDisplayMode = ClockDisplayMode.Analog,
     val showQuickAccess: Boolean = false,
+    val wallpaperDimPercent: Int = 70,
     val maxShortcuts: Int = 5,
     val openScreenTimeGesture: LauncherGesture = LauncherGesture.TwoFingerSwipeDown,
     val lockScreenGesture: LauncherGesture = LauncherGesture.DoubleTap,

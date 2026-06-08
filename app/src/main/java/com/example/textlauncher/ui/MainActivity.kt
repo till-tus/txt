@@ -44,6 +44,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
@@ -159,6 +160,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         actionContextMenu = ActionContextMenu(this)
@@ -560,7 +562,11 @@ class MainActivity : AppCompatActivity() {
                     incomingEnd = if (shouldComplete) 0f else width,
                 ) {
                     isNotesVisible = shouldComplete
-                    if (!shouldComplete) binding.notesRoot.visibility = View.GONE
+                    if (shouldComplete) {
+                        binding.homeContent.visibility = View.GONE
+                    } else {
+                        binding.notesRoot.visibility = View.GONE
+                    }
                 }
             }
             PageSwipeTarget.HomeToCalendar -> {
@@ -572,6 +578,7 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     isCalendarVisible = shouldComplete
                     if (shouldComplete) {
+                        binding.homeContent.visibility = View.GONE
                         onCalendarPageVisible()
                     } else {
                         binding.calendarRoot.visibility = View.GONE
@@ -586,7 +593,11 @@ class MainActivity : AppCompatActivity() {
                     incomingEnd = if (shouldComplete) 0f else -width,
                 ) {
                     isNotesVisible = !shouldComplete
-                    if (shouldComplete) binding.notesRoot.visibility = View.GONE
+                    if (shouldComplete) {
+                        binding.notesRoot.visibility = View.GONE
+                    } else {
+                        binding.homeContent.visibility = View.GONE
+                    }
                 }
             }
             PageSwipeTarget.CalendarToHome -> {
@@ -597,7 +608,11 @@ class MainActivity : AppCompatActivity() {
                     incomingEnd = if (shouldComplete) 0f else width,
                 ) {
                     isCalendarVisible = !shouldComplete
-                    if (shouldComplete) binding.calendarRoot.visibility = View.GONE
+                    if (shouldComplete) {
+                        binding.calendarRoot.visibility = View.GONE
+                    } else {
+                        binding.homeContent.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -673,6 +688,12 @@ class MainActivity : AppCompatActivity() {
         if (binding.showQuickAccessSwitch.isChecked != state.showQuickAccess) {
             binding.showQuickAccessSwitch.isChecked = state.showQuickAccess
         }
+        val wallpaperDimPercent = state.wallpaperDimPercent.coerceIn(0, 100)
+        binding.wallpaperDimOverlay.alpha = wallpaperDimPercent / 100f
+        if (binding.wallpaperDimSlider.value.toInt() != wallpaperDimPercent) {
+            binding.wallpaperDimSlider.value = wallpaperDimPercent.toFloat()
+        }
+        binding.wallpaperDimValue.text = getString(R.string.percentage_value, wallpaperDimPercent)
         if (binding.maxShortcutsSlider.value.toInt() != state.maxShortcuts) {
             binding.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
         }
@@ -821,6 +842,11 @@ class MainActivity : AppCompatActivity() {
         }
         binding.showQuickAccessRow.setOnClickListener {
             viewModel.setShowQuickAccess(!binding.showQuickAccessSwitch.isChecked)
+        }
+        binding.wallpaperDimSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                viewModel.setWallpaperDimPercent(value.toInt())
+            }
         }
         binding.maxShortcutsSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -1826,6 +1852,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSettings() {
         isSettingsVisible = true
+        updateLauncherLayerVisibility()
         refreshCalendars()
         if (blockableApps.isEmpty()) {
             refreshBlockableApps()
@@ -1839,6 +1866,17 @@ class MainActivity : AppCompatActivity() {
             .alpha(1f)
             .setDuration(SETTINGS_FADE_MS)
             .start()
+    }
+
+    private fun updateLauncherLayerVisibility() {
+        val shouldShowLauncherLayer = !isAppPickerVisible &&
+            !isSettingsVisible &&
+            !isScreenTimeVisible &&
+            !isNoteEditorVisible &&
+            !isNotesVisible &&
+            !isCalendarVisible
+        binding.homeContent.visibility = if (shouldShowLauncherLayer) View.VISIBLE else View.GONE
+        binding.editControls.visibility = if (shouldShowLauncherLayer && isEditMode) View.VISIBLE else View.GONE
     }
 
     private fun showNotesPage() {
@@ -1858,6 +1896,11 @@ class MainActivity : AppCompatActivity() {
             .translationX(0f)
             .setDuration(PAGE_SLIDE_MS)
             .setInterpolator(DecelerateInterpolator())
+            .withEndAction {
+                if (isNotesVisible) {
+                    binding.homeContent.visibility = View.GONE
+                }
+            }
             .start()
     }
 
@@ -1867,6 +1910,7 @@ class MainActivity : AppCompatActivity() {
         val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         binding.homeContent.animate().cancel()
         binding.notesRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
         binding.homeContent.animate()
             .translationX(0f)
             .setDuration(PAGE_SLIDE_MS)
@@ -1902,6 +1946,11 @@ class MainActivity : AppCompatActivity() {
             .translationX(0f)
             .setDuration(PAGE_SLIDE_MS)
             .setInterpolator(DecelerateInterpolator())
+            .withEndAction {
+                if (isCalendarVisible) {
+                    binding.homeContent.visibility = View.GONE
+                }
+            }
             .start()
         onCalendarPageVisible()
     }
@@ -1912,6 +1961,7 @@ class MainActivity : AppCompatActivity() {
         val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         binding.homeContent.animate().cancel()
         binding.calendarRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
         binding.homeContent.animate()
             .translationX(0f)
             .setDuration(PAGE_SLIDE_MS)
@@ -1933,6 +1983,7 @@ class MainActivity : AppCompatActivity() {
     private fun showScreenTimePage() {
         if (isScreenTimeVisible || isEditMode || currentOpenScreenTimeGesture == LauncherGesture.None) return
         isScreenTimeVisible = true
+        updateLauncherLayerVisibility()
         refreshScreenTime()
         binding.screenTimeRoot.animate().cancel()
         binding.screenTimeRoot.alpha = 0f
@@ -1949,11 +2000,15 @@ class MainActivity : AppCompatActivity() {
         binding.screenTimeRoot.animate().cancel()
         binding.screenTimeRoot.visibility = View.GONE
         binding.screenTimeRoot.alpha = 1f
+        updateLauncherLayerVisibility()
     }
 
     private fun showNoteEditor(note: QuickNote?) {
         editingNote = note
         isNoteEditorVisible = true
+        if (isNotesVisible) {
+            binding.notesRoot.visibility = View.GONE
+        }
         binding.noteEditorInput.setText(note?.text.orEmpty())
         binding.noteEditorInput.setSelection(binding.noteEditorInput.text?.length ?: 0)
         binding.noteEditorRoot.alpha = 0f
@@ -1974,6 +2029,9 @@ class MainActivity : AppCompatActivity() {
         binding.noteEditorRoot.visibility = View.GONE
         binding.noteEditorRoot.alpha = 1f
         binding.noteEditorInput.text?.clear()
+        if (isNotesVisible) {
+            binding.notesRoot.visibility = View.VISIBLE
+        }
     }
 
     private fun saveCurrentNote() {
@@ -2023,6 +2081,7 @@ class MainActivity : AppCompatActivity() {
         binding.settingsRoot.animate().cancel()
         binding.settingsRoot.visibility = View.GONE
         binding.settingsRoot.alpha = 1f
+        updateLauncherLayerVisibility()
     }
 
     private fun stopEditModePulse() {
@@ -2036,9 +2095,9 @@ class MainActivity : AppCompatActivity() {
         availableApps = installedAppsRepository.loadLaunchableApps()
         binding.appSearchInput.text?.clear()
         renderFilteredApps(query = "")
-        binding.appPickerRoot.visibility = View.VISIBLE
-        binding.homeContent.visibility = View.GONE
         isAppPickerVisible = true
+        updateLauncherLayerVisibility()
+        binding.appPickerRoot.visibility = View.VISIBLE
         if (mode == AppListMode.LaunchApp) {
             animateAppListEntrance()
         } else {
@@ -2055,11 +2114,11 @@ class MainActivity : AppCompatActivity() {
         binding.appPickerRoot.visibility = View.GONE
         binding.appPickerRoot.alpha = 1f
         binding.appPickerRoot.translationY = 0f
-        binding.homeContent.visibility = View.VISIBLE
         binding.appSearchInput.text?.clear()
         appPickerAdapter.submitList(emptyList())
         availableApps = emptyList()
         isAppPickerVisible = false
+        updateLauncherLayerVisibility()
     }
 
     private fun animateAppListEntrance() {

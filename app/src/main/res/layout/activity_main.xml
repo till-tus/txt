@@ -4,16 +4,23 @@
     android:id="@+id/homeRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/launcher_background"
+    android:background="@android:color/transparent"
     android:clickable="true"
     android:focusable="true"
     android:longClickable="true">
+
+    <View
+        android:id="@+id/wallpaperDimOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:importantForAccessibility="no" />
 
     <LinearLayout
         android:id="@+id/homeContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:orientation="vertical">
 
         <FrameLayout
@@ -21,13 +28,13 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/launcher_background">
+            android:background="@android:color/transparent">
 
             <LinearLayout
                 android:id="@+id/clockDateContent"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:orientation="vertical">
 
                 <com.example.textlauncher.ui.AnalogClockView
@@ -35,7 +42,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
                     android:layout_weight="1"
-                    android:background="@color/launcher_background"
+                    android:background="@android:color/transparent"
                     android:paddingStart="24dp"
                     android:paddingTop="20dp"
                     android:paddingEnd="24dp"
@@ -72,7 +79,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="2"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:clipToPadding="false"
             android:longClickable="true"
             android:overScrollMode="ifContentScrolls"
@@ -83,7 +90,7 @@
             android:id="@+id/quickAccessBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:gravity="center_vertical"
             android:minHeight="74dp"
             android:orientation="horizontal"
@@ -123,7 +130,7 @@
         android:id="@+id/calendarRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -143,13 +150,13 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/launcher_background">
+            android:background="@android:color/transparent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/calendarEventList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:clipToPadding="false"
                 android:overScrollMode="ifContentScrolls"
                 android:paddingHorizontal="24dp"
@@ -205,7 +212,7 @@
         android:id="@+id/notesRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -215,7 +222,7 @@
             android:id="@+id/notesHeader"
             android:layout_width="match_parent"
             android:layout_height="72dp"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:paddingHorizontal="12dp">
 
             <TextView
@@ -235,13 +242,13 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/launcher_background">
+            android:background="@android:color/transparent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/notesList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:clipToPadding="false"
                 android:overScrollMode="ifContentScrolls"
                 android:paddingHorizontal="24dp"
@@ -280,7 +287,7 @@
         android:id="@+id/screenTimeRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -308,14 +315,14 @@
                 android:id="@+id/screenTimeContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:orientation="vertical">
 
         <LinearLayout
             android:id="@+id/screenTimeRecap"
             android:layout_width="match_parent"
             android:layout_height="104dp"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingTop="8dp"
@@ -399,7 +406,7 @@
             android:id="@+id/screenTimeWeekSummary"
             android:layout_width="match_parent"
             android:layout_height="176dp"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:orientation="vertical"
             android:paddingHorizontal="24dp"
             android:paddingTop="8dp"
@@ -435,7 +442,7 @@
             android:id="@+id/screenTimeIntentionsSummary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:orientation="vertical"
             android:paddingHorizontal="24dp"
             android:paddingTop="4dp"
@@ -526,7 +533,7 @@
                 android:id="@+id/screenTimeIntentionsList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:orientation="vertical"
                 android:visibility="gone" />
 
@@ -575,13 +582,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="220dp"
-            android:background="@color/launcher_background">
+            android:background="@android:color/transparent">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/screenTimeList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="ifContentScrolls"
@@ -675,7 +682,7 @@
         android:id="@+id/settingsRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -703,7 +710,7 @@
                 android:id="@+id/settingsContent"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:orientation="vertical">
 
         <TextView
@@ -803,6 +810,55 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:useMaterialThemeColors="true" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/wallpaperDimRow"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:text="@string/wallpaper_dim"
+                    android:textColor="@color/launcher_text"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/wallpaperDimValue"
+                    android:layout_width="56dp"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical|end"
+                    android:textColor="@color/launcher_text_secondary"
+                    android:textSize="17sp" />
+
+            </LinearLayout>
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/wallpaperDimSlider"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:stepSize="1"
+                android:valueFrom="0"
+                android:valueTo="100" />
 
         </LinearLayout>
 
@@ -981,7 +1037,7 @@
             android:id="@+id/calendarSelectionList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:orientation="vertical"
             android:visibility="gone" />
 
@@ -1151,7 +1207,7 @@
             android:id="@+id/appBlockingList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:orientation="vertical"
             android:visibility="gone" />
 
@@ -1229,7 +1285,7 @@
             android:id="@+id/appBudgetsList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:orientation="vertical"
             android:visibility="gone" />
 
@@ -1269,7 +1325,7 @@
         android:id="@+id/noteEditorRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -1323,7 +1379,7 @@
         android:id="@+id/appPickerRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/launcher_background"
+        android:background="@android:color/transparent"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
@@ -1355,7 +1411,7 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:background="@color/launcher_background"
+            android:background="@android:color/transparent"
             android:clickable="true"
             android:focusable="true">
 
@@ -1363,7 +1419,7 @@
                 android:id="@+id/appPickerList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@color/launcher_background"
+                android:background="@android:color/transparent"
                 android:clipToPadding="false"
                 android:overScrollMode="ifContentScrolls"
                 android:paddingHorizontal="24dp"
