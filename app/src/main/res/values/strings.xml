@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Text Launcher</string>
+    <string name="app_name">txt</string>
     <string name="add_shortcut_title">Add shortcut</string>
     <string name="app_picker_empty">No launchable apps found</string>
     <string name="delete_shortcut">Delete</string>
