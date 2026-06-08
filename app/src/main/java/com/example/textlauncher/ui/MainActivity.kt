@@ -26,6 +26,7 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.GestureDetector
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.VelocityTracker
@@ -33,6 +34,7 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
 import android.widget.Toast
@@ -1525,6 +1527,20 @@ class MainActivity : AppCompatActivity() {
                 override fun afterTextChanged(text: Editable?) = Unit
             },
         )
+        binding.appSearchInput.setOnEditorActionListener { _, actionId, event ->
+            val isImeSubmit = actionId == EditorInfo.IME_ACTION_GO ||
+                actionId == EditorInfo.IME_ACTION_DONE ||
+                actionId == EditorInfo.IME_ACTION_SEARCH
+            val isKeyboardEnter = event?.keyCode == KeyEvent.KEYCODE_ENTER &&
+                event.action == KeyEvent.ACTION_DOWN
+
+            if (isImeSubmit || isKeyboardEnter) {
+                launchTopSearchResult()
+                true
+            } else {
+                false
+            }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2063,6 +2079,17 @@ class MainActivity : AppCompatActivity() {
         appPickerAdapter.submitList(filteredApps)
         binding.appPickerList.visibility = if (filteredApps.isEmpty()) View.GONE else View.VISIBLE
         binding.appPickerEmpty.visibility = if (filteredApps.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun launchTopSearchResult() {
+        if (appListMode != AppListMode.LaunchApp) return
+
+        val query = binding.appSearchInput.text?.toString().orEmpty()
+        if (query.isBlank()) return
+
+        val shortcut = FuzzyAppSearch.filter(availableApps, query).firstOrNull() ?: return
+        hideAppPicker()
+        launchShortcutWithAppBlocking(shortcut)
     }
 
     private fun showKeyboard() {
