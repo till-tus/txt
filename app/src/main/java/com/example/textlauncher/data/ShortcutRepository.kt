@@ -38,6 +38,15 @@ class ShortcutRepository(context: Context) {
         preferences.edit().putString(KEY_SHORTCUTS, items.toString()).apply()
     }
 
+    fun deleteShortcutsForPackage(packageName: String): List<AppShortcut> {
+        val shortcuts = loadShortcuts()
+        val updated = shortcuts.filterNot { it.packageName == packageName }
+        if (updated.size != shortcuts.size) {
+            saveShortcuts(updated)
+        }
+        return updated
+    }
+
     private companion object {
         const val PREFERENCES_NAME = "shortcuts"
         const val KEY_SHORTCUTS = "shortcuts"

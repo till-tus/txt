@@ -65,6 +65,16 @@ class HomeViewModel(
         }
     }
 
+    fun deleteShortcutsForPackage(packageName: String) {
+        _uiState.update { state ->
+            val updated = state.shortcuts.filterNot { it.packageName == packageName }
+            if (updated.size == state.shortcuts.size) return@update state
+
+            shortcutRepository.saveShortcuts(updated)
+            state.copy(shortcuts = updated)
+        }
+    }
+
     fun moveShortcut(fromPosition: Int, toPosition: Int) {
         _uiState.update { state ->
             val updated = state.shortcuts.toMutableList()

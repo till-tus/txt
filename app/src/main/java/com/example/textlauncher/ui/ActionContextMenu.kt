@@ -2,6 +2,7 @@ package com.example.textlauncher.ui
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
@@ -71,7 +72,37 @@ internal class ActionContextMenu(
             }
             menuView.addView(row)
         }
-        popup.showAsDropDown(anchor, 0, 0)
+        showEdgeAware(popup, menuView, anchor)
+    }
+
+    private fun showEdgeAware(popup: PopupWindow, menuView: View, anchor: View) {
+        val visibleFrame = Rect()
+        anchor.rootView.getWindowVisibleDisplayFrame(visibleFrame)
+
+        val anchorLocation = IntArray(2)
+        anchor.getLocationOnScreen(anchorLocation)
+
+        menuView.measure(
+            View.MeasureSpec.makeMeasureSpec(visibleFrame.width(), View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.makeMeasureSpec(visibleFrame.height(), View.MeasureSpec.AT_MOST),
+        )
+
+        val margin = context.dp(SCREEN_EDGE_MARGIN_DP)
+        val menuWidth = menuView.measuredWidth
+        val menuHeight = menuView.measuredHeight
+        val maxX = visibleFrame.right - menuWidth - margin
+        val x = anchorLocation[0].coerceIn(visibleFrame.left + margin, maxX.coerceAtLeast(visibleFrame.left + margin))
+        val belowY = anchorLocation[1] + anchor.height
+        val aboveY = anchorLocation[1] - menuHeight
+        val y = when {
+            belowY + menuHeight + margin <= visibleFrame.bottom -> belowY
+            aboveY >= visibleFrame.top + margin -> aboveY
+            else -> {
+                val maxY = visibleFrame.bottom - menuHeight - margin
+                maxY.coerceAtLeast(visibleFrame.top + margin)
+            }
+        }
+        popup.showAtLocation(anchor.rootView, Gravity.NO_GRAVITY, x, y)
     }
 
     private fun Context.dp(value: Int): Int {
@@ -82,6 +113,7 @@ internal class ActionContextMenu(
         const val MENU_WIDTH_DP = 112
         const val MENU_HEIGHT_DP = 48
         const val MENU_HORIZONTAL_PADDING_DP = 18
+        const val SCREEN_EDGE_MARGIN_DP = 8
         const val DISABLED_ACTION_ALPHA = 0.34f
     }
 }
