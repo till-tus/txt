@@ -4,6 +4,13 @@ Text Launcher is a minimal, distraction-free Android launcher for people who wan
 
 The goal is simple: make the phone useful without making it irresistible.
 
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/home.png" alt="Text Launcher home screen" width="240">
+  <img src="docs/screenshots/notes.png" alt="Text Launcher notes screen" width="240">
+</p>
+
 ## Features
 
 - Text-first home screen with configurable app shortcuts, text alignment, and wallpaper dimming.
