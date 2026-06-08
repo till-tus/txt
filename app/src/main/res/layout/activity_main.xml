@@ -1335,6 +1335,7 @@
             android:layout_height="64dp"
             android:background="@android:color/transparent"
             android:hint="@string/search_hint"
+            android:imeOptions="actionGo"
             android:inputType="text"
             android:maxLines="1"
             android:paddingHorizontal="24dp"
