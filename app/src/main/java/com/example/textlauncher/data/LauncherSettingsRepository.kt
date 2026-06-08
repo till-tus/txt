@@ -2,6 +2,7 @@ package com.example.textlauncher.data
 
 import android.content.Context
 import com.example.textlauncher.domain.ClockDisplayMode
+import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
 
 class LauncherSettingsRepository(context: Context) {
@@ -15,7 +16,15 @@ class LauncherSettingsRepository(context: Context) {
                 ?: ClockDisplayMode.Analog,
             showQuickAccess = preferences.getBoolean(KEY_SHOW_QUICK_ACCESS, false),
             maxShortcuts = preferences.getInt(KEY_MAX_SHORTCUTS, 5).coerceIn(3, 7),
-            showScreenTimePage = preferences.getBoolean(KEY_SHOW_SCREEN_TIME_PAGE, true),
+            openScreenTimeGesture = loadGesture(
+                key = KEY_OPEN_SCREEN_TIME_GESTURE,
+                defaultGesture = if (preferences.getBoolean(KEY_SHOW_SCREEN_TIME_PAGE, true)) {
+                    LauncherGesture.TwoFingerSwipeDown
+                } else {
+                    LauncherGesture.None
+                },
+            ),
+            lockScreenGesture = loadGesture(KEY_LOCK_SCREEN_GESTURE, LauncherGesture.DoubleTap),
             showNotesPage = preferences.getBoolean(KEY_SHOW_NOTES_PAGE, true),
             showCalendarPage = preferences.getBoolean(KEY_SHOW_CALENDAR_PAGE, true),
             selectedCalendarIds = preferences.getStringSet(KEY_SELECTED_CALENDAR_IDS, emptySet())
@@ -38,6 +47,8 @@ class LauncherSettingsRepository(context: Context) {
             .putBoolean(KEY_SHOW_QUICK_ACCESS, settings.showQuickAccess)
             .putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
             .putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
+            .putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
+            .putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
             .putBoolean(KEY_SHOW_NOTES_PAGE, settings.showNotesPage)
             .putBoolean(KEY_SHOW_CALENDAR_PAGE, settings.showCalendarPage)
             .putStringSet(KEY_SELECTED_CALENDAR_IDS, settings.selectedCalendarIds.map { it.toString() }.toSet())
@@ -52,6 +63,12 @@ class LauncherSettingsRepository(context: Context) {
 
     private fun runCatchingClockMode(value: String): ClockDisplayMode? {
         return runCatching { ClockDisplayMode.valueOf(value) }.getOrNull()
+    }
+
+    private fun loadGesture(key: String, defaultGesture: LauncherGesture): LauncherGesture {
+        return preferences.getString(key, defaultGesture.name)
+            ?.let { value -> runCatching { LauncherGesture.valueOf(value) }.getOrNull() }
+            ?: defaultGesture
     }
 
     private fun parseAppBudget(value: String): Pair<String, Int>? {
@@ -70,6 +87,8 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_SHOW_QUICK_ACCESS = "showQuickAccess"
         const val KEY_MAX_SHORTCUTS = "maxShortcuts"
         const val KEY_SHOW_SCREEN_TIME_PAGE = "showScreenTimePage"
+        const val KEY_OPEN_SCREEN_TIME_GESTURE = "openScreenTimeGesture"
+        const val KEY_LOCK_SCREEN_GESTURE = "lockScreenGesture"
         const val KEY_SHOW_NOTES_PAGE = "showNotesPage"
         const val KEY_SHOW_CALENDAR_PAGE = "showCalendarPage"
         const val KEY_SELECTED_CALENDAR_IDS = "selectedCalendarIds"

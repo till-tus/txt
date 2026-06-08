@@ -63,6 +63,8 @@ import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.CalendarEvent
 import com.example.textlauncher.domain.DeviceCalendar
+import com.example.textlauncher.domain.GestureAction
+import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ScreenTimeAppUsage
 import com.example.textlauncher.domain.ScreenTimeDayUsage
@@ -105,10 +107,13 @@ class MainActivity : AppCompatActivity() {
     private var didCancelPageSwipeChildren = false
     private var screenTimeGestureStartX = 0f
     private var screenTimeGestureStartY = 0f
-    private var isTrackingScreenTimeGesture = false
-    private var hasTriggeredScreenTimeGesture = false
+    private var isTrackingTwoFingerSwipeDown = false
+    private var hasTriggeredTwoFingerSwipeDown = false
     private var availableCalendars = emptyList<DeviceCalendar>()
     private var currentSelectedCalendarIds = emptySet<Long>()
+    private var currentOpenScreenTimeGesture = LauncherGesture.TwoFingerSwipeDown
+    private var currentLockScreenGesture = LauncherGesture.DoubleTap
+    private var currentGesturePickerAction: GestureAction? = null
     private var hasRequestedCalendarPermission = false
     private var isCalendarSelectionExpanded = false
     private var isAppBlockingExpanded = false
@@ -240,7 +245,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (handleScreenTimeGesture(event)) {
+        if (handleTwoFingerSwipeDownGesture(event)) {
             return true
         }
         if (handlePageDrag(event)) {
@@ -249,18 +254,21 @@ class MainActivity : AppCompatActivity() {
         return super.dispatchTouchEvent(event)
     }
 
-    private fun handleScreenTimeGesture(event: MotionEvent): Boolean {
+    private fun handleTwoFingerSwipeDownGesture(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (event.pointerCount == SCREEN_TIME_GESTURE_POINTERS && canHandleScreenTimeGesture()) {
+                if (
+                    event.pointerCount == TWO_FINGER_SWIPE_DOWN_POINTERS &&
+                    canHandleConfigurableGesture(LauncherGesture.TwoFingerSwipeDown)
+                ) {
                     screenTimeGestureStartX = averagePointerX(event)
                     screenTimeGestureStartY = averagePointerY(event)
-                    isTrackingScreenTimeGesture = true
-                    hasTriggeredScreenTimeGesture = false
+                    isTrackingTwoFingerSwipeDown = true
+                    hasTriggeredTwoFingerSwipeDown = false
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (!isTrackingScreenTimeGesture || event.pointerCount < SCREEN_TIME_GESTURE_POINTERS) {
+                if (!isTrackingTwoFingerSwipeDown || event.pointerCount < TWO_FINGER_SWIPE_DOWN_POINTERS) {
                     return false
                 }
                 val deltaX = averagePointerX(event) - screenTimeGestureStartX
@@ -270,25 +278,25 @@ class MainActivity : AppCompatActivity() {
                 if (!isVerticalDrag) {
                     return false
                 }
-                if (!hasTriggeredScreenTimeGesture && deltaY > SCREEN_TIME_SWIPE_DOWN_DISTANCE_DP.dp) {
-                    hasTriggeredScreenTimeGesture = true
-                    showScreenTimePage()
+                if (!hasTriggeredTwoFingerSwipeDown && deltaY > TWO_FINGER_SWIPE_DOWN_DISTANCE_DP.dp) {
+                    hasTriggeredTwoFingerSwipeDown = true
+                    performGestureAction(LauncherGesture.TwoFingerSwipeDown)
                 }
                 return true
             }
             MotionEvent.ACTION_POINTER_UP,
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_CANCEL -> {
-                val wasTracking = isTrackingScreenTimeGesture
-                isTrackingScreenTimeGesture = false
-                hasTriggeredScreenTimeGesture = false
+                val wasTracking = isTrackingTwoFingerSwipeDown
+                isTrackingTwoFingerSwipeDown = false
+                hasTriggeredTwoFingerSwipeDown = false
                 return wasTracking && event.actionMasked != MotionEvent.ACTION_POINTER_UP
             }
         }
         return false
     }
 
-    private fun canHandleScreenTimeGesture(): Boolean {
+    private fun canHandleConfigurableGesture(gesture: LauncherGesture): Boolean {
         return !isAppPickerVisible &&
             !isSettingsVisible &&
             !isNotesVisible &&
@@ -296,7 +304,47 @@ class MainActivity : AppCompatActivity() {
             !isScreenTimeVisible &&
             !isNoteEditorVisible &&
             !isEditMode &&
-            binding.showScreenTimePageSwitch.isChecked
+            actionForGesture(gesture) != null
+    }
+
+    private fun performGestureAction(gesture: LauncherGesture) {
+        when (actionForGesture(gesture)) {
+            GestureAction.OpenScreenTime -> showScreenTimePage()
+            GestureAction.LockScreen -> lockScreen()
+            null -> Unit
+        }
+    }
+
+    private fun actionForGesture(gesture: LauncherGesture): GestureAction? {
+        return GestureAction.entries.firstOrNull { action ->
+            gestureForAction(action) == gesture
+        }
+    }
+
+    private fun gestureForAction(action: GestureAction): LauncherGesture {
+        return when (action) {
+            GestureAction.OpenScreenTime -> currentOpenScreenTimeGesture
+            GestureAction.LockScreen -> currentLockScreenGesture
+        }
+    }
+
+    private fun actionLabel(action: GestureAction): String {
+        return getString(
+            when (action) {
+                GestureAction.OpenScreenTime -> R.string.gesture_action_open_screen_time
+                GestureAction.LockScreen -> R.string.gesture_action_lock_screen
+            },
+        )
+    }
+
+    private fun gestureLabel(gesture: LauncherGesture): String {
+        return getString(
+            when (gesture) {
+                LauncherGesture.None -> R.string.gesture_none
+                LauncherGesture.TwoFingerSwipeDown -> R.string.gesture_two_finger_swipe_down
+                LauncherGesture.DoubleTap -> R.string.gesture_double_tap
+            },
+        )
     }
 
     private fun averagePointerX(event: MotionEvent): Float {
@@ -593,9 +641,10 @@ class MainActivity : AppCompatActivity() {
             binding.showCalendarPageSwitch.isChecked = state.showCalendarPage
         }
         isRenderingSettingsState = false
-        if (binding.showScreenTimePageSwitch.isChecked != state.showScreenTimePage) {
-            binding.showScreenTimePageSwitch.isChecked = state.showScreenTimePage
-        }
+        currentOpenScreenTimeGesture = state.openScreenTimeGesture
+        currentLockScreenGesture = state.lockScreenGesture
+        binding.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
+        binding.lockScreenGestureValue.text = gestureLabel(state.lockScreenGesture)
         currentSelectedCalendarIds = state.selectedCalendarIds
         currentBlockedAppPackageNames = state.blockedAppPackageNames
         currentAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
@@ -731,11 +780,26 @@ class MainActivity : AppCompatActivity() {
                 viewModel.setMaxShortcuts(value.toInt())
             }
         }
-        binding.showScreenTimePageSwitch.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setShowScreenTimePage(isChecked)
+        binding.openScreenTimeGestureRow.setOnClickListener {
+            showGesturePicker(GestureAction.OpenScreenTime, currentOpenScreenTimeGesture)
         }
-        binding.showScreenTimePageRow.setOnClickListener {
-            viewModel.setShowScreenTimePage(!binding.showScreenTimePageSwitch.isChecked)
+        binding.lockScreenGestureRow.setOnClickListener {
+            showGesturePicker(GestureAction.LockScreen, currentLockScreenGesture)
+        }
+        binding.gesturePickerRoot.setOnClickListener {
+            hideGesturePicker()
+        }
+        binding.gesturePickerPanel.setOnClickListener {
+            // Consume clicks inside the picker so only the scrim closes it.
+        }
+        binding.gestureNoneOption.setOnClickListener {
+            handleGesturePickerSelection(LauncherGesture.None)
+        }
+        binding.gestureTwoFingerSwipeDownOption.setOnClickListener {
+            handleGesturePickerSelection(LauncherGesture.TwoFingerSwipeDown)
+        }
+        binding.gestureDoubleTapOption.setOnClickListener {
+            handleGesturePickerSelection(LauncherGesture.DoubleTap)
         }
         binding.showNotesPageSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowNotesPage(isChecked)
@@ -815,6 +879,72 @@ class MainActivity : AppCompatActivity() {
         if (isEnabled && !hasCalendarPermission()) {
             viewModel.markCalendarPermissionRequested()
             requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
+        }
+    }
+
+    private fun showGesturePicker(action: GestureAction, currentGesture: LauncherGesture) {
+        currentGesturePickerAction = action
+        binding.gesturePickerTitle.text = actionLabel(action)
+        renderGesturePickerOptions(currentGesture)
+        binding.gesturePickerRoot.alpha = 0f
+        binding.gesturePickerRoot.visibility = View.VISIBLE
+        binding.gesturePickerRoot.animate()
+            .alpha(1f)
+            .setDuration(SETTINGS_FADE_MS)
+            .start()
+    }
+
+    private fun hideGesturePicker() {
+        currentGesturePickerAction = null
+        binding.gesturePickerRoot.animate().cancel()
+        binding.gesturePickerRoot.visibility = View.GONE
+        binding.gesturePickerRoot.alpha = 1f
+    }
+
+    private fun handleGesturePickerSelection(selectedGesture: LauncherGesture) {
+        val action = currentGesturePickerAction ?: return
+        conflictActionFor(action, selectedGesture)?.let { previousAction ->
+            Toast.makeText(
+                this,
+                getString(
+                    R.string.gesture_conflict_warning,
+                    gestureLabel(selectedGesture),
+                    actionLabel(previousAction),
+                ),
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+        viewModel.setGesture(action, selectedGesture)
+        hideGesturePicker()
+    }
+
+    private fun renderGesturePickerOptions(currentGesture: LauncherGesture) {
+        renderGesturePickerOption(binding.gestureNoneOption, LauncherGesture.None, currentGesture)
+        renderGesturePickerOption(
+            binding.gestureTwoFingerSwipeDownOption,
+            LauncherGesture.TwoFingerSwipeDown,
+            currentGesture,
+        )
+        renderGesturePickerOption(binding.gestureDoubleTapOption, LauncherGesture.DoubleTap, currentGesture)
+    }
+
+    private fun renderGesturePickerOption(optionView: TextView, gesture: LauncherGesture, currentGesture: LauncherGesture) {
+        val isSelected = gesture == currentGesture
+        optionView.setTextColor(getColor(if (isSelected) R.color.launcher_text else R.color.launcher_text_secondary))
+        optionView.background = GradientDrawable().apply {
+            setColor(Color.TRANSPARENT)
+            cornerRadius = 8.dp.toFloat()
+            setStroke(
+                1.dp,
+                getColor(if (isSelected) R.color.launcher_text else R.color.settings_option_divider),
+            )
+        }
+    }
+
+    private fun conflictActionFor(action: GestureAction, gesture: LauncherGesture): GestureAction? {
+        if (gesture == LauncherGesture.None) return null
+        return GestureAction.entries.firstOrNull { otherAction ->
+            otherAction != action && gestureForAction(otherAction) == gesture
         }
     }
 
@@ -1367,6 +1497,14 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                override fun onDoubleTap(event: MotionEvent): Boolean {
+                    if (canHandleConfigurableGesture(LauncherGesture.DoubleTap)) {
+                        performGestureAction(LauncherGesture.DoubleTap)
+                        return true
+                    }
+                    return false
+                }
+
                 override fun onFling(
                     firstEvent: MotionEvent?,
                     secondEvent: MotionEvent,
@@ -1440,6 +1578,8 @@ class MainActivity : AppCompatActivity() {
                 override fun handleOnBackPressed() {
                     if (appBlockPromptController.isVisible) {
                         hideAppBlockPrompt()
+                    } else if (binding.gesturePickerRoot.visibility == View.VISIBLE) {
+                        hideGesturePicker()
                     } else if (isNoteEditorVisible) {
                         hideNoteEditor()
                     } else if (isSettingsVisible) {
@@ -1664,7 +1804,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showScreenTimePage() {
-        if (isScreenTimeVisible || isEditMode || !binding.showScreenTimePageSwitch.isChecked) return
+        if (isScreenTimeVisible || isEditMode || currentOpenScreenTimeGesture == LauncherGesture.None) return
         isScreenTimeVisible = true
         refreshScreenTime()
         binding.screenTimeRoot.animate().cancel()
@@ -1752,6 +1892,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideSettings() {
         isSettingsVisible = false
+        hideGesturePicker()
         binding.settingsRoot.animate().cancel()
         binding.settingsRoot.visibility = View.GONE
         binding.settingsRoot.alpha = 1f
@@ -1892,6 +2033,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun lockScreen() {
+        if (LockScreenAccessibilityService.lockScreen()) {
+            return
+        }
+
+        try {
+            Toast.makeText(this, R.string.lock_screen_permission_prompt, Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, R.string.quick_access_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun showQuickAccessUnavailable() {
         Toast.makeText(this, R.string.quick_access_unavailable, Toast.LENGTH_SHORT).show()
     }
@@ -1909,8 +2063,8 @@ class MainActivity : AppCompatActivity() {
         const val SIGNIFICANT_AVERAGE_DIFFERENCE_PERCENT = 25
         const val SWIPE_DOWN_DISTANCE_DP = 96
         const val SWIPE_DOWN_VELOCITY_DP = 450
-        const val SCREEN_TIME_GESTURE_POINTERS = 2
-        const val SCREEN_TIME_SWIPE_DOWN_DISTANCE_DP = 96
+        const val TWO_FINGER_SWIPE_DOWN_POINTERS = 2
+        const val TWO_FINGER_SWIPE_DOWN_DISTANCE_DP = 96
         const val COLLAPSED_SCREEN_TIME_APP_COUNT = 3
         const val SCREEN_TIME_APP_ROW_HEIGHT_DP = 58
         const val PAGE_SWIPE_AXIS_RATIO = 1.15f

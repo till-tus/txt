@@ -15,6 +15,7 @@ The goal is simple: make the phone useful without making it irresistible.
 - Intention tracking so each intentional app launch can be paired with a planned duration.
 - Notes page for quick local notes.
 - Calendar page for upcoming events, with selectable calendars.
+- Configurable gestures for opening Screen Time or locking the screen.
 - Settings for hiding or showing launcher pages and adjusting shortcut limits.
 - Local-first storage using Android shared preferences.
 
@@ -30,6 +31,7 @@ Text Launcher can be set as your Android home app. Some features ask for optiona
 
 - Calendar access: used only to show upcoming calendar events in the launcher.
 - Usage access: used only to calculate screen-time summaries and app budget prompts.
+- Accessibility access: optional, used only when the lock-screen gesture is enabled and triggered. Text Launcher uses Android's lock-screen accessibility action instead of Device Admin so biometric unlock can continue to behave like a normal screen lock.
 
 The app stores launcher settings, notes, shortcuts, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
 

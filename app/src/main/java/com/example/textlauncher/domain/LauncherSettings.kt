@@ -5,11 +5,15 @@ data class LauncherSettings(
     val clockDisplayMode: ClockDisplayMode = ClockDisplayMode.Analog,
     val showQuickAccess: Boolean = false,
     val maxShortcuts: Int = 5,
-    val showScreenTimePage: Boolean = true,
+    val openScreenTimeGesture: LauncherGesture = LauncherGesture.TwoFingerSwipeDown,
+    val lockScreenGesture: LauncherGesture = LauncherGesture.DoubleTap,
     val showNotesPage: Boolean = true,
     val showCalendarPage: Boolean = true,
     val selectedCalendarIds: Set<Long> = emptySet(),
     val blockedAppPackageNames: Set<String> = emptySet(),
     val appBudgetMinutesByPackage: Map<String, Int> = emptyMap(),
     val hasRequestedCalendarPermission: Boolean = false,
-)
+) {
+    val showScreenTimePage: Boolean
+        get() = openScreenTimeGesture != LauncherGesture.None
+}
