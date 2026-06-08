@@ -22,6 +22,7 @@ class ShortcutAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ShortcutViewHolder {
         val binding = ItemShortcutBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        binding.shortcutName.minWidth = parent.resources.displayMetrics.widthPixels / MINIMUM_TAP_TARGET_SCREEN_FRACTION
         return ShortcutViewHolder(binding, onShortcutClick, onShortcutLongClick) { isEditMode }
     }
 
@@ -59,5 +60,9 @@ class ShortcutAdapter(
         override fun areContentsTheSame(oldItem: AppShortcut, newItem: AppShortcut): Boolean {
             return oldItem == newItem
         }
+    }
+
+    private companion object {
+        const val MINIMUM_TAP_TARGET_SCREEN_FRACTION = 8
     }
 }
