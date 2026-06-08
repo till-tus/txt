@@ -239,6 +239,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.isHomeLaunchIntent()) {
+            routeToHomeScreen()
+        }
+    }
+
     override fun onDestroy() {
         appBlockPromptController.cancel()
         super.onDestroy()
@@ -1602,6 +1610,62 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun routeToHomeScreen() {
+        cancelPageDrag()
+
+        if (appBlockPromptController.isVisible) {
+            hideAppBlockPrompt()
+        }
+        if (binding.gesturePickerRoot.visibility == View.VISIBLE) {
+            hideGesturePicker()
+        }
+        if (isNoteEditorVisible) {
+            hideNoteEditor()
+        }
+        if (isSettingsVisible) {
+            hideSettings()
+        }
+        if (isNotesVisible) {
+            hideNotesPageImmediately()
+        }
+        if (isCalendarVisible) {
+            hideCalendarPageImmediately()
+        }
+        if (isScreenTimeVisible) {
+            hideScreenTimePage()
+        }
+        if (isAppPickerVisible) {
+            hideAppPicker()
+        }
+        if (isEditMode) {
+            exitEditMode()
+        }
+
+        binding.homeContent.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
+        binding.homeContent.translationX = 0f
+    }
+
+    private fun hideNotesPageImmediately() {
+        isNotesVisible = false
+        binding.homeContent.animate().cancel()
+        binding.notesRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
+        binding.homeContent.translationX = 0f
+        binding.notesRoot.visibility = View.GONE
+        binding.notesRoot.translationX = 0f
+    }
+
+    private fun hideCalendarPageImmediately() {
+        isCalendarVisible = false
+        binding.homeContent.animate().cancel()
+        binding.calendarRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
+        binding.homeContent.translationX = 0f
+        binding.calendarRoot.visibility = View.GONE
+        binding.calendarRoot.translationX = 0f
+    }
+
     private fun showShortcutContextMenu(anchor: View, shortcut: AppShortcut) {
         showActionContextMenu(
             anchor = anchor,
@@ -2052,6 +2116,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun showShortcutLimitReached() {
         Toast.makeText(this, R.string.shortcut_limit_reached, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun Intent.isHomeLaunchIntent(): Boolean {
+        return action == Intent.ACTION_MAIN && hasCategory(Intent.CATEGORY_HOME)
     }
 
     private companion object {
