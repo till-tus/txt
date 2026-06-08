@@ -4,12 +4,15 @@ import android.animation.ValueAnimator
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
+import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.ComponentName
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -118,6 +121,15 @@ class MainActivity : AppCompatActivity() {
     private var isCalendarSelectionExpanded = false
     private var isAppBlockingExpanded = false
     private var isAppBudgetsExpanded = false
+    private val packageRemovedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != Intent.ACTION_PACKAGE_REMOVED) return
+            if (intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)) return
+
+            val packageName = intent.data?.schemeSpecificPart ?: return
+            handlePackageRemoved(packageName)
+        }
+    }
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
     private var editModePulseAnimator: ValueAnimator? = null
@@ -157,6 +169,7 @@ class MainActivity : AppCompatActivity() {
             appUsageIntentionRepository.addTodayIntention(shortcut.packageName, minutes)
             forceLaunchShortcut(shortcut)
         }
+        registerPackageRemovedReceiver()
 
         shortcutAdapter = ShortcutAdapter(::handleShortcutClick, ::showShortcutContextMenu)
         binding.shortcutList.layoutManager = LinearLayoutManager(this).apply {
@@ -183,7 +196,7 @@ class MainActivity : AppCompatActivity() {
             },
             onAppLongClick = { anchor, shortcut ->
                 if (appListMode == AppListMode.LaunchApp) {
-                    showAppBlockContextMenu(anchor, shortcut)
+                    showLauncherAppContextMenu(anchor, shortcut)
                 }
             },
         )
@@ -248,8 +261,32 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(packageRemovedReceiver)
         appBlockPromptController.cancel()
         super.onDestroy()
+    }
+
+    private fun registerPackageRemovedReceiver() {
+        val filter = IntentFilter(Intent.ACTION_PACKAGE_REMOVED).apply {
+            addDataScheme("package")
+        }
+        ContextCompat.registerReceiver(
+            this,
+            packageRemovedReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    private fun handlePackageRemoved(packageName: String) {
+        viewModel.deleteShortcutsForPackage(packageName)
+        if (isAppPickerVisible) {
+            availableApps = installedAppsRepository.loadLaunchableApps()
+            renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
+        }
+        if (isSettingsVisible && (isAppBlockingExpanded || isAppBudgetsExpanded)) {
+            refreshBlockableApps()
+        }
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
@@ -1670,10 +1707,11 @@ class MainActivity : AppCompatActivity() {
         showActionContextMenu(
             anchor = anchor,
             actions = listOf(
-                ContextMenuAction(getString(R.string.delete_shortcut)) {
+                ContextMenuAction(getString(R.string.remove_shortcut)) {
                     viewModel.deleteShortcut(shortcut)
                 },
                 appBlockContextMenuAction(shortcut),
+                uninstallAppContextMenuAction(shortcut),
             ),
         )
     }
@@ -1689,10 +1727,13 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun showAppBlockContextMenu(anchor: View, shortcut: AppShortcut) {
+    private fun showLauncherAppContextMenu(anchor: View, shortcut: AppShortcut) {
         showActionContextMenu(
             anchor = anchor,
-            actions = listOf(appBlockContextMenuAction(shortcut)),
+            actions = listOf(
+                appBlockContextMenuAction(shortcut),
+                uninstallAppContextMenuAction(shortcut),
+            ),
         )
     }
 
@@ -1705,6 +1746,12 @@ class MainActivity : AppCompatActivity() {
             if (!isBlocked) {
                 viewModel.setAppBlocked(shortcut.packageName, true)
             }
+        }
+    }
+
+    private fun uninstallAppContextMenuAction(shortcut: AppShortcut): ContextMenuAction {
+        return ContextMenuAction(label = getString(R.string.uninstall_app)) {
+            launchUninstallApp(shortcut.packageName)
         }
     }
 
@@ -2087,6 +2134,50 @@ class MainActivity : AppCompatActivity() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
         }
         startActivity(intent)
+    }
+
+    private fun launchUninstallApp(packageName: String) {
+        try {
+            val statusIntent = Intent(this, UninstallStatusReceiver::class.java).apply {
+                action = UninstallStatusReceiver.ACTION_UNINSTALL_STATUS
+                putExtra(UninstallStatusReceiver.EXTRA_PACKAGE_NAME, packageName)
+            }
+            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.FLAG_MUTABLE
+                } else {
+                    0
+                }
+            val statusReceiver = PendingIntent.getBroadcast(
+                this,
+                packageName.hashCode(),
+                statusIntent,
+                flags,
+            )
+            packageManager.packageInstaller.uninstall(packageName, statusReceiver.intentSender)
+        } catch (_: SecurityException) {
+            launchUninstallAppFallback(packageName)
+        } catch (_: IllegalArgumentException) {
+            launchUninstallAppFallback(packageName)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun launchUninstallAppFallback(packageName: String) {
+        val packageUri = Uri.fromParts("package", packageName, null)
+        try {
+            startActivity(
+                Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri).apply {
+                    putExtra(Intent.EXTRA_RETURN_RESULT, false)
+                },
+            )
+        } catch (_: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(Intent.ACTION_DELETE, packageUri))
+            } catch (_: ActivityNotFoundException) {
+                showQuickAccessUnavailable()
+            }
+        }
     }
 
     private fun launchQuickAccessIntent(intent: Intent) {

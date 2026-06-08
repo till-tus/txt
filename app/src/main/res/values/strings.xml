@@ -4,6 +4,8 @@
     <string name="add_shortcut_title">Add shortcut</string>
     <string name="app_picker_empty">No launchable apps found</string>
     <string name="delete_shortcut">Delete</string>
+    <string name="remove_shortcut">Remove</string>
+    <string name="uninstall_app">Uninstall</string>
     <string name="block_app">Block app</string>
     <string name="blocked_app">Blocked</string>
     <string name="search_hint">Search...</string>
