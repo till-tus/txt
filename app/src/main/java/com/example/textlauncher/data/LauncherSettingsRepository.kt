@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
+import com.example.textlauncher.domain.ShortcutTextAlignment
 
 class LauncherSettingsRepository(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -17,6 +18,9 @@ class LauncherSettingsRepository(context: Context) {
             showQuickAccess = preferences.getBoolean(KEY_SHOW_QUICK_ACCESS, false),
             wallpaperDimPercent = preferences.getInt(KEY_WALLPAPER_DIM_PERCENT, DEFAULT_WALLPAPER_DIM_PERCENT)
                 .coerceIn(0, 100),
+            shortcutTextAlignment = preferences.getString(KEY_SHORTCUT_TEXT_ALIGNMENT, ShortcutTextAlignment.Left.name)
+                ?.let(::runCatchingShortcutTextAlignment)
+                ?: ShortcutTextAlignment.Left,
             maxShortcuts = preferences.getInt(KEY_MAX_SHORTCUTS, 5).coerceIn(3, 7),
             openScreenTimeGesture = loadGesture(
                 key = KEY_OPEN_SCREEN_TIME_GESTURE,
@@ -48,6 +52,7 @@ class LauncherSettingsRepository(context: Context) {
             .putString(KEY_CLOCK_DISPLAY_MODE, settings.clockDisplayMode.name)
             .putBoolean(KEY_SHOW_QUICK_ACCESS, settings.showQuickAccess)
             .putInt(KEY_WALLPAPER_DIM_PERCENT, settings.wallpaperDimPercent.coerceIn(0, 100))
+            .putString(KEY_SHORTCUT_TEXT_ALIGNMENT, settings.shortcutTextAlignment.name)
             .putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
             .putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
             .putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
@@ -66,6 +71,10 @@ class LauncherSettingsRepository(context: Context) {
 
     private fun runCatchingClockMode(value: String): ClockDisplayMode? {
         return runCatching { ClockDisplayMode.valueOf(value) }.getOrNull()
+    }
+
+    private fun runCatchingShortcutTextAlignment(value: String): ShortcutTextAlignment? {
+        return runCatching { ShortcutTextAlignment.valueOf(value) }.getOrNull()
     }
 
     private fun loadGesture(key: String, defaultGesture: LauncherGesture): LauncherGesture {
@@ -89,6 +98,7 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_CLOCK_DISPLAY_MODE = "clockDisplayMode"
         const val KEY_SHOW_QUICK_ACCESS = "showQuickAccess"
         const val KEY_WALLPAPER_DIM_PERCENT = "wallpaperDimPercent"
+        const val KEY_SHORTCUT_TEXT_ALIGNMENT = "shortcutTextAlignment"
         const val KEY_MAX_SHORTCUTS = "maxShortcuts"
         const val KEY_SHOW_SCREEN_TIME_PAGE = "showScreenTimePage"
         const val KEY_OPEN_SCREEN_TIME_GESTURE = "openScreenTimeGesture"

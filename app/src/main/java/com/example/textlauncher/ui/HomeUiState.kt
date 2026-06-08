@@ -4,6 +4,7 @@ import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.QuickNote
+import com.example.textlauncher.domain.ShortcutTextAlignment
 
 data class HomeUiState(
     val shortcuts: List<AppShortcut> = emptyList(),
@@ -12,6 +13,7 @@ data class HomeUiState(
     val clockDisplayMode: ClockDisplayMode = ClockDisplayMode.Analog,
     val showQuickAccess: Boolean = false,
     val wallpaperDimPercent: Int = 70,
+    val shortcutTextAlignment: ShortcutTextAlignment = ShortcutTextAlignment.Left,
     val maxShortcuts: Int = 5,
     val openScreenTimeGesture: LauncherGesture = LauncherGesture.TwoFingerSwipeDown,
     val lockScreenGesture: LauncherGesture = LauncherGesture.DoubleTap,

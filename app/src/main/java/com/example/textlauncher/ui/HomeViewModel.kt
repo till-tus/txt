@@ -10,6 +10,7 @@ import com.example.textlauncher.domain.GestureAction
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
 import com.example.textlauncher.domain.QuickNote
+import com.example.textlauncher.domain.ShortcutTextAlignment
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,7 @@ class HomeViewModel(
             clockDisplayMode = initialSettings.clockDisplayMode,
             showQuickAccess = initialSettings.showQuickAccess,
             wallpaperDimPercent = initialSettings.wallpaperDimPercent,
+            shortcutTextAlignment = initialSettings.shortcutTextAlignment,
             maxShortcuts = initialSettings.maxShortcuts,
             openScreenTimeGesture = initialSettings.openScreenTimeGesture,
             lockScreenGesture = initialSettings.lockScreenGesture,
@@ -115,6 +117,14 @@ class HomeViewModel(
     fun setWallpaperDimPercent(wallpaperDimPercent: Int) {
         _uiState.update { state ->
             val updated = state.copy(wallpaperDimPercent = wallpaperDimPercent.coerceIn(0, 100))
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setShortcutTextAlignment(shortcutTextAlignment: ShortcutTextAlignment) {
+        _uiState.update { state ->
+            val updated = state.copy(shortcutTextAlignment = shortcutTextAlignment)
             settingsRepository.saveSettings(updated.toSettings())
             updated
         }
@@ -276,6 +286,7 @@ class HomeViewModel(
             clockDisplayMode = clockDisplayMode,
             showQuickAccess = showQuickAccess,
             wallpaperDimPercent = wallpaperDimPercent,
+            shortcutTextAlignment = shortcutTextAlignment,
             maxShortcuts = maxShortcuts,
             openScreenTimeGesture = openScreenTimeGesture,
             lockScreenGesture = lockScreenGesture,
