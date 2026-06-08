@@ -74,6 +74,7 @@ import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ScreenTimeAppUsage
 import com.example.textlauncher.domain.ScreenTimeDayUsage
+import com.example.textlauncher.domain.ShortcutTextAlignment
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -668,6 +669,7 @@ class MainActivity : AppCompatActivity() {
         val shouldScrollToBottom = state.shortcuts.size > renderedShortcutCount
         renderedShortcutCount = state.shortcuts.size
         val visibleShortcuts = state.shortcuts.take(state.maxShortcuts)
+        shortcutAdapter.shortcutTextAlignment = state.shortcutTextAlignment
         shortcutAdapter.submitList(visibleShortcuts) {
             if (shouldScrollToBottom && visibleShortcuts.isNotEmpty()) {
                 binding.shortcutList.scrollToPosition(visibleShortcuts.lastIndex)
@@ -694,6 +696,7 @@ class MainActivity : AppCompatActivity() {
             binding.wallpaperDimSlider.value = wallpaperDimPercent.toFloat()
         }
         binding.wallpaperDimValue.text = getString(R.string.percentage_value, wallpaperDimPercent)
+        renderShortcutTextAlignmentOptions(state.shortcutTextAlignment)
         if (binding.maxShortcutsSlider.value.toInt() != state.maxShortcuts) {
             binding.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
         }
@@ -847,6 +850,15 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 viewModel.setWallpaperDimPercent(value.toInt())
             }
+        }
+        binding.shortcutAlignLeftOption.setOnClickListener {
+            viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Left)
+        }
+        binding.shortcutAlignCenterOption.setOnClickListener {
+            viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Center)
+        }
+        binding.shortcutAlignRightOption.setOnClickListener {
+            viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Right)
         }
         binding.maxShortcutsSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -1263,6 +1275,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderShortcutTextAlignmentOptions(selectedAlignment: ShortcutTextAlignment) {
+        renderShortcutTextAlignmentOption(
+            binding.shortcutAlignLeftOption,
+            selectedAlignment,
+            ShortcutTextAlignment.Left,
+        )
+        renderShortcutTextAlignmentOption(
+            binding.shortcutAlignCenterOption,
+            selectedAlignment,
+            ShortcutTextAlignment.Center,
+        )
+        renderShortcutTextAlignmentOption(
+            binding.shortcutAlignRightOption,
+            selectedAlignment,
+            ShortcutTextAlignment.Right,
+        )
+    }
+
+    private fun renderShortcutTextAlignmentOption(
+        view: TextView,
+        selectedAlignment: ShortcutTextAlignment,
+        alignment: ShortcutTextAlignment,
+    ) {
+        val isSelected = selectedAlignment == alignment
+        view.alpha = if (isSelected) 1f else 0.68f
+        view.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.TRANSPARENT)
+            setStroke(1.dp, getColor(if (isSelected) R.color.launcher_text else R.color.settings_option_divider))
+        }
+    }
+
     private fun hasScreenTimePermission(): Boolean {
         val appOpsManager = getSystemService(AppOpsManager::class.java)
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -1641,7 +1685,7 @@ class MainActivity : AppCompatActivity() {
         binding.shortcutList.setOnTouchListener { _, event ->
             if (event.actionMasked == MotionEvent.ACTION_DOWN) {
                 shouldHandleBlankAreaLongPress = !isAppPickerVisible &&
-                    binding.shortcutList.findChildViewUnder(event.x, event.y) == null
+                    !isShortcutTextTargetUnder(event.x, event.y)
             }
             if (shouldHandleBlankAreaLongPress) {
                 detector.onTouchEvent(event)
@@ -1656,6 +1700,17 @@ class MainActivity : AppCompatActivity() {
             detector.onTouchEvent(event)
             false
         }
+    }
+
+    private fun isShortcutTextTargetUnder(x: Float, y: Float): Boolean {
+        val shortcutRow = binding.shortcutList.findChildViewUnder(x, y) ?: return false
+        val shortcutName = shortcutRow.findViewById<TextView>(R.id.shortcutName) ?: return false
+        val localX = x - shortcutRow.left - shortcutName.left
+        val localY = y - shortcutRow.top - shortcutName.top
+        return localX >= 0f &&
+            localX <= shortcutName.width &&
+            localY >= 0f &&
+            localY <= shortcutName.height
     }
 
     private fun configureBackNavigation() {

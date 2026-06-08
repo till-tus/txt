@@ -19,6 +19,10 @@
     <string name="show_quick_access">Show quick access buttons</string>
     <string name="wallpaper_dim">Wallpaper dim</string>
     <string name="percentage_value">%1$d%%</string>
+    <string name="shortcut_text_alignment">Shortcut text alignment</string>
+    <string name="alignment_left">Left</string>
+    <string name="alignment_center">Center</string>
+    <string name="alignment_right">Right</string>
     <string name="max_shortcuts">App shortcuts</string>
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
     <string name="pages_section">Pages</string>
