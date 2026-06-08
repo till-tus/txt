@@ -12,12 +12,10 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
-import android.os.CountDownTimer
 import android.os.Process
 import android.provider.MediaStore
 import android.provider.CalendarContract
@@ -33,7 +31,6 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.inputmethod.InputMethodManager
-import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -80,6 +77,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var noteAdapter: NoteAdapter
     private lateinit var calendarEventAdapter: CalendarEventAdapter
     private lateinit var screenTimeAdapter: ScreenTimeAdapter
+    private lateinit var actionContextMenu: ActionContextMenu
+    private lateinit var noteBulletFormatter: NoteBulletFormatter
+    private lateinit var appBlockPromptController: AppBlockPromptController
     private var shouldHandleBlankAreaLongPress = false
     private var isAppPickerVisible = false
     private var isEditMode = false
@@ -98,9 +98,6 @@ class MainActivity : AppCompatActivity() {
     private var currentBlockedAppPackageNames = emptySet<String>()
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
     private var editingNote: QuickNote? = null
-    private var pendingBlockedShortcut: AppShortcut? = null
-    private var selectedAppIntentMinutes: Int? = null
-    private var isAppBlockCountdownComplete = false
     private var pageSwipeStartX = 0f
     private var pageSwipeStartY = 0f
     private var activePageSwipeTarget: PageSwipeTarget? = null
@@ -110,7 +107,6 @@ class MainActivity : AppCompatActivity() {
     private var screenTimeGestureStartY = 0f
     private var isTrackingScreenTimeGesture = false
     private var hasTriggeredScreenTimeGesture = false
-    private var isFormattingNoteBullets = false
     private var availableCalendars = emptyList<DeviceCalendar>()
     private var currentSelectedCalendarIds = emptySet<Long>()
     private var hasRequestedCalendarPermission = false
@@ -120,7 +116,6 @@ class MainActivity : AppCompatActivity() {
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
     private var editModePulseAnimator: ValueAnimator? = null
-    private var appBlockCountdownTimer: CountDownTimer? = null
     private var renderedShortcutCount = 0
     private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
@@ -147,6 +142,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        actionContextMenu = ActionContextMenu(this)
+        noteBulletFormatter = NoteBulletFormatter()
+        appBlockPromptController = AppBlockPromptController(
+            context = this,
+            binding = binding,
+            formatDuration = ::formatScreenTimeDuration,
+        ) { shortcut, minutes ->
+            appUsageIntentionRepository.addTodayIntention(shortcut.packageName, minutes)
+            forceLaunchShortcut(shortcut)
+        }
 
         shortcutAdapter = ShortcutAdapter(::handleShortcutClick, ::showShortcutContextMenu)
         binding.shortcutList.layoutManager = LinearLayoutManager(this).apply {
@@ -230,7 +235,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        appBlockCountdownTimer?.cancel()
+        appBlockPromptController.cancel()
         super.onDestroy()
     }
 
@@ -857,7 +862,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
                 override fun afterTextChanged(text: Editable?) {
-                    formatNoteBulletAfterNewline(text ?: return)
+                    noteBulletFormatter.formatAfterNewline(binding.noteEditorInput, text ?: return)
                 }
             },
         )
@@ -888,27 +893,7 @@ class MainActivity : AppCompatActivity() {
             isScreenTimeIntentionsExpanded = !isScreenTimeIntentionsExpanded
             renderScreenTimeIntentionSummary()
         }
-        binding.appBlockCancelButton.setOnClickListener {
-            hideAppBlockPrompt()
-        }
-        binding.appBlockProceedButton.setOnClickListener {
-            pendingBlockedShortcut?.let { shortcut ->
-                selectedAppIntentMinutes?.let { minutes ->
-                    appUsageIntentionRepository.addTodayIntention(shortcut.packageName, minutes)
-                }
-                hideAppBlockPrompt()
-                forceLaunchShortcut(shortcut)
-            }
-        }
-        binding.appBlockIntent5Button.setOnClickListener {
-            selectAppIntentMinutes(5)
-        }
-        binding.appBlockIntent10Button.setOnClickListener {
-            selectAppIntentMinutes(10)
-        }
-        binding.appBlockIntent15Button.setOnClickListener {
-            selectAppIntentMinutes(15)
-        }
+        appBlockPromptController.configure()
     }
 
     private fun hasCalendarPermission(): Boolean {
@@ -1321,36 +1306,6 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
 
-    private fun formatNoteBulletAfterNewline(text: Editable) {
-        if (isFormattingNoteBullets) return
-
-        val cursorPosition = binding.noteEditorInput.selectionStart
-        if (cursorPosition <= 0 || cursorPosition > text.length || text[cursorPosition - 1] != '\n') {
-            return
-        }
-
-        val previousLineEnd = cursorPosition - 1
-        val previousLineStart = text.lastIndexOf('\n', previousLineEnd - 1).let { index ->
-            if (index == -1) 0 else index + 1
-        }
-        val previousLine = text.subSequence(previousLineStart, previousLineEnd).toString()
-        val previousLineContent = previousLine.trimStart()
-        if (!previousLineContent.startsWith(BULLET_PREFIX.trimEnd())) return
-
-        isFormattingNoteBullets = true
-        try {
-            if (previousLine.trim() == BULLET_PREFIX.trimEnd()) {
-                text.delete(previousLineStart, previousLineEnd)
-                binding.noteEditorInput.setSelection(previousLineStart + 1)
-            } else {
-                text.insert(cursorPosition, BULLET_PREFIX)
-                binding.noteEditorInput.setSelection(cursorPosition + BULLET_PREFIX.length)
-            }
-        } finally {
-            isFormattingNoteBullets = false
-        }
-    }
-
     private fun configureShortcutReordering() {
         ItemTouchHelper(
             object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
@@ -1483,7 +1438,7 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (binding.appBlockPromptRoot.visibility == View.VISIBLE) {
+                    if (appBlockPromptController.isVisible) {
                         hideAppBlockPrompt()
                     } else if (isNoteEditorVisible) {
                         hideNoteEditor()
@@ -1550,50 +1505,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showActionContextMenu(anchor: View, actions: List<ContextMenuAction>) {
-        val menuView = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                setColor(getColor(R.color.launcher_background))
-                setStroke(1.dp, getColor(R.color.launcher_text))
-            }
-        }
-
-        val popup = PopupWindow(
-            menuView,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
-        ).apply {
-            isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            elevation = 0f
-        }
-
-        actions.forEach { action ->
-            val row = TextView(this).apply {
-                text = action.label
-                setTextColor(
-                    getColor(if (action.isEnabled) R.color.launcher_text else R.color.launcher_text_secondary),
-                )
-                textSize = 16f
-                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                isEnabled = action.isEnabled
-                alpha = if (action.isEnabled) 1f else DISABLED_ACTION_ALPHA
-                minWidth = MENU_WIDTH_DP.dp
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    MENU_HEIGHT_DP.dp,
-                )
-                setPadding(MENU_HORIZONTAL_PADDING_DP.dp, 0, MENU_HORIZONTAL_PADDING_DP.dp, 0)
-                setOnClickListener {
-                    action.onClick()
-                    popup.dismiss()
-                }
-            }
-            menuView.addView(row)
-        }
-        popup.showAsDropDown(anchor, 0, 0)
+        actionContextMenu.show(anchor, actions)
     }
 
     private fun handleShortcutClick(anchor: View, shortcut: AppShortcut) {
@@ -1956,97 +1868,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAppBlockPrompt(shortcut: AppShortcut, budgetOverrun: AppBudgetOverrun?) {
-        pendingBlockedShortcut = shortcut
-        selectedAppIntentMinutes = null
-        isAppBlockCountdownComplete = false
-        appBlockCountdownTimer?.cancel()
-        binding.appBlockPromptTitle.text = getString(R.string.app_blocking_prompt_title, shortcut.label)
-        if (budgetOverrun == null) {
-            binding.appBlockPromptMessage.text = getString(R.string.app_blocking_prompt_message)
-            binding.appBlockPromptMessage.setTextColor(getColor(R.color.launcher_text_secondary))
-        } else {
-            binding.appBlockPromptMessage.text = getString(
-                R.string.app_budget_prompt_message,
-                formatScreenTimeDuration(budgetOverrun.budgetMinutes * MILLIS_PER_MINUTE),
-                formatScreenTimeDuration(budgetOverrun.usageMillis),
-            )
-            binding.appBlockPromptMessage.setTextColor(getColor(R.color.launcher_warning))
-        }
-        renderAppIntentSelection()
-        renderAppBlockProceedState()
-        binding.appBlockPromptRoot.alpha = 0f
-        binding.appBlockPromptRoot.visibility = View.VISIBLE
-        binding.appBlockPromptRoot.animate()
-            .alpha(1f)
-            .setDuration(APP_BLOCK_PROMPT_FADE_MS)
-            .start()
-        startAppBlockCountdown()
-    }
-
-    private fun startAppBlockCountdown() {
-        renderAppBlockProceedCountdown(APP_BLOCK_WAIT_SECONDS)
-        appBlockCountdownTimer = object : CountDownTimer(APP_BLOCK_WAIT_MS, APP_BLOCK_COUNTDOWN_INTERVAL_MS) {
-            override fun onTick(millisUntilFinished: Long) {
-                val secondsRemaining = ((millisUntilFinished + 999L) / 1_000L).toInt()
-                renderAppBlockProceedCountdown(secondsRemaining)
-            }
-
-            override fun onFinish() {
-                isAppBlockCountdownComplete = true
-                renderAppBlockProceedState()
-            }
-        }.start()
-    }
-
-    private fun renderAppBlockProceedCountdown(secondsRemaining: Int) {
-        binding.appBlockProceedButton.text = getString(
-            R.string.app_blocking_proceed_countdown,
-            secondsRemaining.coerceAtLeast(1),
-        )
-    }
-
-    private fun selectAppIntentMinutes(minutes: Int) {
-        selectedAppIntentMinutes = minutes
-        renderAppIntentSelection()
-        renderAppBlockProceedState()
-    }
-
-    private fun renderAppIntentSelection() {
-        renderAppIntentOption(binding.appBlockIntent5Button, 5)
-        renderAppIntentOption(binding.appBlockIntent10Button, 10)
-        renderAppIntentOption(binding.appBlockIntent15Button, 15)
-    }
-
-    private fun renderAppIntentOption(view: TextView, minutes: Int) {
-        val isSelected = selectedAppIntentMinutes == minutes
-        view.alpha = if (isSelected) 1f else 0.68f
-        view.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            setColor(Color.TRANSPARENT)
-            setStroke(1.dp, getColor(if (isSelected) R.color.launcher_text else R.color.settings_option_divider))
-        }
-    }
-
-    private fun renderAppBlockProceedState() {
-        val canProceed = isAppBlockCountdownComplete && selectedAppIntentMinutes != null
-        binding.appBlockProceedButton.isEnabled = canProceed
-        binding.appBlockProceedButton.alpha = if (canProceed) 1f else DISABLED_ACTION_ALPHA
-        if (isAppBlockCountdownComplete) {
-            binding.appBlockProceedButton.text = getString(R.string.app_blocking_proceed)
-        }
+        appBlockPromptController.show(shortcut, budgetOverrun)
     }
 
     private fun hideAppBlockPrompt() {
-        appBlockCountdownTimer?.cancel()
-        appBlockCountdownTimer = null
-        pendingBlockedShortcut = null
-        selectedAppIntentMinutes = null
-        isAppBlockCountdownComplete = false
-        binding.appBlockPromptRoot.animate().cancel()
-        binding.appBlockPromptRoot.visibility = View.GONE
-        binding.appBlockPromptRoot.alpha = 1f
-        binding.appBlockProceedButton.isEnabled = false
-        binding.appBlockProceedButton.alpha = DISABLED_ACTION_ALPHA
+        appBlockPromptController.hide()
     }
 
     private fun forceLaunchShortcut(shortcut: AppShortcut) {
@@ -2077,9 +1903,6 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val GOOGLE_KEEP_PACKAGE = "com.google.android.keep"
         const val GOOGLE_CALENDAR_PACKAGE = "com.google.android.calendar"
-        const val MENU_WIDTH_DP = 112
-        const val MENU_HEIGHT_DP = 48
-        const val MENU_HORIZONTAL_PADDING_DP = 18
         const val INTENTION_TIME_WIDTH_DP = 132
         const val SETTINGS_KEYBOARD_SCROLL_TOP_OFFSET_DP = 12
         const val SLIGHT_AVERAGE_DIFFERENCE_PERCENT = 5
@@ -2093,16 +1916,11 @@ class MainActivity : AppCompatActivity() {
         const val PAGE_SWIPE_AXIS_RATIO = 1.15f
         const val PAGE_SWIPE_COMPLETE_FRACTION = 0.28f
         const val PAGE_SWIPE_COMPLETE_VELOCITY = 700f
-        const val BULLET_PREFIX = "- "
         const val PAGE_SETTLE_MS = 180L
         const val PAGE_SLIDE_MS = 220L
         const val APP_LIST_ENTER_OFFSET_DP = 24
         const val APP_LIST_ENTER_DURATION_MS = 220L
         const val APP_LIST_START_ALPHA = 0.35f
-        const val APP_BLOCK_WAIT_SECONDS = 5
-        const val APP_BLOCK_WAIT_MS = 5_000L
-        const val APP_BLOCK_COUNTDOWN_INTERVAL_MS = 1_000L
-        const val APP_BLOCK_PROMPT_FADE_MS = 160L
         const val EDIT_CONTROLS_FADE_MS = 160L
         const val EDIT_TEXT_PULSE_MS = 1_200L
         const val EDIT_TEXT_MIN_ALPHA = 0.38f
@@ -2118,26 +1936,4 @@ class MainActivity : AppCompatActivity() {
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
 
-    private enum class AppListMode {
-        AddShortcut,
-        LaunchApp,
-    }
-
-    private enum class PageSwipeTarget {
-        HomeToNotes,
-        NotesToHome,
-        HomeToCalendar,
-        CalendarToHome,
-    }
-
-    private data class ContextMenuAction(
-        val label: String,
-        val isEnabled: Boolean = true,
-        val onClick: () -> Unit,
-    )
-
-    private data class AppBudgetOverrun(
-        val budgetMinutes: Int,
-        val usageMillis: Long,
-    )
 }

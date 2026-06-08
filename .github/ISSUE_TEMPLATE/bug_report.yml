@@ -1,0 +1,90 @@
+name: Bug report
+description: Report something that is broken or behaving unexpectedly.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please do not include security-sensitive details here; follow SECURITY.md for vulnerabilities.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+      placeholder: Describe the bug in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can someone else trigger the problem?
+      placeholder: |
+        1. Set Text Launcher as home app
+        2. Open ...
+        3. Tap ...
+        4. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version or commit
+      placeholder: 0.1.0, commit SHA, or branch name
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      placeholder: Android 15, Android 16, etc.
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: Pixel 8, Galaxy S24, emulator, etc.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Home screen
+        - App search
+        - App shortcuts
+        - App blocking
+        - App budgets
+        - Screen time
+        - Notes
+        - Calendar
+        - Settings
+        - Build/development
+        - Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Add logs, screenshots, or recordings if they help. Remove personal information first.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues before opening this.
+          required: true
+        - label: This is not a security vulnerability report.
+          required: true
