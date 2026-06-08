@@ -6,6 +6,8 @@ import com.example.textlauncher.data.NoteRepository
 import com.example.textlauncher.data.ShortcutRepository
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.ClockDisplayMode
+import com.example.textlauncher.domain.GestureAction
+import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
 import com.example.textlauncher.domain.QuickNote
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,7 +29,8 @@ class HomeViewModel(
             clockDisplayMode = initialSettings.clockDisplayMode,
             showQuickAccess = initialSettings.showQuickAccess,
             maxShortcuts = initialSettings.maxShortcuts,
-            showScreenTimePage = initialSettings.showScreenTimePage,
+            openScreenTimeGesture = initialSettings.openScreenTimeGesture,
+            lockScreenGesture = initialSettings.lockScreenGesture,
             showNotesPage = initialSettings.showNotesPage,
             showCalendarPage = initialSettings.showCalendarPage,
             selectedCalendarIds = initialSettings.selectedCalendarIds,
@@ -114,11 +117,28 @@ class HomeViewModel(
         }
     }
 
-    fun setShowScreenTimePage(showScreenTimePage: Boolean) {
+    fun setGesture(action: GestureAction, gesture: LauncherGesture) {
         _uiState.update { state ->
-            val updated = state.copy(showScreenTimePage = showScreenTimePage)
+            val updated = when (action) {
+                GestureAction.OpenScreenTime -> state.copy(
+                    openScreenTimeGesture = gesture,
+                    lockScreenGesture = state.lockScreenGesture.clearIfConflicting(gesture),
+                )
+                GestureAction.LockScreen -> state.copy(
+                    openScreenTimeGesture = state.openScreenTimeGesture.clearIfConflicting(gesture),
+                    lockScreenGesture = gesture,
+                )
+            }
             settingsRepository.saveSettings(updated.toSettings())
             updated
+        }
+    }
+
+    private fun LauncherGesture.clearIfConflicting(selectedGesture: LauncherGesture): LauncherGesture {
+        return if (selectedGesture != LauncherGesture.None && this == selectedGesture) {
+            LauncherGesture.None
+        } else {
+            this
         }
     }
 
@@ -237,7 +257,8 @@ class HomeViewModel(
             clockDisplayMode = clockDisplayMode,
             showQuickAccess = showQuickAccess,
             maxShortcuts = maxShortcuts,
-            showScreenTimePage = showScreenTimePage,
+            openScreenTimeGesture = openScreenTimeGesture,
+            lockScreenGesture = lockScreenGesture,
             showNotesPage = showNotesPage,
             showCalendarPage = showCalendarPage,
             selectedCalendarIds = selectedCalendarIds,
