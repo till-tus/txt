@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import com.example.textlauncher.R
@@ -66,6 +67,13 @@ class AnalogClockView @JvmOverloads constructor(
             ClockDisplayMode.Analog -> drawAnalogTime(canvas, centerX, centerY, radius, time)
             ClockDisplayMode.Digital -> drawDigitalTime(canvas, centerX, centerY, radius, time)
         }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN && !isWithinClockHitArea(event.x, event.y)) {
+            return false
+        }
+        return super.onTouchEvent(event)
     }
 
     fun setDisplayMode(mode: ClockDisplayMode) {
@@ -185,6 +193,21 @@ class AnalogClockView @JvmOverloads constructor(
             centerY + sin(radians).toFloat() * length,
             clockPaint,
         )
+    }
+
+    private fun isWithinClockHitArea(x: Float, y: Float): Boolean {
+        val contentWidth = width - paddingLeft - paddingRight
+        val contentHeight = height - paddingTop - paddingBottom
+        if (contentWidth <= 0 || contentHeight <= 0) return false
+
+        val centerX = paddingLeft + contentWidth / 2f
+        val centerY = paddingTop + contentHeight / 2f
+        val radius = min(contentWidth, contentHeight) / 2f - OUTLINE_STROKE_DP.dpFloat
+        if (radius <= 0f) return false
+
+        val dx = x - centerX
+        val dy = y - centerY
+        return dx * dx + dy * dy <= radius * radius
     }
 
     private fun scheduleNextTick() {
