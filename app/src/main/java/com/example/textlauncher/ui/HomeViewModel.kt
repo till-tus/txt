@@ -1,0 +1,249 @@
+package com.example.textlauncher.ui
+
+import androidx.lifecycle.ViewModel
+import com.example.textlauncher.data.LauncherSettingsRepository
+import com.example.textlauncher.data.NoteRepository
+import com.example.textlauncher.data.ShortcutRepository
+import com.example.textlauncher.domain.AppShortcut
+import com.example.textlauncher.domain.ClockDisplayMode
+import com.example.textlauncher.domain.LauncherSettings
+import com.example.textlauncher.domain.QuickNote
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+class HomeViewModel(
+    private val shortcutRepository: ShortcutRepository,
+    private val settingsRepository: LauncherSettingsRepository,
+    private val noteRepository: NoteRepository,
+) : ViewModel() {
+    private val initialSettings = settingsRepository.loadSettings()
+    private val _uiState = MutableStateFlow(
+        HomeUiState(
+            shortcuts = shortcutRepository.loadShortcuts(),
+            notes = noteRepository.loadNotes(),
+            showDate = initialSettings.showDate,
+            clockDisplayMode = initialSettings.clockDisplayMode,
+            showQuickAccess = initialSettings.showQuickAccess,
+            maxShortcuts = initialSettings.maxShortcuts,
+            showScreenTimePage = initialSettings.showScreenTimePage,
+            showNotesPage = initialSettings.showNotesPage,
+            showCalendarPage = initialSettings.showCalendarPage,
+            selectedCalendarIds = initialSettings.selectedCalendarIds,
+            blockedAppPackageNames = initialSettings.blockedAppPackageNames,
+            appBudgetMinutesByPackage = initialSettings.appBudgetMinutesByPackage,
+            hasRequestedCalendarPermission = initialSettings.hasRequestedCalendarPermission,
+        ),
+    )
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    fun addShortcut(shortcut: AppShortcut) {
+        _uiState.update { state ->
+            if (state.shortcuts.size >= state.maxShortcuts) return@update state
+
+            val updated = state.shortcuts + shortcut
+            shortcutRepository.saveShortcuts(updated)
+            state.copy(shortcuts = updated)
+        }
+    }
+
+    fun canAddShortcut(): Boolean {
+        return _uiState.value.shortcuts.size < _uiState.value.maxShortcuts
+    }
+
+    fun deleteShortcut(shortcut: AppShortcut) {
+        _uiState.update { state ->
+            val updated = state.shortcuts.toMutableList()
+            if (!updated.remove(shortcut)) return@update state
+
+            shortcutRepository.saveShortcuts(updated)
+            state.copy(shortcuts = updated)
+        }
+    }
+
+    fun moveShortcut(fromPosition: Int, toPosition: Int) {
+        _uiState.update { state ->
+            val updated = state.shortcuts.toMutableList()
+            if (fromPosition !in updated.indices || toPosition !in updated.indices) return@update state
+
+            val moved = updated.removeAt(fromPosition)
+            updated.add(toPosition, moved)
+            shortcutRepository.saveShortcuts(updated)
+            state.copy(shortcuts = updated)
+        }
+    }
+
+    fun setShowDate(showDate: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showDate = showDate)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setClockDisplayMode(clockDisplayMode: ClockDisplayMode) {
+        _uiState.update { state ->
+            val updated = state.copy(clockDisplayMode = clockDisplayMode)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setShowQuickAccess(showQuickAccess: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showQuickAccess = showQuickAccess)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setMaxShortcuts(maxShortcuts: Int) {
+        _uiState.update { state ->
+            val updated = state.copy(maxShortcuts = maxShortcuts.coerceIn(3, 7))
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setShowNotesPage(showNotesPage: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showNotesPage = showNotesPage)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setShowScreenTimePage(showScreenTimePage: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showScreenTimePage = showScreenTimePage)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setShowCalendarPage(showCalendarPage: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showCalendarPage = showCalendarPage)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setCalendarSelected(calendarId: Long, isSelected: Boolean) {
+        _uiState.update { state ->
+            val updatedIds = if (isSelected) {
+                state.selectedCalendarIds + calendarId
+            } else {
+                state.selectedCalendarIds - calendarId
+            }
+            val updated = state.copy(selectedCalendarIds = updatedIds)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setAppBlocked(packageName: String, isBlocked: Boolean) {
+        _uiState.update { state ->
+            val updatedPackageNames = if (isBlocked) {
+                state.blockedAppPackageNames + packageName
+            } else {
+                state.blockedAppPackageNames - packageName
+            }
+            val updated = state.copy(blockedAppPackageNames = updatedPackageNames)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setAppBudget(packageName: String, minutes: Int?) {
+        _uiState.update { state ->
+            val updatedBudgets = state.appBudgetMinutesByPackage.toMutableMap()
+            if (minutes == null) {
+                updatedBudgets.remove(packageName)
+            } else {
+                updatedBudgets[packageName] = minutes
+            }
+            val updated = state.copy(appBudgetMinutesByPackage = updatedBudgets)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun markCalendarPermissionRequested() {
+        _uiState.update { state ->
+            if (state.hasRequestedCalendarPermission) return@update state
+
+            val updated = state.copy(hasRequestedCalendarPermission = true)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun addNote(text: String) {
+        val trimmedText = text.trim()
+        if (trimmedText.isEmpty()) return
+
+        _uiState.update { state ->
+            val updatedNotes = state.notes + QuickNote(
+                id = System.currentTimeMillis(),
+                text = trimmedText,
+            )
+            noteRepository.saveNotes(updatedNotes)
+            state.copy(notes = updatedNotes)
+        }
+    }
+
+    fun updateNote(note: QuickNote, text: String) {
+        val trimmedText = text.trim()
+        _uiState.update { state ->
+            val updatedNotes = if (trimmedText.isEmpty()) {
+                state.notes.filterNot { it.id == note.id }
+            } else {
+                state.notes.map { currentNote ->
+                    if (currentNote.id == note.id) currentNote.copy(text = trimmedText) else currentNote
+                }
+            }
+            noteRepository.saveNotes(updatedNotes)
+            state.copy(notes = updatedNotes)
+        }
+    }
+
+    fun deleteNote(note: QuickNote) {
+        _uiState.update { state ->
+            val updatedNotes = state.notes.filterNot { it.id == note.id }
+            if (updatedNotes.size == state.notes.size) return@update state
+
+            noteRepository.saveNotes(updatedNotes)
+            state.copy(notes = updatedNotes)
+        }
+    }
+
+    fun toggleClockDisplayMode() {
+        _uiState.update { state ->
+            val updatedMode = when (state.clockDisplayMode) {
+                ClockDisplayMode.Analog -> ClockDisplayMode.Digital
+                ClockDisplayMode.Digital -> ClockDisplayMode.Analog
+            }
+            val updated = state.copy(clockDisplayMode = updatedMode)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    private fun HomeUiState.toSettings(): LauncherSettings {
+        return LauncherSettings(
+            showDate = showDate,
+            clockDisplayMode = clockDisplayMode,
+            showQuickAccess = showQuickAccess,
+            maxShortcuts = maxShortcuts,
+            showScreenTimePage = showScreenTimePage,
+            showNotesPage = showNotesPage,
+            showCalendarPage = showCalendarPage,
+            selectedCalendarIds = selectedCalendarIds,
+            blockedAppPackageNames = blockedAppPackageNames,
+            appBudgetMinutesByPackage = appBudgetMinutesByPackage,
+            hasRequestedCalendarPermission = hasRequestedCalendarPermission,
+        )
+    }
+}

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/launcher_background"
+    android:orientation="vertical"
+    android:paddingVertical="12dp">
+
+    <TextView
+        android:id="@+id/eventDayHeader"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:gravity="center_vertical"
+        android:includeFontPadding="false"
+        android:textColor="@color/launcher_text"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/eventDayDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="14dp"
+        android:background="@color/settings_option_divider"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/eventTime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:textColor="@color/launcher_text_secondary"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/eventTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:includeFontPadding="false"
+        android:textColor="@color/launcher_text"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/eventCalendar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:includeFontPadding="false"
+        android:textColor="@color/launcher_text_secondary"
+        android:textSize="14sp" />
+
+</LinearLayout>

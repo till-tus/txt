@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/launcher_background"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="top"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingVertical="12dp">
+
+    <TextView
+        android:id="@+id/noteText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:includeFontPadding="false"
+        android:textColor="@color/launcher_text"
+        android:textSize="18sp" />
+
+    <ImageButton
+        android:id="@+id/copyNoteButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="12dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/copy_note"
+        android:padding="12dp"
+        android:src="@drawable/ic_content_copy"
+        android:tint="@color/launcher_text" />
+
+</LinearLayout>

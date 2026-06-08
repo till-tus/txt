@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:background="@color/launcher_background"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="24dp"
+    android:paddingEnd="20dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/calendarName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/launcher_text"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/calendarAccount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/calendarCheckbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:useMaterialThemeColors="true" />
+
+</LinearLayout>

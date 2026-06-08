@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:background="@color/launcher_background"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp">
+
+    <TextView
+        android:id="@+id/budgetAppName"
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textColor="@color/launcher_text"
+        android:textSize="17sp" />
+
+    <LinearLayout
+        android:id="@+id/budgetOptions"
+        android:layout_width="match_parent"
+        android:layout_height="42dp"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/budget15Button"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/app_budget_15"
+            android:textColor="@color/launcher_text"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/budget30Button"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/app_budget_30"
+            android:textColor="@color/launcher_text"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/budget60Button"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="@string/app_budget_60"
+            android:textColor="@color/launcher_text"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+</LinearLayout>
