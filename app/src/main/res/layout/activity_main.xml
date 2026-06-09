@@ -315,6 +315,18 @@
                 android:textColor="@color/launcher_text"
                 android:textSize="@dimen/app_page_title_text_size" />
 
+            <ImageButton
+                android:id="@+id/addTodayWidgetButton"
+                android:layout_width="58dp"
+                android:layout_height="58dp"
+                android:layout_gravity="center_vertical|end"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/today_add_widget"
+                android:padding="13dp"
+                android:src="@drawable/ic_add"
+                android:visibility="gone"
+                app:tint="@color/launcher_text" />
+
         </FrameLayout>
 
         <com.example.textlauncher.ui.TodayWidgetGridView

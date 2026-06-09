@@ -57,8 +57,8 @@ class TodayWidgetRepository(context: Context) {
             type = TodayWidgetType.NextEvent,
             column = 0,
             row = 0,
-            columnSpan = GRID_COLUMNS,
-            rowSpan = 1,
+            columnSpan = MIN_COLUMN_SPAN,
+            rowSpan = MIN_ROW_SPAN,
         )
     }
 
