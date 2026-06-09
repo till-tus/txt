@@ -15,7 +15,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -238,6 +240,7 @@ class MainActivity : AppCompatActivity() {
 
         noteAdapter = NoteAdapter(::showNoteEditor, ::copyNote, ::showNoteContextMenu)
         binding.notesList.layoutManager = LinearLayoutManager(this)
+        binding.notesList.addItemDecoration(NotesDividerDecoration(this))
         binding.notesList.adapter = noteAdapter
 
         calendarEventAdapter = CalendarEventAdapter(::openCalendarEventDay)
@@ -3552,5 +3555,29 @@ class MainActivity : AppCompatActivity() {
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+
+    private class NotesDividerDecoration(context: Context) : RecyclerView.ItemDecoration() {
+        private val dividerHeight = (context.resources.displayMetrics.density).coerceAtLeast(1f)
+        private val paint = Paint().apply {
+            color = ContextCompat.getColor(context, R.color.settings_option_divider)
+        }
+
+        override fun onDrawOver(canvas: Canvas, parent: RecyclerView, state: RecyclerView.State) {
+            val itemCount = state.itemCount
+            if (itemCount <= 1) return
+
+            val left = parent.paddingLeft.toFloat()
+            val right = (parent.width - parent.paddingRight).toFloat()
+
+            for (index in 0 until parent.childCount) {
+                val child = parent.getChildAt(index)
+                val adapterPosition = parent.getChildAdapterPosition(child)
+                if (adapterPosition == RecyclerView.NO_POSITION || adapterPosition >= itemCount - 1) continue
+
+                val top = child.bottom.toFloat()
+                canvas.drawRect(left, top, right, top + dividerHeight, paint)
+            }
+        }
+    }
 
 }
