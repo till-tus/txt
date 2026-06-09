@@ -1075,10 +1075,12 @@ class MainActivity : AppCompatActivity() {
         binding.noteEditorInput.addTextChangedListener(
             object : TextWatcher {
                 override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
-                override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
+                    noteBulletFormatter.onTextChanged(text, start, before, count)
+                }
 
                 override fun afterTextChanged(text: Editable?) {
-                    noteBulletFormatter.formatAfterNewline(binding.noteEditorInput, text ?: return)
+                    noteBulletFormatter.formatAfterTextChanged(binding.noteEditorInput, text ?: return)
                 }
             },
         )
