@@ -83,7 +83,8 @@
             android:background="@android:color/transparent"
             android:clipToPadding="false"
             android:longClickable="true"
-            android:overScrollMode="ifContentScrolls"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never"
             android:paddingHorizontal="24dp"
             android:paddingBottom="16dp" />
 
@@ -280,6 +281,39 @@
                 android:padding="13dp"
                 android:src="@drawable/ic_edit"
                 app:tint="@color/launcher_text" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/todayRoot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/todayHeader"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:background="@android:color/transparent"
+            android:paddingHorizontal="12dp">
+
+            <TextView
+                android:id="@+id/todayTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_vertical|start"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="@string/today_page_title"
+                android:textColor="@color/launcher_text"
+                android:textSize="@dimen/app_page_title_text_size" />
 
         </FrameLayout>
 
@@ -1051,6 +1085,38 @@
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/showCalendarPageSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:useMaterialThemeColors="true" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/showTodayPageRow"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="20dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/show_today_page"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/showTodayPageSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:useMaterialThemeColors="true" />
