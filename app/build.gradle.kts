@@ -29,6 +29,11 @@ android {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
+
+    lint {
+        // androidx.core-ktx 1.19.0 requires AGP 9.1 and compile SDK 37; this project is pinned to AGP 8.13/SDK 36.
+        disable += "GradleDependency"
+    }
 }
 
 dependencies {

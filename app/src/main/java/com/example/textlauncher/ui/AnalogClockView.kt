@@ -1,5 +1,6 @@
 package com.example.textlauncher.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -69,6 +70,7 @@ class AnalogClockView @JvmOverloads constructor(
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_DOWN && !isWithinClockHitArea(event.x, event.y)) {
             return false

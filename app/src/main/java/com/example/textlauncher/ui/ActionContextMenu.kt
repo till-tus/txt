@@ -3,7 +3,6 @@ package com.example.textlauncher.ui
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.view.Gravity
 import android.view.View
@@ -11,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.core.graphics.drawable.toDrawable
 import com.example.textlauncher.R
 
 internal data class ContextMenuAction(
@@ -39,7 +39,7 @@ internal class ActionContextMenu(
             true,
         ).apply {
             isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             elevation = 0f
         }
 
