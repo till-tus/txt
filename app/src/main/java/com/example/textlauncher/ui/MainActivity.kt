@@ -26,6 +26,7 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.GestureDetector
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -1868,6 +1869,7 @@ class MainActivity : AppCompatActivity() {
     private fun enterEditMode() {
         if (isEditMode) return
         isEditMode = true
+        performEditModeHapticFeedback()
         shortcutAdapter.isEditMode = true
         binding.clockDateContent.visibility = View.GONE
         binding.editModeText.visibility = View.VISIBLE
@@ -2039,6 +2041,7 @@ class MainActivity : AppCompatActivity() {
     private fun showScreenTimePage() {
         if (isScreenTimeVisible || isEditMode || currentOpenScreenTimeGesture == LauncherGesture.None) return
         isScreenTimeVisible = true
+        performLightHapticFeedback()
         updateLauncherLayerVisibility()
         refreshScreenTime()
         binding.screenTimeRoot.animate().cancel()
@@ -2349,6 +2352,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun showShortcutLimitReached() {
         Toast.makeText(this, R.string.shortcut_limit_reached, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun performEditModeHapticFeedback() {
+        binding.root.performHapticFeedback(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                HapticFeedbackConstants.CONFIRM
+            } else {
+                HapticFeedbackConstants.CONTEXT_CLICK
+            },
+        )
+    }
+
+    private fun performLightHapticFeedback() {
+        binding.root.performHapticFeedback(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                HapticFeedbackConstants.TEXT_HANDLE_MOVE
+            } else {
+                HapticFeedbackConstants.CLOCK_TICK
+            },
+        )
     }
 
     private fun Intent.isHomeLaunchIntent(): Boolean {
