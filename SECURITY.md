@@ -21,7 +21,7 @@ Please include:
 
 ## Security Expectations
 
-Text Launcher is local-first and should avoid collecting or transmitting user data. Changes that touch permissions, app usage data, calendar data, notes, backups, exported components, accessibility services, package uninstall flows, package removal receivers, or file handling should receive extra review.
+Text Launcher is local-first and should avoid collecting or transmitting user data. Changes that touch permissions, app usage data, calendar data, notifications, notes, backups, exported components, notification listener services, accessibility services, package uninstall flows, package removal receivers, or file handling should receive extra review.
 
 ## Disclosure
 
