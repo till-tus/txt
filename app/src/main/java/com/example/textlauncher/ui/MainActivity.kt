@@ -18,6 +18,8 @@ import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -51,6 +53,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
+import androidx.core.animation.doOnEnd
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -138,6 +141,11 @@ class MainActivity : AppCompatActivity() {
     private var activePageSwipeTarget: PageSwipeTarget? = null
     private var pageSwipeVelocityTracker: VelocityTracker? = null
     private var didCancelPageSwipeChildren = false
+    private var appListDragStartX = 0f
+    private var appListDragStartY = 0f
+    private var isDraggingAppList = false
+    private var didCancelAppListDragChildren = false
+    private var appListDragVelocityTracker: VelocityTracker? = null
     private var screenTimeGestureStartX = 0f
     private var screenTimeGestureStartY = 0f
     private var isTrackingTwoFingerSwipeDown = false
@@ -163,6 +171,7 @@ class MainActivity : AppCompatActivity() {
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
     private var editModePulseAnimator: ValueAnimator? = null
+    private var appListHomeTreatmentAnimator: ValueAnimator? = null
     private var renderedShortcutCount = 0
     private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
@@ -348,6 +357,9 @@ class MainActivity : AppCompatActivity() {
         if (handleTwoFingerSwipeDownGesture(event)) {
             return true
         }
+        if (handleAppListDrag(event)) {
+            return true
+        }
         if (handlePageDrag(event)) {
             return true
         }
@@ -515,6 +527,230 @@ class MainActivity : AppCompatActivity() {
             }
         }
         return false
+    }
+
+    private fun handleAppListDrag(event: MotionEvent): Boolean {
+        if (!canHandleAppListDrag(event)) {
+            if (isDraggingAppList) {
+                settleAppListDrag(shouldComplete = false)
+            }
+            cancelAppListDrag()
+            return false
+        }
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                appListDragStartX = event.rawX
+                appListDragStartY = event.rawY
+                isDraggingAppList = false
+                didCancelAppListDragChildren = false
+                appListDragVelocityTracker?.recycle()
+                appListDragVelocityTracker = VelocityTracker.obtain().apply {
+                    addMovement(event)
+                }
+                return false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                appListDragVelocityTracker?.addMovement(event)
+                val deltaX = event.rawX - appListDragStartX
+                val deltaY = event.rawY - appListDragStartY
+                if (!isDraggingAppList) {
+                    if (!isAppListDragGesture(deltaX, deltaY)) return false
+
+                    isDraggingAppList = true
+                    cancelChildGesturesForAppListDrag(event)
+                    prepareAppListDrag()
+                }
+
+                applyAppListDrag(deltaY)
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!isDraggingAppList) {
+                    cancelAppListDrag()
+                    return false
+                }
+
+                appListDragVelocityTracker?.addMovement(event)
+                appListDragVelocityTracker?.computeCurrentVelocity(1_000)
+                val velocityY = appListDragVelocityTracker?.yVelocity ?: 0f
+                val deltaY = event.rawY - appListDragStartY
+                settleAppListDrag(shouldComplete = shouldCompleteAppListDrag(deltaY, velocityY))
+                cancelAppListDrag()
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (isDraggingAppList) {
+                    settleAppListDrag(shouldComplete = false)
+                }
+                cancelAppListDrag()
+                return false
+            }
+        }
+        return false
+    }
+
+    private fun canHandleAppListDrag(event: MotionEvent): Boolean {
+        if (
+            isAppPickerVisible ||
+            isSettingsVisible ||
+            isNotesVisible ||
+            isCalendarVisible ||
+            isTodayVisible ||
+            isScreenTimeVisible ||
+            isNoteEditorVisible ||
+            isEditMode ||
+            activePageSwipeTarget != null
+        ) {
+            return false
+        }
+
+        val isTouchInShortcutList = isTouchInsideView(binding.shortcutList, event.rawX, event.rawY)
+        return !isTouchInShortcutList || !binding.shortcutList.canScrollVertically(-1)
+    }
+
+    private fun isAppListDragGesture(deltaX: Float, deltaY: Float): Boolean {
+        val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
+        return deltaY >= touchSlop &&
+            deltaY >= kotlin.math.abs(deltaX) * PAGE_SWIPE_AXIS_RATIO
+    }
+
+    private fun prepareAppListDrag() {
+        appListMode = AppListMode.LaunchApp
+        availableApps = installedAppsRepository.loadLaunchableApps()
+        binding.appSearchInput.text?.clear()
+        renderFilteredApps(query = "")
+        binding.appPickerRoot.animate().cancel()
+        binding.homeContent.animate().cancel()
+        binding.homeTransitionDimOverlay.animate().cancel()
+        appListHomeTreatmentAnimator?.cancel()
+        binding.homeTransitionDimOverlay.visibility = View.VISIBLE
+        binding.appPickerRoot.visibility = View.VISIBLE
+        binding.appPickerRoot.alpha = 0f
+        binding.appPickerRoot.translationY = -APP_LIST_ENTER_OFFSET_DP.dp.toFloat()
+        applyAppListHomeTreatment(progress = 0f)
+    }
+
+    private fun applyAppListDrag(deltaY: Float) {
+        val progress = (deltaY / SWIPE_DOWN_DISTANCE_DP.dp).coerceIn(0f, 1f)
+        binding.appPickerRoot.alpha = progress
+        binding.appPickerRoot.translationY = -APP_LIST_ENTER_OFFSET_DP.dp * (1f - progress)
+        applyAppListHomeTreatment(progress)
+    }
+
+    private fun shouldCompleteAppListDrag(deltaY: Float, velocityY: Float): Boolean {
+        return deltaY > SWIPE_DOWN_DISTANCE_DP.dp || velocityY > SWIPE_DOWN_VELOCITY_DP
+    }
+
+    private fun settleAppListDrag(shouldComplete: Boolean) {
+        binding.appPickerRoot.animate().cancel()
+        if (shouldComplete) {
+            isAppPickerVisible = true
+            binding.appPickerRoot.visibility = View.VISIBLE
+            binding.appPickerRoot.animate()
+                .alpha(1f)
+                .translationY(0f)
+                .setDuration(PAGE_SETTLE_MS)
+                .setInterpolator(DecelerateInterpolator())
+                .withEndAction {
+                    if (isAppPickerVisible) {
+                        updateLauncherLayerVisibility()
+                        binding.appSearchInput.requestFocus()
+                        showKeyboard()
+                    }
+                }
+                .start()
+            animateAppListHomeTreatment(toProgress = 1f)
+        } else {
+            binding.appPickerRoot.animate()
+                .alpha(0f)
+                .translationY(-APP_LIST_ENTER_OFFSET_DP.dp.toFloat())
+                .setDuration(PAGE_SETTLE_MS)
+                .setInterpolator(DecelerateInterpolator())
+                .withEndAction {
+                    if (!isAppPickerVisible) {
+                        binding.appPickerRoot.visibility = View.GONE
+                        binding.appPickerRoot.alpha = 1f
+                        binding.appPickerRoot.translationY = 0f
+                        binding.appSearchInput.text?.clear()
+                        appPickerAdapter.submitList(emptyList())
+                        availableApps = emptyList()
+                        resetAppListHomeTreatment()
+                    }
+                }
+                .start()
+            animateAppListHomeTreatment(toProgress = 0f)
+        }
+    }
+
+    private fun applyAppListHomeTreatment(progress: Float) {
+        val easedProgress = 1f - (1f - progress) * (1f - progress)
+        binding.homeTransitionDimOverlay.alpha = APP_LIST_HOME_DIM_ALPHA * easedProgress
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val blurRadius = APP_LIST_HOME_BLUR_RADIUS_DP.dp * easedProgress
+            binding.homeContent.setRenderEffect(
+                if (blurRadius > 0f) {
+                    RenderEffect.createBlurEffect(blurRadius, blurRadius, Shader.TileMode.CLAMP)
+                } else {
+                    null
+                },
+            )
+        }
+    }
+
+    private fun animateAppListHomeTreatment(toProgress: Float) {
+        appListHomeTreatmentAnimator?.cancel()
+        appListHomeTreatmentAnimator = ValueAnimator.ofFloat(
+            binding.homeTransitionDimOverlay.alpha / APP_LIST_HOME_DIM_ALPHA,
+            toProgress,
+        ).apply {
+            duration = PAGE_SETTLE_MS
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { animator ->
+                val progress = animator.animatedValue as Float
+                if (progress > 0f) {
+                    binding.homeTransitionDimOverlay.visibility = View.VISIBLE
+                }
+                applyAppListHomeTreatment(progress)
+            }
+            doOnEnd {
+                appListHomeTreatmentAnimator = null
+            }
+            start()
+        }
+    }
+
+    private fun resetAppListHomeTreatment() {
+        binding.homeTransitionDimOverlay.animate().cancel()
+        appListHomeTreatmentAnimator?.cancel()
+        appListHomeTreatmentAnimator = null
+        binding.homeTransitionDimOverlay.alpha = 0f
+        binding.homeTransitionDimOverlay.visibility = View.GONE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            binding.homeContent.setRenderEffect(null)
+        }
+    }
+
+    private fun cancelAppListDrag() {
+        isDraggingAppList = false
+        didCancelAppListDragChildren = false
+        appListDragVelocityTracker?.recycle()
+        appListDragVelocityTracker = null
+    }
+
+    private fun cancelChildGesturesForAppListDrag(event: MotionEvent) {
+        if (didCancelAppListDragChildren) return
+
+        didCancelAppListDragChildren = true
+        val cancelEvent = MotionEvent.obtain(event).apply {
+            action = MotionEvent.ACTION_CANCEL
+        }
+        super.dispatchTouchEvent(cancelEvent)
+        cancelEvent.recycle()
+        binding.homeRoot.cancelLongPress()
+        binding.homeContent.cancelLongPress()
+        binding.clockView.cancelLongPress()
+        binding.shortcutList.cancelLongPress()
     }
 
     private fun canHandlePageDrag(): Boolean {
@@ -2659,36 +2895,6 @@ class MainActivity : AppCompatActivity() {
                     }
                     return false
                 }
-
-                override fun onFling(
-                    firstEvent: MotionEvent?,
-                    secondEvent: MotionEvent,
-                    velocityX: Float,
-                    velocityY: Float,
-                ): Boolean {
-                    if (
-                        isAppPickerVisible ||
-                        isNotesVisible ||
-                        isCalendarVisible ||
-                        isTodayVisible ||
-                        isScreenTimeVisible ||
-                        firstEvent == null
-                    ) {
-                        return false
-                    }
-
-                    val deltaX = secondEvent.x - firstEvent.x
-                    val deltaY = secondEvent.y - firstEvent.y
-                    val isSwipeDown = deltaY > SWIPE_DOWN_DISTANCE_DP.dp &&
-                        velocityY > SWIPE_DOWN_VELOCITY_DP.dp &&
-                        kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX)
-
-                    if (isSwipeDown && !binding.shortcutList.canScrollVertically(-1)) {
-                        showAppList(AppListMode.LaunchApp)
-                        return true
-                    }
-                    return false
-                }
             },
         )
 
@@ -2994,15 +3200,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateLauncherLayerVisibility() {
-        val shouldShowLauncherLayer = !isAppPickerVisible &&
-            !isSettingsVisible &&
-            !isScreenTimeVisible &&
-            !isNoteEditorVisible &&
-            !isNotesVisible &&
-            !isCalendarVisible &&
-            !isTodayVisible
+        val shouldShowLauncherLayer = (isAppPickerVisible && appListMode == AppListMode.LaunchApp) ||
+            (!isAppPickerVisible &&
+                !isSettingsVisible &&
+                !isScreenTimeVisible &&
+                !isNoteEditorVisible &&
+                !isNotesVisible &&
+                !isCalendarVisible &&
+                !isTodayVisible)
         binding.homeContent.visibility = if (shouldShowLauncherLayer) View.VISIBLE else View.GONE
-        binding.editControls.visibility = if (shouldShowLauncherLayer && isEditMode) View.VISIBLE else View.GONE
+        binding.editControls.visibility = if (shouldShowLauncherLayer && isEditMode && !isAppPickerVisible) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
     }
 
     private fun showNotesPage() {
@@ -3302,6 +3513,7 @@ class MainActivity : AppCompatActivity() {
         binding.appPickerRoot.visibility = View.GONE
         binding.appPickerRoot.alpha = 1f
         binding.appPickerRoot.translationY = 0f
+        resetAppListHomeTreatment()
         binding.appSearchInput.text?.clear()
         appPickerAdapter.submitList(emptyList())
         availableApps = emptyList()
@@ -3538,6 +3750,8 @@ class MainActivity : AppCompatActivity() {
         const val APP_LIST_ENTER_OFFSET_DP = 24
         const val APP_LIST_ENTER_DURATION_MS = 220L
         const val APP_LIST_START_ALPHA = 0.35f
+        const val APP_LIST_HOME_BLUR_RADIUS_DP = 10
+        const val APP_LIST_HOME_DIM_ALPHA = 0.42f
         const val EDIT_CONTROLS_FADE_MS = 160L
         const val EDIT_TEXT_PULSE_MS = 1_200L
         const val EDIT_TEXT_MIN_ALPHA = 0.38f
