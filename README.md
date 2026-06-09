@@ -15,7 +15,7 @@ The goal is simple: make the phone useful without making it irresistible.
 
 - Text-first home screen with configurable app shortcuts, text alignment, and wallpaper dimming.
 - Fuzzy app search for quickly opening the app you meant to find, including Enter/Go to launch the top result.
-- Optional date, analog/digital clock behavior, and quick access actions.
+- Optional date, analog/digital clock behavior, clock-app long press, and quick access actions.
 - Screen-time page with today usage, weekly usage, top-app recap, and daily average.
 - App blocking prompts that slow down impulsive launches.
 - Daily app budgets for selected apps.
