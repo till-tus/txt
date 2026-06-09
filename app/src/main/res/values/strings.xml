@@ -16,6 +16,7 @@
     <string name="home_screen_section">Home screen</string>
     <string name="show_date">Show date</string>
     <string name="default_digital_clock">Digital clock by default</string>
+    <string name="clock_app_unavailable">Clock app unavailable</string>
     <string name="show_quick_access">Show quick access buttons</string>
     <string name="wallpaper_dim">Wallpaper dim</string>
     <string name="percentage_value">%1$d%%</string>
