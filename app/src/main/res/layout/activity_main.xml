@@ -128,6 +128,15 @@
 
     </LinearLayout>
 
+    <View
+        android:id="@+id/homeTransitionDimOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="@android:color/black"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <LinearLayout
         android:id="@+id/calendarRoot"
         android:layout_width="match_parent"
