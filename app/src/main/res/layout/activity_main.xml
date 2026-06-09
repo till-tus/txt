@@ -317,6 +317,17 @@
 
         </FrameLayout>
 
+        <com.example.textlauncher.ui.TodayWidgetGridView
+            android:id="@+id/todayWidgetGrid"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="24dp" />
+
     </LinearLayout>
 
     <LinearLayout

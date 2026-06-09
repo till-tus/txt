@@ -16,7 +16,9 @@ import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.InsetDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
@@ -65,6 +67,7 @@ import com.example.textlauncher.data.LauncherSettingsRepository
 import com.example.textlauncher.data.NoteRepository
 import com.example.textlauncher.data.ScreenTimeRepository
 import com.example.textlauncher.data.ShortcutRepository
+import com.example.textlauncher.data.TodayWidgetRepository
 import com.example.textlauncher.databinding.ActivityMainBinding
 import com.example.textlauncher.databinding.ItemAppBudgetSelectionBinding
 import com.example.textlauncher.databinding.ItemAppBlockSelectionBinding
@@ -79,6 +82,8 @@ import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ScreenTimeAppUsage
 import com.example.textlauncher.domain.ScreenTimeDayUsage
 import com.example.textlauncher.domain.ShortcutTextAlignment
+import com.example.textlauncher.domain.TodayWidget
+import com.example.textlauncher.domain.TodayWidgetType
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -101,6 +106,7 @@ class MainActivity : AppCompatActivity() {
     private var isNotesVisible = false
     private var isCalendarVisible = false
     private var isTodayVisible = false
+    private var isTodayEditMode = false
     private var isScreenTimeVisible = false
     private var isNoteEditorVisible = false
     private var isScreenTimeExpanded = false
@@ -112,6 +118,8 @@ class MainActivity : AppCompatActivity() {
     private var blockableApps = emptyList<AppShortcut>()
     private var currentBlockedAppPackageNames = emptySet<String>()
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
+    private var todayWidgets = emptyList<TodayWidget>()
+    private var todayNextEvent: CalendarEvent? = null
     private var editingNote: QuickNote? = null
     private var pageSwipeStartX = 0f
     private var pageSwipeStartY = 0f
@@ -148,6 +156,7 @@ class MainActivity : AppCompatActivity() {
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
     private val calendarRepository by lazy { CalendarRepository(applicationContext) }
     private val screenTimeRepository by lazy { ScreenTimeRepository(applicationContext) }
+    private val todayWidgetRepository by lazy { TodayWidgetRepository(applicationContext) }
     private val requestCalendarPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
@@ -155,6 +164,7 @@ class MainActivity : AppCompatActivity() {
         if (isGranted) {
             refreshCalendars()
             refreshCalendarEvents()
+            refreshTodayWidgets()
         }
     }
     private val viewModel: HomeViewModel by viewModels {
@@ -227,6 +237,7 @@ class MainActivity : AppCompatActivity() {
         screenTimeAdapter = ScreenTimeAdapter()
         binding.screenTimeList.layoutManager = LinearLayoutManager(this)
         binding.screenTimeList.adapter = screenTimeAdapter
+        todayWidgets = todayWidgetRepository.loadWidgets()
 
         configureSystemInsets()
         bindCurrentDate()
@@ -236,6 +247,7 @@ class MainActivity : AppCompatActivity() {
         configureQuickAccess()
         configureNotes()
         configureCalendar()
+        configureToday()
         configureScreenTime()
         configureShortcutReordering()
         configureHomeLongPress()
@@ -257,8 +269,12 @@ class MainActivity : AppCompatActivity() {
             if (isCalendarVisible) {
                 refreshCalendarEvents()
             }
+            if (isTodayVisible) {
+                refreshTodayWidgets()
+            }
         } else {
             renderCalendarPermissionState()
+            renderTodayWidgets()
         }
         if (isScreenTimeVisible) {
             refreshScreenTime()
@@ -476,7 +492,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun canHandlePageDrag(): Boolean {
-        return !isAppPickerVisible && !isSettingsVisible && !isScreenTimeVisible && !isNoteEditorVisible && !isEditMode
+        return !isAppPickerVisible &&
+            !isSettingsVisible &&
+            !isScreenTimeVisible &&
+            !isNoteEditorVisible &&
+            !isEditMode &&
+            !isTodayEditMode
     }
 
     private fun canEnterEditModeFromLongPress(): Boolean {
@@ -698,6 +719,7 @@ class MainActivity : AppCompatActivity() {
                     isTodayVisible = shouldComplete
                     if (shouldComplete) {
                         binding.homeContent.visibility = View.GONE
+                        refreshTodayWidgets()
                     } else {
                         binding.todayRoot.visibility = View.GONE
                     }
@@ -866,6 +888,9 @@ class MainActivity : AppCompatActivity() {
         renderAppBudgetsSelection()
         if (isCalendarVisible && hasCalendarPermission()) {
             refreshCalendarEvents()
+        }
+        if (isTodayVisible) {
+            refreshTodayWidgets()
         }
         val quickAccessVisibility = if (state.showQuickAccess) View.VISIBLE else View.GONE
         if (binding.quickAccessBar.visibility != quickAccessVisibility) {
@@ -1235,6 +1260,15 @@ class MainActivity : AppCompatActivity() {
                 requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
             }
         }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun configureToday() {
+        binding.todayWidgetGrid.setOnLongClickListener {
+            enterTodayEditMode()
+            true
+        }
+        renderTodayWidgets()
     }
 
     private fun configureScreenTime() {
@@ -1693,6 +1727,369 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun refreshTodayWidgets() {
+        todayNextEvent = if (hasCalendarPermission()) {
+            calendarRepository.loadUpcomingEvents(currentSelectedCalendarIds).firstOrNull()
+        } else {
+            null
+        }
+        renderTodayWidgets()
+    }
+
+    private fun renderTodayWidgets() {
+        binding.todayWidgetGrid.isEditingWidgets = isTodayEditMode
+        binding.todayWidgetGrid.removeAllViews()
+        if (todayWidgets.isEmpty()) {
+            if (isTodayEditMode) {
+                renderAddTodayWidgetPrompt()
+            }
+            return
+        }
+
+        todayWidgets.forEach { widget ->
+            val widgetView = when (widget.type) {
+                TodayWidgetType.NextEvent -> createNextEventWidgetView(widget)
+            }
+            binding.todayWidgetGrid.addView(widgetView)
+            binding.todayWidgetGrid.post {
+                binding.todayWidgetGrid.applyGridPosition(
+                    view = widgetView,
+                    column = widget.column,
+                    row = widget.row,
+                    columnSpan = widget.columnSpan,
+                    rowSpan = widget.rowSpan,
+                )
+            }
+        }
+    }
+
+    private fun renderAddTodayWidgetPrompt() {
+        val addView = TextView(this).apply {
+            text = getString(R.string.today_add_next_event)
+            setTextColor(getColor(R.color.launcher_text))
+            textSize = 17f
+            gravity = android.view.Gravity.CENTER
+            background = todayWidgetBackground(isEditing = true)
+            setOnClickListener {
+                addTodayWidget(TodayWidgetType.NextEvent)
+            }
+        }
+        binding.todayWidgetGrid.addView(addView)
+        binding.todayWidgetGrid.post {
+            binding.todayWidgetGrid.applyGridPosition(
+                view = addView,
+                column = 0,
+                row = 0,
+                columnSpan = TodayWidgetGridView.MIN_COLUMN_SPAN,
+                rowSpan = TodayWidgetGridView.MIN_ROW_SPAN,
+            )
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createNextEventWidgetView(widget: TodayWidget): View {
+        val event = todayNextEvent
+        val container = android.widget.FrameLayout(this).apply {
+            tag = widget
+            background = todayWidgetBackground(isEditing = isTodayEditMode)
+            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+            isClickable = true
+            isLongClickable = true
+            setOnClickListener {
+                if (!isTodayEditMode) {
+                    when {
+                        event != null -> openCalendarEventDay(event)
+                        !hasCalendarPermission() -> {
+                            requestCalendarPermissionFromToday()
+                        }
+                    }
+                }
+            }
+            setOnLongClickListener {
+                if (isTodayEditMode) {
+                    showTodayWidgetContextMenu(it, widget)
+                } else {
+                    enterTodayEditMode()
+                }
+                true
+            }
+        }
+
+        container.addView(
+            android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = getString(R.string.today_next_event_title)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        includeFontPadding = false
+                    },
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = nextEventPrimaryText(event)
+                        setTextColor(getColor(R.color.launcher_text))
+                        textSize = 18f
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = 6.dp
+                        }
+                    },
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = nextEventSecondaryText(event)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = 6.dp
+                        }
+                    },
+                )
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            },
+        )
+
+        if (isTodayEditMode) {
+            addTodayResizeIndicator(container)
+            configureTodayWidgetDrag(container, widget)
+        }
+        return container
+    }
+
+    private fun addTodayResizeIndicator(container: android.widget.FrameLayout) {
+        val indicatorColor = getColor(R.color.launcher_text_secondary)
+        val indicatorInset = 9.dp
+        container.addView(
+            View(this).apply {
+                background = GradientDrawable().apply {
+                    setColor(indicatorColor)
+                }
+                alpha = TODAY_WIDGET_RESIZE_INDICATOR_ALPHA
+                layoutParams = android.widget.FrameLayout.LayoutParams(18.dp, 2.dp).apply {
+                    gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+                    marginEnd = indicatorInset
+                    bottomMargin = indicatorInset
+                }
+            },
+        )
+        container.addView(
+            View(this).apply {
+                background = GradientDrawable().apply {
+                    setColor(indicatorColor)
+                }
+                alpha = TODAY_WIDGET_RESIZE_INDICATOR_ALPHA
+                layoutParams = android.widget.FrameLayout.LayoutParams(2.dp, 18.dp).apply {
+                    gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+                    marginEnd = indicatorInset
+                    bottomMargin = indicatorInset
+                }
+            },
+        )
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun configureTodayWidgetDrag(view: View, widget: TodayWidget) {
+        var mode = TodayWidgetDragMode.Move
+        var activeWidget = widget
+        var startRawX = 0f
+        var startRawY = 0f
+        var startColumn = widget.column
+        var startRow = widget.row
+        var startColumnSpan = widget.columnSpan
+        var startRowSpan = widget.rowSpan
+        var didDrag = false
+        view.setOnTouchListener { touchedView, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    activeWidget = (touchedView.tag as? TodayWidget) ?: widget
+                    activeWidget = activeWidget.copy(
+                        column = binding.todayWidgetGrid.columnForDrag(activeWidget.column, activeWidget.columnSpan),
+                        row = binding.todayWidgetGrid.rowForDrag(activeWidget.row, activeWidget.rowSpan),
+                    )
+                    startRawX = event.rawX
+                    startRawY = event.rawY
+                    startColumn = activeWidget.column
+                    startRow = activeWidget.row
+                    startColumnSpan = activeWidget.columnSpan
+                    startRowSpan = activeWidget.rowSpan
+                    didDrag = false
+                    mode = if (
+                        event.x >= touchedView.width - TODAY_WIDGET_RESIZE_TOUCH_DP.dp &&
+                        event.y >= touchedView.height - TODAY_WIDGET_RESIZE_TOUCH_DP.dp
+                    ) {
+                        TodayWidgetDragMode.Resize
+                    } else {
+                        TodayWidgetDragMode.Move
+                    }
+                    touchedView.parent?.requestDisallowInterceptTouchEvent(true)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaX = event.rawX - startRawX
+                    val deltaY = event.rawY - startRawY
+                    didDrag = didDrag ||
+                        kotlin.math.abs(deltaX) > ViewConfiguration.get(this).scaledTouchSlop ||
+                        kotlin.math.abs(deltaY) > ViewConfiguration.get(this).scaledTouchSlop
+                    val updated = when (mode) {
+                        TodayWidgetDragMode.Move -> {
+                            val rawColumn = startColumn + binding.todayWidgetGrid.columnDeltaForX(deltaX)
+                            val rawRow = startRow + binding.todayWidgetGrid.rowDeltaForY(deltaY)
+                            activeWidget.copy(
+                                column = binding.todayWidgetGrid.columnForDrag(rawColumn, startColumnSpan),
+                                row = binding.todayWidgetGrid.rowForDrag(rawRow, startRowSpan),
+                            )
+                        }
+                        TodayWidgetDragMode.Resize -> {
+                            val maxColumnSpan = (TodayWidgetGridView.COLUMN_COUNT - startColumn)
+                                .coerceAtLeast(TodayWidgetGridView.MIN_COLUMN_SPAN)
+                            val maxRowSpan = (TodayWidgetGridView.ROW_COUNT - startRow)
+                                .coerceAtLeast(TodayWidgetGridView.MIN_ROW_SPAN)
+                            val columnSpan = (startColumnSpan + binding.todayWidgetGrid.columnDeltaForX(deltaX))
+                                .coerceIn(TodayWidgetGridView.MIN_COLUMN_SPAN, maxColumnSpan)
+                            val rowSpan = (startRowSpan + binding.todayWidgetGrid.rowDeltaForY(deltaY))
+                                .coerceIn(TodayWidgetGridView.MIN_ROW_SPAN, maxRowSpan)
+                            activeWidget.copy(columnSpan = columnSpan, rowSpan = rowSpan)
+                        }
+                    }
+                    binding.todayWidgetGrid.applyGridPosition(
+                        view = touchedView,
+                        column = updated.column,
+                        row = updated.row,
+                        columnSpan = updated.columnSpan,
+                        rowSpan = updated.rowSpan,
+                    )
+                    touchedView.tag = updated
+                    true
+                }
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    val updated = (touchedView.tag as? TodayWidget) ?: widget
+                    val parent = touchedView.parent
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    if (didDrag) {
+                        updateTodayWidget(updated)
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP && mode == TodayWidgetDragMode.Move) {
+                        showTodayWidgetContextMenu(touchedView, updated)
+                    }
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun nextEventPrimaryText(event: CalendarEvent?): String {
+        return when {
+            !hasCalendarPermission() -> getString(R.string.today_calendar_permission_prompt)
+            event == null -> getString(R.string.today_next_event_empty)
+            else -> event.title
+        }
+    }
+
+    private fun nextEventSecondaryText(event: CalendarEvent?): String {
+        return when {
+            !hasCalendarPermission() -> getString(R.string.calendar_permission_button)
+            event == null -> ""
+            event.isAllDay -> getString(R.string.today_next_event_all_day, event.calendarName)
+            else -> getString(
+                R.string.today_next_event_time,
+                DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(event.startMillis)),
+                event.calendarName,
+            )
+        }
+    }
+
+    private fun requestCalendarPermissionFromToday() {
+        if (hasRequestedCalendarPermission && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR)) {
+            openAppPermissionSettings()
+        } else {
+            viewModel.markCalendarPermissionRequested()
+            requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
+        }
+    }
+
+    private fun enterTodayEditMode() {
+        if (!isTodayVisible || isTodayEditMode) return
+        isTodayEditMode = true
+        binding.todayTitle.text = getString(R.string.today_edit_mode_label)
+        performLightHapticFeedback()
+        renderTodayWidgets()
+    }
+
+    private fun exitTodayEditMode() {
+        if (!isTodayEditMode) return
+        isTodayEditMode = false
+        binding.todayTitle.text = getString(R.string.today_page_title)
+        renderTodayWidgets()
+    }
+
+    private fun showTodayWidgetContextMenu(anchor: View, widget: TodayWidget) {
+        showActionContextMenu(
+            anchor = anchor,
+            actions = listOf(
+                ContextMenuAction(getString(R.string.today_remove_widget)) {
+                    removeTodayWidget(widget)
+                },
+            ),
+        )
+    }
+
+    private fun addTodayWidget(type: TodayWidgetType) {
+        if (todayWidgets.any { it.type == type }) return
+        val widget = when (type) {
+            TodayWidgetType.NextEvent -> todayWidgetRepository.defaultNextEventWidget()
+        }
+        todayWidgets = todayWidgets + widget
+        todayWidgetRepository.saveWidgets(todayWidgets)
+        renderTodayWidgets()
+    }
+
+    private fun updateTodayWidget(widget: TodayWidget) {
+        todayWidgets = todayWidgets.map { current ->
+            if (current.id == widget.id) widget else current
+        }
+        todayWidgetRepository.saveWidgets(todayWidgets)
+    }
+
+    private fun removeTodayWidget(widget: TodayWidget) {
+        todayWidgets = todayWidgets.filterNot { it.id == widget.id }
+        todayWidgetRepository.saveWidgets(todayWidgets)
+        renderTodayWidgets()
+    }
+
+    private fun todayWidgetBackground(isEditing: Boolean): Drawable {
+        val background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(Color.TRANSPARENT)
+            if (isEditing) {
+                setStroke(TODAY_WIDGET_EDIT_STROKE_DP.dp, getColor(R.color.launcher_text))
+            }
+        }
+        return if (isEditing) {
+            InsetDrawable(background, TODAY_WIDGET_EDIT_STROKE_DP.dp)
+        } else {
+            background
+        }
+    }
+
     private fun openAppPermissionSettings() {
         val intent = Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -1920,6 +2317,8 @@ class MainActivity : AppCompatActivity() {
                         hideNoteEditor()
                     } else if (isSettingsVisible) {
                         hideSettings()
+                    } else if (isTodayEditMode) {
+                        exitTodayEditMode()
                     } else if (isNotesVisible) {
                         hideNotesPage()
                     } else if (isCalendarVisible) {
@@ -2003,6 +2402,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideTodayPageImmediately() {
+        exitTodayEditMode()
         isTodayVisible = false
         binding.homeContent.animate().cancel()
         binding.todayRoot.animate().cancel()
@@ -2253,6 +2653,7 @@ class MainActivity : AppCompatActivity() {
     private fun showTodayPage() {
         if (isTodayVisible || isNotesVisible || isCalendarVisible || !binding.showTodayPageSwitch.isChecked || isEditMode) return
         isTodayVisible = true
+        refreshTodayWidgets()
         val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
         binding.todayRoot.translationY = height.toFloat()
         binding.todayRoot.visibility = View.VISIBLE
@@ -2277,6 +2678,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideTodayPage() {
         if (!isTodayVisible) return
+        exitTodayEditMode()
         isTodayVisible = false
         val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
         binding.homeContent.animate().cancel()
@@ -2671,6 +3073,9 @@ class MainActivity : AppCompatActivity() {
         const val EDIT_TEXT_MIN_ALPHA = 0.38f
         const val EDIT_TEXT_MAX_ALPHA = 1f
         const val DRAG_ACTIVE_ALPHA = 0.65f
+        const val TODAY_WIDGET_RESIZE_TOUCH_DP = 36
+        const val TODAY_WIDGET_RESIZE_INDICATOR_ALPHA = 0.72f
+        const val TODAY_WIDGET_EDIT_STROKE_DP = 1
         const val DISABLED_ACTION_ALPHA = 0.34f
         const val MILLIS_PER_MINUTE = 60_000L
         const val MINUTES_PER_HOUR = 60L
