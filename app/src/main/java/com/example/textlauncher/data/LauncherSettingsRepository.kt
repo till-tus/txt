@@ -34,6 +34,7 @@ class LauncherSettingsRepository(context: Context) {
             lockScreenGesture = loadGesture(KEY_LOCK_SCREEN_GESTURE, LauncherGesture.DoubleTap),
             showNotesPage = preferences.getBoolean(KEY_SHOW_NOTES_PAGE, true),
             showCalendarPage = preferences.getBoolean(KEY_SHOW_CALENDAR_PAGE, true),
+            showTodayPage = preferences.getBoolean(KEY_SHOW_TODAY_PAGE, true),
             selectedCalendarIds = preferences.getStringSet(KEY_SELECTED_CALENDAR_IDS, emptySet())
                 .orEmpty()
                 .mapNotNull { it.toLongOrNull() }
@@ -60,6 +61,7 @@ class LauncherSettingsRepository(context: Context) {
             putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
             putBoolean(KEY_SHOW_NOTES_PAGE, settings.showNotesPage)
             putBoolean(KEY_SHOW_CALENDAR_PAGE, settings.showCalendarPage)
+            putBoolean(KEY_SHOW_TODAY_PAGE, settings.showTodayPage)
             putStringSet(KEY_SELECTED_CALENDAR_IDS, settings.selectedCalendarIds.map { it.toString() }.toSet())
             putStringSet(KEY_BLOCKED_APP_PACKAGE_NAMES, settings.blockedAppPackageNames)
             putStringSet(
@@ -106,6 +108,7 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_LOCK_SCREEN_GESTURE = "lockScreenGesture"
         const val KEY_SHOW_NOTES_PAGE = "showNotesPage"
         const val KEY_SHOW_CALENDAR_PAGE = "showCalendarPage"
+        const val KEY_SHOW_TODAY_PAGE = "showTodayPage"
         const val KEY_SELECTED_CALENDAR_IDS = "selectedCalendarIds"
         const val KEY_BLOCKED_APP_PACKAGE_NAMES = "blockedAppPackageNames"
         const val KEY_APP_BUDGETS = "appBudgets"

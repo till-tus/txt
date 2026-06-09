@@ -30,6 +30,7 @@ class NoteAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(note: QuickNote) {
             binding.noteText.text = note.text
+            binding.pinnedNoteDot.visibility = if (note.isPinned) View.VISIBLE else View.GONE
             binding.root.setOnClickListener { onNoteClick(note) }
             binding.root.setOnLongClickListener {
                 onNoteLongClick(binding.root, note)

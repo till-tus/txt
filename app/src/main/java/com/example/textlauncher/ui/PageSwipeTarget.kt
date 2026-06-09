@@ -5,4 +5,6 @@ internal enum class PageSwipeTarget {
     NotesToHome,
     HomeToCalendar,
     CalendarToHome,
+    HomeToToday,
+    TodayToHome,
 }

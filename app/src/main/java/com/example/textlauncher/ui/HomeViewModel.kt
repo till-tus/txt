@@ -36,6 +36,7 @@ class HomeViewModel(
             lockScreenGesture = initialSettings.lockScreenGesture,
             showNotesPage = initialSettings.showNotesPage,
             showCalendarPage = initialSettings.showCalendarPage,
+            showTodayPage = initialSettings.showTodayPage,
             selectedCalendarIds = initialSettings.selectedCalendarIds,
             blockedAppPackageNames = initialSettings.blockedAppPackageNames,
             appBudgetMinutesByPackage = initialSettings.appBudgetMinutesByPackage,
@@ -179,6 +180,14 @@ class HomeViewModel(
         }
     }
 
+    fun setShowTodayPage(showTodayPage: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showTodayPage = showTodayPage)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
     fun setCalendarSelected(calendarId: Long, isSelected: Boolean) {
         _uiState.update { state ->
             val updatedIds = if (isSelected) {
@@ -238,8 +247,9 @@ class HomeViewModel(
                 id = System.currentTimeMillis(),
                 text = trimmedText,
             )
-            noteRepository.saveNotes(updatedNotes)
-            state.copy(notes = updatedNotes)
+            val sortedNotes = updatedNotes.sortedForNotesPage()
+            noteRepository.saveNotes(sortedNotes)
+            state.copy(notes = sortedNotes)
         }
     }
 
@@ -253,8 +263,9 @@ class HomeViewModel(
                     if (currentNote.id == note.id) currentNote.copy(text = trimmedText) else currentNote
                 }
             }
-            noteRepository.saveNotes(updatedNotes)
-            state.copy(notes = updatedNotes)
+            val sortedNotes = updatedNotes.sortedForNotesPage()
+            noteRepository.saveNotes(sortedNotes)
+            state.copy(notes = sortedNotes)
         }
     }
 
@@ -263,6 +274,21 @@ class HomeViewModel(
             val updatedNotes = state.notes.filterNot { it.id == note.id }
             if (updatedNotes.size == state.notes.size) return@update state
 
+            noteRepository.saveNotes(updatedNotes)
+            state.copy(notes = updatedNotes)
+        }
+    }
+
+    fun setNotePinned(note: QuickNote, isPinned: Boolean) {
+        _uiState.update { state ->
+            if (state.notes.none { it.id == note.id }) return@update state
+            val updatedNotes = state.notes.map { currentNote ->
+                when {
+                    currentNote.id == note.id -> currentNote.copy(isPinned = isPinned)
+                    isPinned -> currentNote.copy(isPinned = false)
+                    else -> currentNote
+                }
+            }.sortedForNotesPage()
             noteRepository.saveNotes(updatedNotes)
             state.copy(notes = updatedNotes)
         }
@@ -292,10 +318,15 @@ class HomeViewModel(
             lockScreenGesture = lockScreenGesture,
             showNotesPage = showNotesPage,
             showCalendarPage = showCalendarPage,
+            showTodayPage = showTodayPage,
             selectedCalendarIds = selectedCalendarIds,
             blockedAppPackageNames = blockedAppPackageNames,
             appBudgetMinutesByPackage = appBudgetMinutesByPackage,
             hasRequestedCalendarPermission = hasRequestedCalendarPermission,
         )
+    }
+
+    private fun List<QuickNote>.sortedForNotesPage(): List<QuickNote> {
+        return sortedWith(compareByDescending<QuickNote> { it.isPinned }.thenBy { it.id })
     }
 }
