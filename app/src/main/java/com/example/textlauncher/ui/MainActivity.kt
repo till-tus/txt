@@ -1264,6 +1264,9 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun configureToday() {
+        binding.addTodayWidgetButton.setOnClickListener {
+            showTodayWidgetPicker(it)
+        }
         binding.todayWidgetGrid.setOnLongClickListener {
             enterTodayEditMode()
             true
@@ -1739,12 +1742,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderTodayWidgets() {
         binding.todayWidgetGrid.isEditingWidgets = isTodayEditMode
         binding.todayWidgetGrid.removeAllViews()
-        if (todayWidgets.isEmpty()) {
-            if (isTodayEditMode) {
-                renderAddTodayWidgetPrompt()
-            }
-            return
-        }
+        if (todayWidgets.isEmpty()) return
 
         todayWidgets.forEach { widget ->
             val widgetView = when (widget.type) {
@@ -1760,29 +1758,6 @@ class MainActivity : AppCompatActivity() {
                     rowSpan = widget.rowSpan,
                 )
             }
-        }
-    }
-
-    private fun renderAddTodayWidgetPrompt() {
-        val addView = TextView(this).apply {
-            text = getString(R.string.today_add_next_event)
-            setTextColor(getColor(R.color.launcher_text))
-            textSize = 17f
-            gravity = android.view.Gravity.CENTER
-            background = todayWidgetBackground(isEditing = true)
-            setOnClickListener {
-                addTodayWidget(TodayWidgetType.NextEvent)
-            }
-        }
-        binding.todayWidgetGrid.addView(addView)
-        binding.todayWidgetGrid.post {
-            binding.todayWidgetGrid.applyGridPosition(
-                view = addView,
-                column = 0,
-                row = 0,
-                columnSpan = TodayWidgetGridView.MIN_COLUMN_SPAN,
-                rowSpan = TodayWidgetGridView.MIN_ROW_SPAN,
-            )
         }
     }
 
@@ -2030,6 +2005,7 @@ class MainActivity : AppCompatActivity() {
         if (!isTodayVisible || isTodayEditMode) return
         isTodayEditMode = true
         binding.todayTitle.text = getString(R.string.today_edit_mode_label)
+        binding.addTodayWidgetButton.visibility = View.VISIBLE
         performLightHapticFeedback()
         renderTodayWidgets()
     }
@@ -2038,6 +2014,7 @@ class MainActivity : AppCompatActivity() {
         if (!isTodayEditMode) return
         isTodayEditMode = false
         binding.todayTitle.text = getString(R.string.today_page_title)
+        binding.addTodayWidgetButton.visibility = View.GONE
         renderTodayWidgets()
     }
 
@@ -2052,14 +2029,82 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun showTodayWidgetPicker(anchor: View) {
+        val actions = availableTodayWidgetTypes().map { type ->
+            ContextMenuAction(label = todayWidgetTypeLabel(type)) {
+                addTodayWidget(type)
+            }
+        }
+        if (actions.isEmpty()) {
+            Toast.makeText(this, R.string.today_widget_none_available, Toast.LENGTH_SHORT).show()
+            return
+        }
+        showActionContextMenu(anchor, actions)
+    }
+
+    private fun availableTodayWidgetTypes(): List<TodayWidgetType> {
+        val visibleTypes = todayWidgets.map { it.type }.toSet()
+        return TodayWidgetType.entries.filterNot { it in visibleTypes }
+    }
+
+    private fun todayWidgetTypeLabel(type: TodayWidgetType): String {
+        return getString(
+            when (type) {
+                TodayWidgetType.NextEvent -> R.string.today_next_event_title
+            },
+        )
+    }
+
     private fun addTodayWidget(type: TodayWidgetType) {
         if (todayWidgets.any { it.type == type }) return
+        val placement = findFreeTodayWidgetPlacement()
+        if (placement == null) {
+            Toast.makeText(this, R.string.today_widget_no_space, Toast.LENGTH_SHORT).show()
+            return
+        }
         val widget = when (type) {
             TodayWidgetType.NextEvent -> todayWidgetRepository.defaultNextEventWidget()
-        }
+        }.copy(
+            column = placement.column,
+            row = placement.row,
+            columnSpan = TodayWidgetGridView.MIN_COLUMN_SPAN,
+            rowSpan = TodayWidgetGridView.MIN_ROW_SPAN,
+        )
         todayWidgets = todayWidgets + widget
         todayWidgetRepository.saveWidgets(todayWidgets)
         renderTodayWidgets()
+    }
+
+    private fun findFreeTodayWidgetPlacement(): TodayWidgetPlacement? {
+        for (row in 0 until TodayWidgetGridView.ROW_COUNT) {
+            for (column in 0..TodayWidgetGridView.COLUMN_COUNT - TodayWidgetGridView.MIN_COLUMN_SPAN) {
+                val placement = TodayWidgetPlacement(
+                    column = column,
+                    row = row,
+                    columnSpan = TodayWidgetGridView.MIN_COLUMN_SPAN,
+                    rowSpan = TodayWidgetGridView.MIN_ROW_SPAN,
+                )
+                if (todayWidgets.none { it.overlaps(placement) }) {
+                    return placement
+                }
+            }
+        }
+        return null
+    }
+
+    private fun TodayWidget.overlaps(placement: TodayWidgetPlacement): Boolean {
+        val left = column
+        val right = column + columnSpan
+        val top = row
+        val bottom = row + rowSpan
+        val placementLeft = placement.column
+        val placementRight = placement.column + placement.columnSpan
+        val placementTop = placement.row
+        val placementBottom = placement.row + placement.rowSpan
+        return left < placementRight &&
+            right > placementLeft &&
+            top < placementBottom &&
+            bottom > placementTop
     }
 
     private fun updateTodayWidget(widget: TodayWidget) {

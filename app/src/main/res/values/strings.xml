@@ -91,6 +91,7 @@
     <string name="notes_page_title">Notes</string>
     <string name="today_page_title">Today</string>
     <string name="today_edit_mode_label">Edit Today</string>
+    <string name="today_add_widget">Add widget</string>
     <string name="today_add_next_event">Add next event</string>
     <string name="today_remove_widget">Remove</string>
     <string name="today_next_event_title">Next event</string>
@@ -98,6 +99,8 @@
     <string name="today_calendar_permission_prompt">Calendar access needed</string>
     <string name="today_next_event_all_day">All day - %1$s</string>
     <string name="today_next_event_time">%1$s - %2$s</string>
+    <string name="today_widget_no_space">Change the layout to make space</string>
+    <string name="today_widget_none_available">No widgets available</string>
     <string name="add_note">Add note</string>
     <string name="copy_note">Copy note</string>
     <string name="note_copied">Copied</string>
