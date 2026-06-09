@@ -28,6 +28,7 @@
     <string name="pages_section">Pages</string>
     <string name="show_notes_page">Notes page</string>
     <string name="show_calendar_page">Calendar page</string>
+    <string name="show_today_page">Today page</string>
     <string name="gestures_section">Gestures</string>
     <string name="gesture_action_open_screen_time">Open Screen time</string>
     <string name="gesture_action_lock_screen">Lock screen</string>
@@ -88,6 +89,7 @@
     <string name="app_blocking_proceed_countdown">Proceed (%1$d)</string>
     <string name="app_blocking_cancel">Cancel</string>
     <string name="notes_page_title">Notes</string>
+    <string name="today_page_title">Today</string>
     <string name="add_note">Add note</string>
     <string name="copy_note">Copy note</string>
     <string name="note_copied">Copied</string>

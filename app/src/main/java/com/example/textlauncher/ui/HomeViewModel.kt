@@ -36,6 +36,7 @@ class HomeViewModel(
             lockScreenGesture = initialSettings.lockScreenGesture,
             showNotesPage = initialSettings.showNotesPage,
             showCalendarPage = initialSettings.showCalendarPage,
+            showTodayPage = initialSettings.showTodayPage,
             selectedCalendarIds = initialSettings.selectedCalendarIds,
             blockedAppPackageNames = initialSettings.blockedAppPackageNames,
             appBudgetMinutesByPackage = initialSettings.appBudgetMinutesByPackage,
@@ -179,6 +180,14 @@ class HomeViewModel(
         }
     }
 
+    fun setShowTodayPage(showTodayPage: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(showTodayPage = showTodayPage)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
     fun setCalendarSelected(calendarId: Long, isSelected: Boolean) {
         _uiState.update { state ->
             val updatedIds = if (isSelected) {
@@ -292,6 +301,7 @@ class HomeViewModel(
             lockScreenGesture = lockScreenGesture,
             showNotesPage = showNotesPage,
             showCalendarPage = showCalendarPage,
+            showTodayPage = showTodayPage,
             selectedCalendarIds = selectedCalendarIds,
             blockedAppPackageNames = blockedAppPackageNames,
             appBudgetMinutesByPackage = appBudgetMinutesByPackage,

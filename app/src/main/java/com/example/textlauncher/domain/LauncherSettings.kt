@@ -11,6 +11,7 @@ data class LauncherSettings(
     val lockScreenGesture: LauncherGesture = LauncherGesture.DoubleTap,
     val showNotesPage: Boolean = true,
     val showCalendarPage: Boolean = true,
+    val showTodayPage: Boolean = true,
     val selectedCalendarIds: Set<Long> = emptySet(),
     val blockedAppPackageNames: Set<String> = emptySet(),
     val appBudgetMinutesByPackage: Map<String, Int> = emptyMap(),

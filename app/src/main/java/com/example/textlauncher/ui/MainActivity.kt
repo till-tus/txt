@@ -100,6 +100,7 @@ class MainActivity : AppCompatActivity() {
     private var isSettingsVisible = false
     private var isNotesVisible = false
     private var isCalendarVisible = false
+    private var isTodayVisible = false
     private var isScreenTimeVisible = false
     private var isNoteEditorVisible = false
     private var isScreenTimeExpanded = false
@@ -182,7 +183,9 @@ class MainActivity : AppCompatActivity() {
         registerPackageRemovedReceiver()
 
         shortcutAdapter = ShortcutAdapter(::handleShortcutClick, ::showShortcutContextMenu)
-        binding.shortcutList.layoutManager = LinearLayoutManager(this).apply {
+        binding.shortcutList.layoutManager = object : LinearLayoutManager(this) {
+            override fun canScrollVertically(): Boolean = false
+        }.apply {
             stackFromEnd = true
         }
         binding.shortcutList.adapter = shortcutAdapter
@@ -356,6 +359,7 @@ class MainActivity : AppCompatActivity() {
             !isSettingsVisible &&
             !isNotesVisible &&
             !isCalendarVisible &&
+            !isTodayVisible &&
             !isScreenTimeVisible &&
             !isNoteEditorVisible &&
             !isEditMode &&
@@ -439,7 +443,7 @@ class MainActivity : AppCompatActivity() {
                     cancelChildGesturesForPageSwipe(event)
                     preparePageDrag(target)
                 }
-                applyPageDrag(target, deltaX)
+                applyPageDrag(target, deltaX, deltaY)
                 return true
             }
             MotionEvent.ACTION_UP -> {
@@ -450,10 +454,12 @@ class MainActivity : AppCompatActivity() {
                 pageSwipeVelocityTracker?.addMovement(event)
                 pageSwipeVelocityTracker?.computeCurrentVelocity(1_000)
                 val velocityX = pageSwipeVelocityTracker?.xVelocity ?: 0f
+                val velocityY = pageSwipeVelocityTracker?.yVelocity ?: 0f
                 val deltaX = event.rawX - pageSwipeStartX
+                val deltaY = event.rawY - pageSwipeStartY
                 settlePageDrag(
                     target = target,
-                    shouldComplete = shouldCompletePageDrag(target, deltaX, velocityX),
+                    shouldComplete = shouldCompletePageDrag(target, deltaX, deltaY, velocityX, velocityY),
                 )
                 cancelPageDrag()
                 return true
@@ -474,32 +480,55 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun canEnterEditModeFromLongPress(): Boolean {
-        return !isAppPickerVisible && !isScreenTimeVisible && activePageSwipeTarget == null
+        return !isAppPickerVisible && !isScreenTimeVisible && !isTodayVisible && activePageSwipeTarget == null
     }
 
     private fun detectPageSwipeTarget(deltaX: Float, deltaY: Float): PageSwipeTarget? {
         val touchSlop = ViewConfiguration.get(this).scaledTouchSlop
-        if (kotlin.math.abs(deltaX) < touchSlop || kotlin.math.abs(deltaX) < kotlin.math.abs(deltaY) * PAGE_SWIPE_AXIS_RATIO) {
-            return null
-        }
+        val isHorizontalDrag = kotlin.math.abs(deltaX) >= touchSlop &&
+            kotlin.math.abs(deltaX) >= kotlin.math.abs(deltaY) * PAGE_SWIPE_AXIS_RATIO
+        val isVerticalDrag = kotlin.math.abs(deltaY) >= touchSlop &&
+            kotlin.math.abs(deltaY) >= kotlin.math.abs(deltaX) * PAGE_SWIPE_AXIS_RATIO
+
         return when {
-            !isNotesVisible && !isCalendarVisible && deltaX < 0 && binding.showNotesPageSwitch.isChecked -> {
-                PageSwipeTarget.HomeToNotes
+            isHorizontalDrag &&
+                !isNotesVisible &&
+                !isCalendarVisible &&
+                !isTodayVisible &&
+                deltaX < 0 &&
+                binding.showNotesPageSwitch.isChecked -> {
+                    PageSwipeTarget.HomeToNotes
             }
-            !isNotesVisible && !isCalendarVisible && deltaX > 0 && binding.showCalendarPageSwitch.isChecked -> {
-                PageSwipeTarget.HomeToCalendar
+            isHorizontalDrag &&
+                !isNotesVisible &&
+                !isCalendarVisible &&
+                !isTodayVisible &&
+                deltaX > 0 &&
+                binding.showCalendarPageSwitch.isChecked -> {
+                    PageSwipeTarget.HomeToCalendar
             }
-            isNotesVisible && deltaX > 0 -> PageSwipeTarget.NotesToHome
-            isCalendarVisible && deltaX < 0 -> PageSwipeTarget.CalendarToHome
+            isHorizontalDrag && isNotesVisible && deltaX > 0 -> PageSwipeTarget.NotesToHome
+            isHorizontalDrag && isCalendarVisible && deltaX < 0 -> PageSwipeTarget.CalendarToHome
+            isVerticalDrag &&
+                !isNotesVisible &&
+                !isCalendarVisible &&
+                !isTodayVisible &&
+                deltaY < 0 &&
+                binding.showTodayPageSwitch.isChecked -> {
+                    PageSwipeTarget.HomeToToday
+            }
+            isVerticalDrag && isTodayVisible && deltaY > 0 -> PageSwipeTarget.TodayToHome
             else -> null
         }
     }
 
     private fun preparePageDrag(target: PageSwipeTarget) {
         val width = pageWidth()
+        val height = pageHeight()
         binding.homeContent.animate().cancel()
         binding.notesRoot.animate().cancel()
         binding.calendarRoot.animate().cancel()
+        binding.todayRoot.animate().cancel()
         when (target) {
             PageSwipeTarget.HomeToNotes -> {
                 binding.notesRoot.translationX = width
@@ -517,11 +546,20 @@ class MainActivity : AppCompatActivity() {
                 binding.homeContent.translationX = width
                 binding.homeContent.visibility = View.VISIBLE
             }
+            PageSwipeTarget.HomeToToday -> {
+                binding.todayRoot.translationY = height
+                binding.todayRoot.visibility = View.VISIBLE
+            }
+            PageSwipeTarget.TodayToHome -> {
+                binding.homeContent.translationY = -height
+                binding.homeContent.visibility = View.VISIBLE
+            }
         }
     }
 
-    private fun applyPageDrag(target: PageSwipeTarget, deltaX: Float) {
+    private fun applyPageDrag(target: PageSwipeTarget, deltaX: Float, deltaY: Float) {
         val width = pageWidth()
+        val height = pageHeight()
         when (target) {
             PageSwipeTarget.HomeToNotes -> {
                 val drag = deltaX.coerceIn(-width, 0f)
@@ -543,22 +581,51 @@ class MainActivity : AppCompatActivity() {
                 binding.calendarRoot.translationX = drag
                 binding.homeContent.translationX = width + drag
             }
+            PageSwipeTarget.HomeToToday -> {
+                val drag = deltaY.coerceIn(-height, 0f)
+                binding.homeContent.translationY = drag
+                binding.todayRoot.translationY = height + drag
+            }
+            PageSwipeTarget.TodayToHome -> {
+                val drag = deltaY.coerceIn(0f, height)
+                binding.todayRoot.translationY = drag
+                binding.homeContent.translationY = -height + drag
+            }
         }
     }
 
-    private fun shouldCompletePageDrag(target: PageSwipeTarget, deltaX: Float, velocityX: Float): Boolean {
-        val distancePasses = kotlin.math.abs(deltaX) > pageWidth() * PAGE_SWIPE_COMPLETE_FRACTION
+    private fun shouldCompletePageDrag(
+        target: PageSwipeTarget,
+        deltaX: Float,
+        deltaY: Float,
+        velocityX: Float,
+        velocityY: Float,
+    ): Boolean {
+        val pageSize = when (target) {
+            PageSwipeTarget.HomeToToday,
+            PageSwipeTarget.TodayToHome -> pageHeight()
+            else -> pageWidth()
+        }
+        val dragDistance = when (target) {
+            PageSwipeTarget.HomeToToday,
+            PageSwipeTarget.TodayToHome -> deltaY
+            else -> deltaX
+        }
+        val distancePasses = kotlin.math.abs(dragDistance) > pageSize * PAGE_SWIPE_COMPLETE_FRACTION
         val velocityPasses = when (target) {
             PageSwipeTarget.HomeToNotes,
             PageSwipeTarget.CalendarToHome -> velocityX < -PAGE_SWIPE_COMPLETE_VELOCITY
             PageSwipeTarget.HomeToCalendar,
             PageSwipeTarget.NotesToHome -> velocityX > PAGE_SWIPE_COMPLETE_VELOCITY
+            PageSwipeTarget.HomeToToday -> velocityY < -PAGE_SWIPE_COMPLETE_VELOCITY
+            PageSwipeTarget.TodayToHome -> velocityY > PAGE_SWIPE_COMPLETE_VELOCITY
         }
         return distancePasses || velocityPasses
     }
 
     private fun settlePageDrag(target: PageSwipeTarget, shouldComplete: Boolean) {
         val width = pageWidth()
+        val height = pageHeight()
         when (target) {
             PageSwipeTarget.HomeToNotes -> {
                 animatePagePair(
@@ -621,6 +688,36 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+            PageSwipeTarget.HomeToToday -> {
+                animateVerticalPagePair(
+                    outgoing = binding.homeContent,
+                    incoming = binding.todayRoot,
+                    outgoingEnd = if (shouldComplete) -height else 0f,
+                    incomingEnd = if (shouldComplete) 0f else height,
+                ) {
+                    isTodayVisible = shouldComplete
+                    if (shouldComplete) {
+                        binding.homeContent.visibility = View.GONE
+                    } else {
+                        binding.todayRoot.visibility = View.GONE
+                    }
+                }
+            }
+            PageSwipeTarget.TodayToHome -> {
+                animateVerticalPagePair(
+                    outgoing = binding.todayRoot,
+                    incoming = binding.homeContent,
+                    outgoingEnd = if (shouldComplete) height else 0f,
+                    incomingEnd = if (shouldComplete) 0f else -height,
+                ) {
+                    isTodayVisible = !shouldComplete
+                    if (shouldComplete) {
+                        binding.todayRoot.visibility = View.GONE
+                    } else {
+                        binding.homeContent.visibility = View.GONE
+                    }
+                }
+            }
         }
     }
 
@@ -638,6 +735,26 @@ class MainActivity : AppCompatActivity() {
             .start()
         incoming.animate()
             .translationX(incomingEnd)
+            .setDuration(PAGE_SETTLE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .withEndAction(onEnd)
+            .start()
+    }
+
+    private fun animateVerticalPagePair(
+        outgoing: View,
+        incoming: View,
+        outgoingEnd: Float,
+        incomingEnd: Float,
+        onEnd: () -> Unit,
+    ) {
+        outgoing.animate()
+            .translationY(outgoingEnd)
+            .setDuration(PAGE_SETTLE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        incoming.animate()
+            .translationY(incomingEnd)
             .setDuration(PAGE_SETTLE_MS)
             .setInterpolator(DecelerateInterpolator())
             .withEndAction(onEnd)
@@ -668,6 +785,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun pageWidth(): Float {
         return (binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels).toFloat()
+    }
+
+    private fun pageHeight(): Float {
+        return (binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels).toFloat()
     }
 
     private fun renderHomeState(state: HomeUiState) {
@@ -717,6 +838,9 @@ class MainActivity : AppCompatActivity() {
             binding.showCalendarPageSwitch.isChecked = state.showCalendarPage
         }
         isRenderingSettingsState = false
+        if (binding.showTodayPageSwitch.isChecked != state.showTodayPage) {
+            binding.showTodayPageSwitch.isChecked = state.showTodayPage
+        }
         currentOpenScreenTimeGesture = state.openScreenTimeGesture
         currentLockScreenGesture = state.lockScreenGesture
         binding.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
@@ -733,6 +857,9 @@ class MainActivity : AppCompatActivity() {
         }
         if (!state.showCalendarPage && isCalendarVisible) {
             hideCalendarPage()
+        }
+        if (!state.showTodayPage && isTodayVisible) {
+            hideTodayPage()
         }
         renderCalendarSelection()
         renderAppBlockingSelection()
@@ -771,6 +898,7 @@ class MainActivity : AppCompatActivity() {
             binding.homeContent.updatePadding(top = systemBars.top)
             binding.calendarRoot.updatePadding(top = systemBars.top)
             binding.notesRoot.updatePadding(top = systemBars.top)
+            binding.todayRoot.updatePadding(top = systemBars.top)
             binding.screenTimeRoot.updatePadding(top = systemBars.top)
             binding.editControls.updatePadding(top = systemBars.top)
             binding.settingsRoot.updatePadding(top = systemBars.top)
@@ -904,6 +1032,12 @@ class MainActivity : AppCompatActivity() {
         }
         binding.showCalendarPageRow.setOnClickListener {
             handleCalendarPageSettingChanged(!binding.showCalendarPageSwitch.isChecked)
+        }
+        binding.showTodayPageSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setShowTodayPage(isChecked)
+        }
+        binding.showTodayPageRow.setOnClickListener {
+            viewModel.setShowTodayPage(!binding.showTodayPageSwitch.isChecked)
         }
         binding.calendarSelectionHeaderRow.setOnClickListener {
             isCalendarSelectionExpanded = !isCalendarSelectionExpanded
@@ -1688,6 +1822,7 @@ class MainActivity : AppCompatActivity() {
                         isAppPickerVisible ||
                         isNotesVisible ||
                         isCalendarVisible ||
+                        isTodayVisible ||
                         isScreenTimeVisible ||
                         firstEvent == null
                     ) {
@@ -1785,14 +1920,16 @@ class MainActivity : AppCompatActivity() {
                         hideNoteEditor()
                     } else if (isSettingsVisible) {
                         hideSettings()
-                } else if (isNotesVisible) {
-                    hideNotesPage()
-                } else if (isCalendarVisible) {
-                    hideCalendarPage()
-                } else if (isScreenTimeVisible) {
-                    hideScreenTimePage()
-                } else if (isAppPickerVisible) {
-                    hideAppPicker()
+                    } else if (isNotesVisible) {
+                        hideNotesPage()
+                    } else if (isCalendarVisible) {
+                        hideCalendarPage()
+                    } else if (isTodayVisible) {
+                        hideTodayPage()
+                    } else if (isScreenTimeVisible) {
+                        hideScreenTimePage()
+                    } else if (isAppPickerVisible) {
+                        hideAppPicker()
                     } else if (isEditMode) {
                         exitEditMode()
                     } else {
@@ -1824,6 +1961,9 @@ class MainActivity : AppCompatActivity() {
         if (isCalendarVisible) {
             hideCalendarPageImmediately()
         }
+        if (isTodayVisible) {
+            hideTodayPageImmediately()
+        }
         if (isScreenTimeVisible) {
             hideScreenTimePage()
         }
@@ -1837,6 +1977,7 @@ class MainActivity : AppCompatActivity() {
         binding.homeContent.animate().cancel()
         binding.homeContent.visibility = View.VISIBLE
         binding.homeContent.translationX = 0f
+        binding.homeContent.translationY = 0f
     }
 
     private fun hideNotesPageImmediately() {
@@ -1845,6 +1986,7 @@ class MainActivity : AppCompatActivity() {
         binding.notesRoot.animate().cancel()
         binding.homeContent.visibility = View.VISIBLE
         binding.homeContent.translationX = 0f
+        binding.homeContent.translationY = 0f
         binding.notesRoot.visibility = View.GONE
         binding.notesRoot.translationX = 0f
     }
@@ -1855,8 +1997,20 @@ class MainActivity : AppCompatActivity() {
         binding.calendarRoot.animate().cancel()
         binding.homeContent.visibility = View.VISIBLE
         binding.homeContent.translationX = 0f
+        binding.homeContent.translationY = 0f
         binding.calendarRoot.visibility = View.GONE
         binding.calendarRoot.translationX = 0f
+    }
+
+    private fun hideTodayPageImmediately() {
+        isTodayVisible = false
+        binding.homeContent.animate().cancel()
+        binding.todayRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
+        binding.homeContent.translationX = 0f
+        binding.homeContent.translationY = 0f
+        binding.todayRoot.visibility = View.GONE
+        binding.todayRoot.translationY = 0f
     }
 
     private fun showShortcutContextMenu(anchor: View, shortcut: AppShortcut) {
@@ -1989,13 +2143,14 @@ class MainActivity : AppCompatActivity() {
             !isScreenTimeVisible &&
             !isNoteEditorVisible &&
             !isNotesVisible &&
-            !isCalendarVisible
+            !isCalendarVisible &&
+            !isTodayVisible
         binding.homeContent.visibility = if (shouldShowLauncherLayer) View.VISIBLE else View.GONE
         binding.editControls.visibility = if (shouldShowLauncherLayer && isEditMode) View.VISIBLE else View.GONE
     }
 
     private fun showNotesPage() {
-        if (isNotesVisible || isCalendarVisible || !binding.showNotesPageSwitch.isChecked || isEditMode) return
+        if (isNotesVisible || isCalendarVisible || isTodayVisible || !binding.showNotesPageSwitch.isChecked || isEditMode) return
         isNotesVisible = true
         val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         binding.notesRoot.translationX = width.toFloat()
@@ -2045,7 +2200,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showCalendarPage() {
-        if (isCalendarVisible || isNotesVisible || !binding.showCalendarPageSwitch.isChecked || isEditMode) return
+        if (isCalendarVisible || isNotesVisible || isTodayVisible || !binding.showCalendarPageSwitch.isChecked || isEditMode) return
         isCalendarVisible = true
         val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         binding.calendarRoot.translationX = -width.toFloat()
@@ -2090,6 +2245,56 @@ class MainActivity : AppCompatActivity() {
                 if (!isCalendarVisible) {
                     binding.calendarRoot.visibility = View.GONE
                     binding.calendarRoot.translationX = 0f
+                }
+            }
+            .start()
+    }
+
+    private fun showTodayPage() {
+        if (isTodayVisible || isNotesVisible || isCalendarVisible || !binding.showTodayPageSwitch.isChecked || isEditMode) return
+        isTodayVisible = true
+        val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+        binding.todayRoot.translationY = height.toFloat()
+        binding.todayRoot.visibility = View.VISIBLE
+        binding.homeContent.animate().cancel()
+        binding.todayRoot.animate().cancel()
+        binding.homeContent.animate()
+            .translationY(-height.toFloat())
+            .setDuration(PAGE_SLIDE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        binding.todayRoot.animate()
+            .translationY(0f)
+            .setDuration(PAGE_SLIDE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .withEndAction {
+                if (isTodayVisible) {
+                    binding.homeContent.visibility = View.GONE
+                }
+            }
+            .start()
+    }
+
+    private fun hideTodayPage() {
+        if (!isTodayVisible) return
+        isTodayVisible = false
+        val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+        binding.homeContent.animate().cancel()
+        binding.todayRoot.animate().cancel()
+        binding.homeContent.visibility = View.VISIBLE
+        binding.homeContent.animate()
+            .translationY(0f)
+            .setDuration(PAGE_SLIDE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .start()
+        binding.todayRoot.animate()
+            .translationY(height.toFloat())
+            .setDuration(PAGE_SLIDE_MS)
+            .setInterpolator(DecelerateInterpolator())
+            .withEndAction {
+                if (!isTodayVisible) {
+                    binding.todayRoot.visibility = View.GONE
+                    binding.todayRoot.translationY = 0f
                 }
             }
             .start()
