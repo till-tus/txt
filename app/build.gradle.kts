@@ -1,11 +1,14 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 android {
     namespace = "com.example.textlauncher"
-    compileSdk = 36
+    compileSdk {
+        version = release(36) {
+            minorApiLevel = 1
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.textlauncher"
@@ -31,8 +34,10 @@ android {
     }
 
     lint {
-        // androidx.core-ktx 1.19.0 requires AGP 9.1 and compile SDK 37; this project is pinned to AGP 8.13/SDK 36.
+        // androidx.core-ktx 1.19.0 requires compile SDK 37; this project is currently pinned to SDK 36.
         disable += "GradleDependency"
+        // Android 36.1 is a minor SDK release: compileSdk can target it, but targetSdk remains API 36.
+        disable += "OldTargetApi"
     }
 }
 
