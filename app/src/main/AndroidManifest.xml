@@ -8,6 +8,9 @@
     <queries>
         <package android:name="com.google.android.keep" />
         <package android:name="com.google.android.calendar" />
+        <package android:name="com.android.deskclock" />
+        <package android:name="com.google.android.deskclock" />
+        <package android:name="com.sec.android.app.clockpackage" />
 
         <intent>
             <action android:name="android.intent.action.MAIN" />

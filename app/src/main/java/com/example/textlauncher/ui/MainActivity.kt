@@ -92,7 +92,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appBlockPromptController: AppBlockPromptController
     private var shouldHandleBlankAreaLongPress = false
     private var shouldHandleHomeContentLongPress = false
-    private var shouldHandleClockLongPress = false
     private var isAppPickerVisible = false
     private var isEditMode = false
     private var isSettingsVisible = false
@@ -1559,6 +1558,30 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
     }
 
+    private fun openClockApp() {
+        val didOpenClock = (
+            CLOCK_APP_PACKAGES
+                .asSequence()
+                .mapNotNull { clockPackage -> packageManager.getLaunchIntentForPackage(clockPackage) }
+                .firstOrNull { intent -> tryStartActivity(intent) }
+            ) != null
+
+        if (!didOpenClock) {
+            Toast.makeText(this, R.string.clock_app_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun tryStartActivity(intent: Intent): Boolean {
+        return try {
+            startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
     private fun configureShortcutReordering() {
         ItemTouchHelper(
             object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
@@ -1680,9 +1703,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
         binding.clockView.setOnLongClickListener {
-            if (canEnterEditModeFromLongPress()) {
-                enterEditMode()
-            }
+            openClockApp()
             true
         }
         binding.clockView.setOnClickListener {
@@ -1711,19 +1732,6 @@ class MainActivity : AppCompatActivity() {
             }
             if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
                 shouldHandleHomeContentLongPress = false
-            }
-            false
-        }
-        binding.clockView.setOnTouchListener { _, event ->
-            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-                shouldHandleHomeContentLongPress = false
-                shouldHandleClockLongPress = binding.clockView.isWithinClockHitArea(event.x, event.y)
-            }
-            if (shouldHandleClockLongPress) {
-                detector.onTouchEvent(event)
-            }
-            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-                shouldHandleClockLongPress = false
             }
             false
         }
@@ -2417,6 +2425,11 @@ class MainActivity : AppCompatActivity() {
     private companion object {
         const val GOOGLE_KEEP_PACKAGE = "com.google.android.keep"
         const val GOOGLE_CALENDAR_PACKAGE = "com.google.android.calendar"
+        val CLOCK_APP_PACKAGES = listOf(
+            "com.android.deskclock",
+            "com.google.android.deskclock",
+            "com.sec.android.app.clockpackage",
+        )
         const val INTENTION_TIME_WIDTH_DP = 132
         const val SETTINGS_KEYBOARD_SCROLL_TOP_OFFSET_DP = 12
         const val SLIGHT_AVERAGE_DIFFERENCE_PERCENT = 5
