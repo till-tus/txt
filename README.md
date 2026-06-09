@@ -84,6 +84,8 @@ Run unit tests before opening a pull request:
 ./gradlew test
 ```
 
+For a deeper contributor guide, architecture map, privacy/security checklist, and release checklist, see [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
+
 ## Contributing
 
 Contributions are welcome. Please read `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, and `PRIVACY.md` before opening issues or pull requests.

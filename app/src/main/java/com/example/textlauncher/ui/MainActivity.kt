@@ -702,7 +702,7 @@ class MainActivity : AppCompatActivity() {
         if (binding.maxShortcutsSlider.value.toInt() != state.maxShortcuts) {
             binding.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
         }
-        binding.maxShortcutsValue.text = state.maxShortcuts.toString()
+        binding.maxShortcutsValue.text = getString(R.string.integer_value, state.maxShortcuts)
         val canAddShortcut = state.shortcuts.size < state.maxShortcuts
         binding.addShortcutButton.isEnabled = canAddShortcut
         binding.addShortcutButton.alpha = if (canAddShortcut) 1f else DISABLED_ACTION_ALPHA
@@ -1187,8 +1187,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderAppBlockingSelection() {
-        binding.appBlockingCount.text = getString(
-            R.string.app_blocking_count,
+        binding.appBlockingCount.text = resources.getQuantityString(
+            R.plurals.app_blocking_count,
+            currentBlockedAppPackageNames.size,
             currentBlockedAppPackageNames.size,
         )
         binding.appBlockingExpandIcon.setImageResource(
@@ -1229,8 +1230,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderAppBudgetsSelection() {
-        binding.appBudgetsCount.text = getString(
-            R.string.app_budgets_count,
+        binding.appBudgetsCount.text = resources.getQuantityString(
+            R.plurals.app_budgets_count,
+            currentAppBudgetMinutesByPackage.size,
             currentAppBudgetMinutesByPackage.size,
         )
         binding.appBudgetsExpandIcon.setImageResource(
@@ -1465,7 +1467,11 @@ class MainActivity : AppCompatActivity() {
                         )
                         addView(
                             TextView(this@MainActivity).apply {
-                                text = "${formatScreenTimeDuration(appUsageMillis)} / ${formatScreenTimeDuration(minutes * MILLIS_PER_MINUTE)}"
+                                text = getString(
+                                    R.string.app_budget_usage_progress,
+                                    formatScreenTimeDuration(appUsageMillis),
+                                    formatScreenTimeDuration(minutes * MILLIS_PER_MINUTE),
+                                )
                                 setTextColor(getColor(R.color.launcher_text_secondary))
                                 textSize = 14f
                                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END

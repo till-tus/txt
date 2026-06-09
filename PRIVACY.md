@@ -36,4 +36,6 @@ The current app does not include a network permission and is not designed to col
 
 ## Backups
 
-The Android manifest currently allows system backup. Depending on device settings, Android may include app-local data in system backups. Contributors should consider privacy implications before changing storage, backup, permissions, or data export behavior.
+The Android manifest disables app backup. This keeps local notes, shortcut choices, selected calendar IDs, app budgets, blocked app selections, and intention data out of Android cloud backup and device-transfer backup flows.
+
+Contributors should treat backup behavior as privacy-sensitive. Any change that enables backup, data export, sync, analytics, or network transmission should be documented here and reviewed before release.

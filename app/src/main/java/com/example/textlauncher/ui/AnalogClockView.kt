@@ -76,6 +76,10 @@ class AnalogClockView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
+    override fun performClick(): Boolean {
+        return super.performClick()
+    }
+
     fun setDisplayMode(mode: ClockDisplayMode) {
         if (displayMode == mode) return
         displayMode = mode
@@ -145,8 +149,8 @@ class AnalogClockView @JvmOverloads constructor(
     ) {
         digitalPaint.textSize = min(radius * DIGITAL_TEXT_SIZE_RATIO, MAX_DIGITAL_TEXT_SIZE_DP.dpFloat)
         val baseline = centerY - (digitalPaint.ascent() + digitalPaint.descent()) / 2f
-        val hourText = HOUR_FORMATTER.format(time.time)
-        val minuteText = MINUTE_FORMATTER.format(time.time)
+        val hourText = SimpleDateFormat(HOUR_PATTERN, Locale.getDefault()).format(time.time)
+        val minuteText = SimpleDateFormat(MINUTE_PATTERN, Locale.getDefault()).format(time.time)
         val colonText = ":"
         val hourWidth = digitalPaint.measureText(hourText)
         val colonWidth = digitalPaint.measureText(colonText)
@@ -224,8 +228,8 @@ class AnalogClockView @JvmOverloads constructor(
         get() = this * resources.displayMetrics.density
 
     private companion object {
-        val HOUR_FORMATTER = SimpleDateFormat("HH", Locale.getDefault())
-        val MINUTE_FORMATTER = SimpleDateFormat("mm", Locale.getDefault())
+        const val HOUR_PATTERN = "HH"
+        const val MINUTE_PATTERN = "mm"
         const val FULL_ALPHA = 255
         const val ONE_SECOND_MS = 1_000L
         const val COLON_PULSE_PERIOD_MS = 2_400L

@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">txt</string>
-    <string name="add_shortcut_title">Add shortcut</string>
     <string name="app_picker_empty">No launchable apps found</string>
     <string name="delete_shortcut">Delete</string>
     <string name="remove_shortcut">Remove</string>
     <string name="uninstall_app">Uninstall</string>
     <string name="block_app">Block app</string>
     <string name="blocked_app">Blocked</string>
-    <string name="search_hint">Search...</string>
+    <string name="search_hint">Search&#8230;</string>
     <string name="add_shortcut">Add shortcut</string>
     <string name="launcher_settings">Launcher settings</string>
-    <string name="settings_scaffold">Settings scaffold</string>
     <string name="edit_mode_label">Edit</string>
     <string name="home_screen_section">Home screen</string>
     <string name="show_date">Show date</string>
@@ -19,6 +17,7 @@
     <string name="clock_app_unavailable">Clock app unavailable</string>
     <string name="show_quick_access">Show quick access buttons</string>
     <string name="wallpaper_dim">Wallpaper dim</string>
+    <string name="integer_value">%1$d</string>
     <string name="percentage_value">%1$d%%</string>
     <string name="shortcut_text_alignment">Shortcut text alignment</string>
     <string name="alignment_left">Left</string>
@@ -62,11 +61,18 @@
     <string name="screen_time_permission_button">Enable usage access</string>
     <string name="screen_time_settings_section">Screen time</string>
     <string name="app_blocking_title">App blocking</string>
-    <string name="app_blocking_count">%1$d apps blocked</string>
-    <string name="app_blocking_search_hint">Search apps to block...</string>
+    <plurals name="app_blocking_count">
+        <item quantity="one">%1$d app blocked</item>
+        <item quantity="other">%1$d apps blocked</item>
+    </plurals>
+    <string name="app_blocking_search_hint">Search apps to block&#8230;</string>
     <string name="app_budgets_title">Daily app budgets</string>
-    <string name="app_budgets_count">%1$d app budgets</string>
-    <string name="app_budgets_search_hint">Search apps for budgets...</string>
+    <plurals name="app_budgets_count">
+        <item quantity="one">%1$d app budget</item>
+        <item quantity="other">%1$d app budgets</item>
+    </plurals>
+    <string name="app_budgets_search_hint">Search apps for budgets&#8230;</string>
+    <string name="app_budget_usage_progress">%1$s / %2$s</string>
     <string name="app_budget_15">15m</string>
     <string name="app_budget_30">30m</string>
     <string name="app_budget_60">1h</string>
@@ -87,7 +93,7 @@
     <string name="copy_note">Copy note</string>
     <string name="note_copied">Copied</string>
     <string name="notes_empty">No notes</string>
-    <string name="note_editor_hint">Write anything...</string>
+    <string name="note_editor_hint">Write anything&#8230;</string>
     <string name="save_note">Save</string>
     <string name="cancel_note_edit">Cancel</string>
     <string name="quick_access_camera">Open camera</string>
