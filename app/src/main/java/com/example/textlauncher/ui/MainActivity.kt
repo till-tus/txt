@@ -1371,6 +1371,7 @@ class MainActivity : AppCompatActivity() {
             binding.screenTimeTopApp.text = topApp.label
             binding.screenTimeTopAppUsage.text = formatScreenTimeDuration(topApp.usageMillis)
         }
+        binding.screenTimeTodayTotal.text = formatScreenTimeDuration(todayTotalMillis)
         binding.screenTimeVsAverage.text = formatScreenTimeAverageComparison(
             todayMillis = todayTotalMillis,
             averageMillis = weeklyAverageMillis,
