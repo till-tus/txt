@@ -1819,7 +1819,7 @@ class MainActivity : AppCompatActivity() {
         container.addView(
             android.widget.LinearLayout(this).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START
                 addView(
                     TextView(this@MainActivity).apply {
                         text = getString(R.string.today_next_event_title)
@@ -1952,7 +1952,7 @@ class MainActivity : AppCompatActivity() {
         addView(
             LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START
                 addView(
                     TextView(this@MainActivity).apply {
                         this.text = title
@@ -2019,7 +2019,7 @@ class MainActivity : AppCompatActivity() {
         container.addView(
             LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START
                 addView(
                     TextView(this@MainActivity).apply {
                         text = getString(R.string.today_pinned_note_title)
