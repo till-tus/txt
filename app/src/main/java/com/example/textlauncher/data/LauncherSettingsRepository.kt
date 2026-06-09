@@ -1,6 +1,7 @@
 package com.example.textlauncher.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
@@ -47,26 +48,26 @@ class LauncherSettingsRepository(context: Context) {
     }
 
     fun saveSettings(settings: LauncherSettings) {
-        preferences.edit()
-            .putBoolean(KEY_SHOW_DATE, settings.showDate)
-            .putString(KEY_CLOCK_DISPLAY_MODE, settings.clockDisplayMode.name)
-            .putBoolean(KEY_SHOW_QUICK_ACCESS, settings.showQuickAccess)
-            .putInt(KEY_WALLPAPER_DIM_PERCENT, settings.wallpaperDimPercent.coerceIn(0, 100))
-            .putString(KEY_SHORTCUT_TEXT_ALIGNMENT, settings.shortcutTextAlignment.name)
-            .putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
-            .putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
-            .putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
-            .putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
-            .putBoolean(KEY_SHOW_NOTES_PAGE, settings.showNotesPage)
-            .putBoolean(KEY_SHOW_CALENDAR_PAGE, settings.showCalendarPage)
-            .putStringSet(KEY_SELECTED_CALENDAR_IDS, settings.selectedCalendarIds.map { it.toString() }.toSet())
-            .putStringSet(KEY_BLOCKED_APP_PACKAGE_NAMES, settings.blockedAppPackageNames)
-            .putStringSet(
+        preferences.edit {
+            putBoolean(KEY_SHOW_DATE, settings.showDate)
+            putString(KEY_CLOCK_DISPLAY_MODE, settings.clockDisplayMode.name)
+            putBoolean(KEY_SHOW_QUICK_ACCESS, settings.showQuickAccess)
+            putInt(KEY_WALLPAPER_DIM_PERCENT, settings.wallpaperDimPercent.coerceIn(0, 100))
+            putString(KEY_SHORTCUT_TEXT_ALIGNMENT, settings.shortcutTextAlignment.name)
+            putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
+            putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
+            putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
+            putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
+            putBoolean(KEY_SHOW_NOTES_PAGE, settings.showNotesPage)
+            putBoolean(KEY_SHOW_CALENDAR_PAGE, settings.showCalendarPage)
+            putStringSet(KEY_SELECTED_CALENDAR_IDS, settings.selectedCalendarIds.map { it.toString() }.toSet())
+            putStringSet(KEY_BLOCKED_APP_PACKAGE_NAMES, settings.blockedAppPackageNames)
+            putStringSet(
                 KEY_APP_BUDGETS,
                 settings.appBudgetMinutesByPackage.map { (packageName, minutes) -> "$packageName|$minutes" }.toSet(),
             )
-            .putBoolean(KEY_HAS_REQUESTED_CALENDAR_PERMISSION, settings.hasRequestedCalendarPermission)
-            .apply()
+            putBoolean(KEY_HAS_REQUESTED_CALENDAR_PERMISSION, settings.hasRequestedCalendarPermission)
+        }
     }
 
     private fun runCatchingClockMode(value: String): ClockDisplayMode? {

@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -47,7 +48,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
+import androidx.core.widget.TextViewCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -777,7 +780,7 @@ class MainActivity : AppCompatActivity() {
             )
             binding.shortcutList.updatePadding(
                 bottom = shortcutBaseBottomPadding +
-                    if (binding.quickAccessBar.visibility == View.VISIBLE) 0 else systemBars.bottom,
+                    if (binding.quickAccessBar.isVisible) 0 else systemBars.bottom,
             )
             binding.quickAccessBar.updatePadding(bottom = quickAccessBaseBottomPadding + systemBars.bottom)
             binding.notesList.updatePadding(bottom = notesListBaseBottomPadding + systemBars.bottom)
@@ -1127,9 +1130,7 @@ class MainActivity : AppCompatActivity() {
         binding.calendarPermissionPrompt.visibility = if (hasPermission) View.GONE else View.VISIBLE
         binding.calendarEventList.visibility = if (hasPermission) View.VISIBLE else View.GONE
         binding.calendarEmpty.visibility = View.GONE
-        binding.calendarSelectionExpandIcon.setImageResource(
-            if (isCalendarSelectionExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
-        )
+        binding.calendarSelectionHeaderRow.setExpandIcon(isCalendarSelectionExpanded)
         binding.calendarSelectionHint.visibility = if (!hasPermission && isCalendarSelectionExpanded) {
             View.VISIBLE
         } else {
@@ -1360,9 +1361,7 @@ class MainActivity : AppCompatActivity() {
         binding.screenTimePermissionPrompt.visibility = if (hasPermission) View.GONE else View.VISIBLE
         binding.screenTimeList.visibility = if (hasPermission && screenTimeUsages.isNotEmpty()) View.VISIBLE else View.GONE
         binding.screenTimeEmpty.visibility = if (hasPermission && screenTimeUsages.isEmpty()) View.VISIBLE else View.GONE
-        binding.screenTimeExpandIcon.setImageResource(
-            if (isScreenTimeExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
-        )
+        binding.screenTimeHeaderRow.setExpandIcon(isScreenTimeExpanded)
     }
 
     private fun renderScreenTimeRecap() {
@@ -1424,9 +1423,7 @@ class MainActivity : AppCompatActivity() {
             .sumOf { it.usageMillis }
         binding.screenTimeIntendedToday.text = formatScreenTimeDuration(intendedMinutes * MILLIS_PER_MINUTE)
         binding.screenTimeActualToday.text = formatScreenTimeDuration(actualMillis)
-        binding.screenTimeIntentionsExpandIcon.setImageResource(
-            if (isScreenTimeIntentionsExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
-        )
+        binding.screenTimeIntentionsHeaderRow.setExpandIcon(isScreenTimeIntentionsExpanded)
         binding.screenTimeIntentionsList.visibility = if (
             isScreenTimeIntentionsExpanded &&
             intentionsByPackage.isNotEmpty()
@@ -1525,6 +1522,16 @@ class MainActivity : AppCompatActivity() {
         } else {
             "${minutes}m"
         }
+    }
+
+    private fun TextView.setExpandIcon(isExpanded: Boolean) {
+        setCompoundDrawablesRelativeWithIntrinsicBounds(
+            0,
+            0,
+            if (isExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+            0,
+        )
+        TextViewCompat.setCompoundDrawableTintList(this, ColorStateList.valueOf(getColor(R.color.launcher_text)))
     }
 
     private fun refreshCalendarEvents() {
@@ -1772,7 +1779,7 @@ class MainActivity : AppCompatActivity() {
                 override fun handleOnBackPressed() {
                     if (appBlockPromptController.isVisible) {
                         hideAppBlockPrompt()
-                    } else if (binding.gesturePickerRoot.visibility == View.VISIBLE) {
+                    } else if (binding.gesturePickerRoot.isVisible) {
                         hideGesturePicker()
                     } else if (isNoteEditorVisible) {
                         hideNoteEditor()
@@ -1802,7 +1809,7 @@ class MainActivity : AppCompatActivity() {
         if (appBlockPromptController.isVisible) {
             hideAppBlockPrompt()
         }
-        if (binding.gesturePickerRoot.visibility == View.VISIBLE) {
+        if (binding.gesturePickerRoot.isVisible) {
             hideGesturePicker()
         }
         if (isNoteEditorVisible) {

@@ -54,7 +54,6 @@
     <string name="screen_time_intentions_title">Intentions</string>
     <string name="screen_time_intended_today">Planned today</string>
     <string name="screen_time_actual_today">Actual today</string>
-    <string name="screen_time_intentions_apps">Apps</string>
     <string name="screen_time_today">Today</string>
     <string name="screen_time_empty">No screen time recorded today</string>
     <string name="screen_time_permission_prompt">Usage access is needed to show screen time by app.</string>

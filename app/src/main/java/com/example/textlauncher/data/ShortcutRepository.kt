@@ -1,6 +1,7 @@
 package com.example.textlauncher.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.textlauncher.domain.AppShortcut
 import org.json.JSONArray
 import org.json.JSONObject
@@ -35,7 +36,9 @@ class ShortcutRepository(context: Context) {
                     .put(KEY_ACTIVITY, shortcut.activityName),
             )
         }
-        preferences.edit().putString(KEY_SHORTCUTS, items.toString()).apply()
+        preferences.edit {
+            putString(KEY_SHORTCUTS, items.toString())
+        }
     }
 
     fun deleteShortcutsForPackage(packageName: String): List<AppShortcut> {

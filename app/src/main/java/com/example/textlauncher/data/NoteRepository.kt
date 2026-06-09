@@ -1,6 +1,7 @@
 package com.example.textlauncher.data
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.textlauncher.domain.QuickNote
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,9 +33,9 @@ class NoteRepository(context: Context) {
                 )
             }
         }
-        preferences.edit()
-            .putString(KEY_NOTES, serialized.toString())
-            .apply()
+        preferences.edit {
+            putString(KEY_NOTES, serialized.toString())
+        }
     }
 
     private companion object {

@@ -1,6 +1,7 @@
 package com.example.textlauncher.data
 
 import android.content.Context
+import androidx.core.content.edit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,33 +26,33 @@ class AppUsageIntentionRepository(context: Context) {
         resetIfNeeded()
         val updatedIntentions = loadTodayIntentionsByPackage().toMutableMap()
         updatedIntentions[packageName] = (updatedIntentions[packageName] ?: 0) + minutes
-        preferences.edit()
-            .putString(KEY_DATE, todayKey())
-            .putStringSet(
+        preferences.edit {
+            putString(KEY_DATE, todayKey())
+            putStringSet(
                 KEY_INTENTIONS_BY_PACKAGE,
                 updatedIntentions.map { (currentPackageName, currentMinutes) ->
                     "$currentPackageName|$currentMinutes"
                 }.toSet(),
             )
-            .apply()
+        }
         return updatedIntentions.values.sum()
     }
 
     fun resetIntentions() {
-        preferences.edit()
-            .putString(KEY_DATE, todayKey())
-            .putStringSet(KEY_INTENTIONS_BY_PACKAGE, emptySet())
-            .apply()
+        preferences.edit {
+            putString(KEY_DATE, todayKey())
+            putStringSet(KEY_INTENTIONS_BY_PACKAGE, emptySet())
+        }
     }
 
     private fun resetIfNeeded() {
         val today = todayKey()
         if (preferences.getString(KEY_DATE, null) == today) return
 
-        preferences.edit()
-            .putString(KEY_DATE, today)
-            .putStringSet(KEY_INTENTIONS_BY_PACKAGE, emptySet())
-            .apply()
+        preferences.edit {
+            putString(KEY_DATE, today)
+            putStringSet(KEY_INTENTIONS_BY_PACKAGE, emptySet())
+        }
     }
 
     private fun parseIntention(value: String): Pair<String, Int>? {
