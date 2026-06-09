@@ -648,7 +648,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun shouldCompleteAppListDrag(deltaY: Float, velocityY: Float): Boolean {
-        return deltaY > SWIPE_DOWN_DISTANCE_DP.dp || velocityY > SWIPE_DOWN_VELOCITY_DP
+        return deltaY > SWIPE_DOWN_DISTANCE_DP.dp || velocityY > SWIPE_DOWN_VELOCITY_DP.dp
     }
 
     private fun settleAppListDrag(shouldComplete: Boolean) {
