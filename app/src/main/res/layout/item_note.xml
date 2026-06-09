@@ -11,6 +11,16 @@
     android:orientation="horizontal"
     android:paddingVertical="12dp">
 
+    <View
+        android:id="@+id/pinnedNoteDot"
+        android:layout_width="6dp"
+        android:layout_height="6dp"
+        android:layout_marginTop="7dp"
+        android:layout_marginEnd="10dp"
+        android:background="@drawable/pinned_note_dot"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/noteText"
         android:layout_width="0dp"
