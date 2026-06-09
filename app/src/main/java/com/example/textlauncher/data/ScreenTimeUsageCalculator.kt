@@ -16,6 +16,7 @@ object ScreenTimeUsageCalculator {
         events: List<ScreenTimeUsageEvent>,
         startMillis: Long,
         endMillis: Long,
+        ignoredPackageNames: Set<String> = emptySet(),
     ): Map<String, Long> {
         if (endMillis <= startMillis) return emptyMap()
 
@@ -23,6 +24,7 @@ object ScreenTimeUsageCalculator {
         val usageByPackage = mutableMapOf<String, Long>()
 
         events.sortedBy { it.timestampMillis }.forEach { event ->
+            if (event.packageName in ignoredPackageNames) return@forEach
             when (event.type) {
                 ScreenTimeUsageEventType.Foreground -> {
                     activeSinceByPackage.putIfAbsent(event.packageName, event.timestampMillis)

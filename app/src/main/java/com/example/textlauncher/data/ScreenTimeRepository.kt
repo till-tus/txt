@@ -102,6 +102,7 @@ class ScreenTimeRepository(
             events = events,
             startMillis = start,
             endMillis = end,
+            ignoredPackageNames = setOf(context.packageName),
         )
     }
 

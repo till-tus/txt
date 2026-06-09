@@ -49,6 +49,23 @@ class ScreenTimeUsageCalculatorTest {
         assertEquals(mapOf(APP to 450L, OTHER_APP to 100L), usage)
     }
 
+    @Test
+    fun calculatePackageUsage_ignoresPackagesExcludedFromScreenTime() {
+        val usage = ScreenTimeUsageCalculator.calculatePackageUsage(
+            events = listOf(
+                foreground(LAUNCHER_APP, timestampMillis = 1_100L),
+                background(LAUNCHER_APP, timestampMillis = 1_900L),
+                foreground(APP, timestampMillis = 1_200L),
+                background(APP, timestampMillis = 1_500L),
+            ),
+            startMillis = 1_000L,
+            endMillis = 2_000L,
+            ignoredPackageNames = setOf(LAUNCHER_APP),
+        )
+
+        assertEquals(mapOf(APP to 300L), usage)
+    }
+
     private fun foreground(packageName: String, timestampMillis: Long): ScreenTimeUsageEvent {
         return ScreenTimeUsageEvent(packageName, timestampMillis, ScreenTimeUsageEventType.Foreground)
     }
@@ -59,6 +76,7 @@ class ScreenTimeUsageCalculatorTest {
 
     private companion object {
         const val APP = "com.example.app"
+        const val LAUNCHER_APP = "com.example.textlauncher"
         const val OTHER_APP = "com.example.other"
     }
 }
