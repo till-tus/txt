@@ -15,6 +15,22 @@ local.properties
 *.jks
 *.keystore
 *.pem
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+google-services.json
+keystore.properties
+release.properties
+secrets.properties
+service-account*.json
+
+# Release artifacts
+*.apk
+*.apks
+*.aab
+output-metadata.json
 
 # Logs
 *.log
