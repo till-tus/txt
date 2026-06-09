@@ -1,5 +1,6 @@
 package com.example.textlauncher.data
 
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
@@ -23,14 +24,7 @@ class ScreenTimeRepository(
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
         val end = System.currentTimeMillis()
-        val packageUsage = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            start,
-            end,
-        )
-            .orEmpty()
-            .groupBy { it.packageName }
-            .mapValues { (_, stats) -> stats.sumOf { it.totalTimeInForeground } }
+        val packageUsage = loadUsageByPackage(start, end)
 
         return packageUsage
             .asSequence()
@@ -86,13 +80,47 @@ class ScreenTimeRepository(
 
     private fun loadUsageTotal(start: Long, end: Long): Long {
         if (end <= start) return 0L
-        return usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_DAILY,
-            start,
-            end,
+        return loadUsageByPackage(start, end).values.sum()
+    }
+
+    private fun loadUsageByPackage(start: Long, end: Long): Map<String, Long> {
+        if (end <= start) return emptyMap()
+        val events = mutableListOf<ScreenTimeUsageEvent>()
+        val usageEvents = usageStatsManager.queryEvents(start - EVENT_LOOKBACK_MILLIS, end)
+        val event = UsageEvents.Event()
+        while (usageEvents.hasNextEvent()) {
+            usageEvents.getNextEvent(event)
+            val type = event.toScreenTimeUsageEventType() ?: continue
+            val packageName = event.packageName?.takeIf { it.isNotBlank() } ?: continue
+            events += ScreenTimeUsageEvent(
+                packageName = packageName,
+                timestampMillis = event.timeStamp,
+                type = type,
+            )
+        }
+        return ScreenTimeUsageCalculator.calculatePackageUsage(
+            events = events,
+            startMillis = start,
+            endMillis = end,
         )
-            .orEmpty()
-            .sumOf { it.totalTimeInForeground }
+    }
+
+    private fun UsageEvents.Event.toScreenTimeUsageEventType(): ScreenTimeUsageEventType? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            when (eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> ScreenTimeUsageEventType.Foreground
+                UsageEvents.Event.ACTIVITY_PAUSED -> ScreenTimeUsageEventType.Background
+                else -> null
+            }
+        } else {
+            when (eventType) {
+                @Suppress("DEPRECATION")
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> ScreenTimeUsageEventType.Foreground
+                @Suppress("DEPRECATION")
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> ScreenTimeUsageEventType.Background
+                else -> null
+            }
+        }
     }
 
     private fun loadAppLabel(packageName: String): String {
@@ -113,5 +141,6 @@ class ScreenTimeRepository(
 
     private companion object {
         const val DAYS_PER_WEEK = 7
+        const val EVENT_LOOKBACK_MILLIS = 7L * 24L * 60L * 60L * 1_000L
     }
 }
