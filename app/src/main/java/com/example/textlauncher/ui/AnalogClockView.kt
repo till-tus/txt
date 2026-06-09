@@ -195,7 +195,7 @@ class AnalogClockView @JvmOverloads constructor(
         )
     }
 
-    private fun isWithinClockHitArea(x: Float, y: Float): Boolean {
+    fun isWithinClockHitArea(x: Float, y: Float): Boolean {
         val contentWidth = width - paddingLeft - paddingRight
         val contentHeight = height - paddingTop - paddingBottom
         if (contentWidth <= 0 || contentHeight <= 0) return false

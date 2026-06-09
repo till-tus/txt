@@ -91,6 +91,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var noteBulletFormatter: NoteBulletFormatter
     private lateinit var appBlockPromptController: AppBlockPromptController
     private var shouldHandleBlankAreaLongPress = false
+    private var shouldHandleHomeContentLongPress = false
+    private var shouldHandleClockLongPress = false
     private var isAppPickerVisible = false
     private var isEditMode = false
     private var isSettingsVisible = false
@@ -1697,13 +1699,45 @@ class MainActivity : AppCompatActivity() {
             false
         }
         binding.homeContent.setOnTouchListener { _, event ->
-            detector.onTouchEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                shouldHandleHomeContentLongPress = !isTouchInsideView(
+                    binding.clockDateContent,
+                    event.rawX,
+                    event.rawY,
+                )
+            }
+            if (shouldHandleHomeContentLongPress) {
+                detector.onTouchEvent(event)
+            }
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                shouldHandleHomeContentLongPress = false
+            }
             false
         }
         binding.clockView.setOnTouchListener { _, event ->
-            detector.onTouchEvent(event)
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                shouldHandleHomeContentLongPress = false
+                shouldHandleClockLongPress = binding.clockView.isWithinClockHitArea(event.x, event.y)
+            }
+            if (shouldHandleClockLongPress) {
+                detector.onTouchEvent(event)
+            }
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                shouldHandleClockLongPress = false
+            }
             false
         }
+    }
+
+    private fun isTouchInsideView(view: View, rawX: Float, rawY: Float): Boolean {
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val left = location[0].toFloat()
+        val top = location[1].toFloat()
+        return rawX >= left &&
+            rawX <= left + view.width &&
+            rawY >= top &&
+            rawY <= top + view.height
     }
 
     private fun isShortcutTextTargetUnder(x: Float, y: Float): Boolean {
