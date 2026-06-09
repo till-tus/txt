@@ -53,7 +53,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
-import androidx.core.animation.doOnEnd
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -98,7 +97,9 @@ import com.example.textlauncher.domain.TodayNotificationItem
 import com.google.android.material.checkbox.MaterialCheckBox
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -126,6 +127,7 @@ class MainActivity : AppCompatActivity() {
     private var isScreenTimeIntentionsExpanded = false
     private var appListMode = AppListMode.AddShortcut
     private var availableApps = emptyList<AppShortcut>()
+    private var cachedLaunchableApps = emptyList<AppShortcut>()
     private var screenTimeUsages = emptyList<ScreenTimeAppUsage>()
     private var screenTimeWeekUsages = emptyList<ScreenTimeDayUsage>()
     private var blockableApps = emptyList<AppShortcut>()
@@ -171,7 +173,6 @@ class MainActivity : AppCompatActivity() {
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
     private var editModePulseAnimator: ValueAnimator? = null
-    private var appListHomeTreatmentAnimator: ValueAnimator? = null
     private var renderedShortcutCount = 0
     private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
@@ -292,6 +293,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        refreshLaunchableAppCache()
     }
 
     override fun onResume() {
@@ -314,6 +316,7 @@ class MainActivity : AppCompatActivity() {
         if (isTodayVisible) {
             renderTodayWidgets()
         }
+        refreshLaunchableAppCache()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -324,7 +327,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStop() {
+        resetInFlightAppListDrag()
+        super.onStop()
+    }
+
     override fun onDestroy() {
+        resetInFlightAppListDrag()
         unregisterReceiver(packageRemovedReceiver)
         appBlockPromptController.cancel()
         super.onDestroy()
@@ -345,9 +354,10 @@ class MainActivity : AppCompatActivity() {
     private fun handlePackageRemoved(packageName: String) {
         viewModel.deleteShortcutsForPackage(packageName)
         if (isAppPickerVisible) {
-            availableApps = installedAppsRepository.loadLaunchableApps()
+            availableApps = loadCachedLaunchableApps()
             renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
         }
+        refreshLaunchableAppCache()
         if (isSettingsVisible && (isAppBlockingExpanded || isAppBudgetsExpanded)) {
             refreshBlockableApps()
         }
@@ -617,13 +627,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun prepareAppListDrag() {
         appListMode = AppListMode.LaunchApp
-        availableApps = installedAppsRepository.loadLaunchableApps()
+        availableApps = loadCachedLaunchableApps()
         binding.appSearchInput.text?.clear()
         renderFilteredApps(query = "")
         binding.appPickerRoot.animate().cancel()
         binding.homeContent.animate().cancel()
         binding.homeTransitionDimOverlay.animate().cancel()
-        appListHomeTreatmentAnimator?.cancel()
         binding.homeTransitionDimOverlay.visibility = View.VISIBLE
         binding.appPickerRoot.visibility = View.VISIBLE
         binding.appPickerRoot.alpha = 0f
@@ -646,22 +655,19 @@ class MainActivity : AppCompatActivity() {
         binding.appPickerRoot.animate().cancel()
         if (shouldComplete) {
             isAppPickerVisible = true
+            updateLauncherLayerVisibility()
+            applyAppListHomeTreatment(progress = 1f)
             binding.appPickerRoot.visibility = View.VISIBLE
             binding.appPickerRoot.animate()
                 .alpha(1f)
                 .translationY(0f)
                 .setDuration(PAGE_SETTLE_MS)
                 .setInterpolator(DecelerateInterpolator())
-                .withEndAction {
-                    if (isAppPickerVisible) {
-                        updateLauncherLayerVisibility()
-                        binding.appSearchInput.requestFocus()
-                        showKeyboard()
-                    }
-                }
                 .start()
-            animateAppListHomeTreatment(toProgress = 1f)
+            binding.appSearchInput.requestFocus()
+            showKeyboard()
         } else {
+            resetAppListHomeTreatment()
             binding.appPickerRoot.animate()
                 .alpha(0f)
                 .translationY(-APP_LIST_ENTER_OFFSET_DP.dp.toFloat())
@@ -675,11 +681,9 @@ class MainActivity : AppCompatActivity() {
                         binding.appSearchInput.text?.clear()
                         appPickerAdapter.submitList(emptyList())
                         availableApps = emptyList()
-                        resetAppListHomeTreatment()
                     }
                 }
                 .start()
-            animateAppListHomeTreatment(toProgress = 0f)
         }
     }
 
@@ -698,32 +702,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun animateAppListHomeTreatment(toProgress: Float) {
-        appListHomeTreatmentAnimator?.cancel()
-        appListHomeTreatmentAnimator = ValueAnimator.ofFloat(
-            binding.homeTransitionDimOverlay.alpha / APP_LIST_HOME_DIM_ALPHA,
-            toProgress,
-        ).apply {
-            duration = PAGE_SETTLE_MS
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { animator ->
-                val progress = animator.animatedValue as Float
-                if (progress > 0f) {
-                    binding.homeTransitionDimOverlay.visibility = View.VISIBLE
-                }
-                applyAppListHomeTreatment(progress)
-            }
-            doOnEnd {
-                appListHomeTreatmentAnimator = null
-            }
-            start()
-        }
-    }
-
     private fun resetAppListHomeTreatment() {
         binding.homeTransitionDimOverlay.animate().cancel()
-        appListHomeTreatmentAnimator?.cancel()
-        appListHomeTreatmentAnimator = null
         binding.homeTransitionDimOverlay.alpha = 0f
         binding.homeTransitionDimOverlay.visibility = View.GONE
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -736,6 +716,20 @@ class MainActivity : AppCompatActivity() {
         didCancelAppListDragChildren = false
         appListDragVelocityTracker?.recycle()
         appListDragVelocityTracker = null
+    }
+
+    private fun resetInFlightAppListDrag() {
+        if (isAppPickerVisible) return
+
+        binding.appPickerRoot.animate().cancel()
+        resetAppListHomeTreatment()
+        binding.appPickerRoot.visibility = View.GONE
+        binding.appPickerRoot.alpha = 1f
+        binding.appPickerRoot.translationY = 0f
+        binding.appSearchInput.text?.clear()
+        appPickerAdapter.submitList(emptyList())
+        availableApps = emptyList()
+        cancelAppListDrag()
     }
 
     private fun cancelChildGesturesForAppListDrag(event: MotionEvent) {
@@ -3491,7 +3485,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAppList(mode: AppListMode) {
         appListMode = mode
-        availableApps = installedAppsRepository.loadLaunchableApps()
+        availableApps = loadCachedLaunchableApps()
         binding.appSearchInput.text?.clear()
         renderFilteredApps(query = "")
         isAppPickerVisible = true
@@ -3531,6 +3525,27 @@ class MainActivity : AppCompatActivity() {
             .setDuration(APP_LIST_ENTER_DURATION_MS)
             .setInterpolator(DecelerateInterpolator())
             .start()
+    }
+
+    private fun loadCachedLaunchableApps(): List<AppShortcut> {
+        return cachedLaunchableApps.ifEmpty {
+            installedAppsRepository.loadLaunchableApps().also { apps ->
+                cachedLaunchableApps = apps
+            }
+        }
+    }
+
+    private fun refreshLaunchableAppCache() {
+        lifecycleScope.launch {
+            val apps = withContext(Dispatchers.Default) {
+                installedAppsRepository.loadLaunchableApps()
+            }
+            cachedLaunchableApps = apps
+            if (isAppPickerVisible) {
+                availableApps = apps
+                renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
+            }
+        }
     }
 
     private fun renderFilteredApps(query: String) {
