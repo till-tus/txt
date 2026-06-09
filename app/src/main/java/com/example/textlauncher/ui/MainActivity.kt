@@ -16,6 +16,7 @@ import android.content.IntentFilter
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -40,6 +41,9 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +71,7 @@ import com.example.textlauncher.data.LauncherSettingsRepository
 import com.example.textlauncher.data.NoteRepository
 import com.example.textlauncher.data.ScreenTimeRepository
 import com.example.textlauncher.data.ShortcutRepository
+import com.example.textlauncher.data.TodayNotificationCenter
 import com.example.textlauncher.data.TodayWidgetRepository
 import com.example.textlauncher.databinding.ActivityMainBinding
 import com.example.textlauncher.databinding.ItemAppBudgetSelectionBinding
@@ -84,6 +89,8 @@ import com.example.textlauncher.domain.ScreenTimeDayUsage
 import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TodayWidget
 import com.example.textlauncher.domain.TodayWidgetType
+import com.example.textlauncher.domain.TodayNotificationItem
+import com.google.android.material.checkbox.MaterialCheckBox
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.launch
@@ -120,6 +127,8 @@ class MainActivity : AppCompatActivity() {
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
     private var todayWidgets = emptyList<TodayWidget>()
     private var todayNextEvent: CalendarEvent? = null
+    private var todayNotifications = emptyList<TodayNotificationItem>()
+    private var currentNotes = emptyList<QuickNote>()
     private var editingNote: QuickNote? = null
     private var pageSwipeStartX = 0f
     private var pageSwipeStartY = 0f
@@ -260,6 +269,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                TodayNotificationCenter.notifications.collect { notifications ->
+                    todayNotifications = notifications
+                    if (isTodayVisible) {
+                        renderTodayWidgets()
+                    }
+                }
+            }
+        }
     }
 
     override fun onResume() {
@@ -278,6 +297,9 @@ class MainActivity : AppCompatActivity() {
         }
         if (isScreenTimeVisible) {
             refreshScreenTime()
+        }
+        if (isTodayVisible) {
+            renderTodayWidgets()
         }
     }
 
@@ -823,9 +845,13 @@ class MainActivity : AppCompatActivity() {
                 binding.shortcutList.scrollToPosition(visibleShortcuts.lastIndex)
             }
         }
-        noteAdapter.submitList(state.notes)
-        binding.notesList.visibility = if (state.notes.isEmpty()) View.GONE else View.VISIBLE
-        binding.notesEmpty.visibility = if (state.notes.isEmpty()) View.VISIBLE else View.GONE
+        currentNotes = state.notes
+        noteAdapter.submitList(currentNotes)
+        binding.notesList.visibility = if (currentNotes.isEmpty()) View.GONE else View.VISIBLE
+        binding.notesEmpty.visibility = if (currentNotes.isEmpty()) View.VISIBLE else View.GONE
+        if (isTodayVisible && todayWidgets.any { it.type == TodayWidgetType.PinnedNote }) {
+            renderTodayWidgets()
+        }
         binding.dateText.visibility = if (state.showDate) View.VISIBLE else View.GONE
         binding.clockView.setDisplayMode(state.clockDisplayMode)
         if (binding.showDateSwitch.isChecked != state.showDate) {
@@ -1747,17 +1773,17 @@ class MainActivity : AppCompatActivity() {
         todayWidgets.forEach { widget ->
             val widgetView = when (widget.type) {
                 TodayWidgetType.NextEvent -> createNextEventWidgetView(widget)
+                TodayWidgetType.NotificationFeed -> createNotificationFeedWidgetView(widget)
+                TodayWidgetType.PinnedNote -> createPinnedNoteWidgetView(widget)
             }
             binding.todayWidgetGrid.addView(widgetView)
-            binding.todayWidgetGrid.post {
-                binding.todayWidgetGrid.applyGridPosition(
-                    view = widgetView,
-                    column = widget.column,
-                    row = widget.row,
-                    columnSpan = widget.columnSpan,
-                    rowSpan = widget.rowSpan,
-                )
-            }
+            binding.todayWidgetGrid.applyGridPosition(
+                view = widgetView,
+                column = widget.column,
+                row = widget.row,
+                columnSpan = widget.columnSpan,
+                rowSpan = widget.rowSpan,
+            )
         }
     }
 
@@ -1832,6 +1858,190 @@ class MainActivity : AppCompatActivity() {
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                         ).apply {
                             topMargin = 6.dp
+                        }
+                    },
+                )
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            },
+        )
+
+        if (isTodayEditMode) {
+            addTodayResizeIndicator(container)
+            configureTodayWidgetDrag(container, widget)
+        }
+        return container
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createNotificationFeedWidgetView(widget: TodayWidget): View {
+        val displayedNotifications = filteredNotificationsForWidget(widget)
+            .take(widget.rowSpan.coerceAtLeast(TodayWidgetGridView.MIN_ROW_SPAN))
+        val container = android.widget.FrameLayout(this).apply {
+            tag = widget
+            background = todayWidgetBackground(isEditing = isTodayEditMode)
+            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+            isClickable = true
+            isLongClickable = true
+            setOnClickListener {
+                if (!isTodayEditMode && !hasNotificationAccess()) {
+                    openNotificationAccessSettings()
+                }
+            }
+            setOnLongClickListener {
+                if (isTodayEditMode) {
+                    showTodayWidgetContextMenu(it, widget)
+                } else {
+                    enterTodayEditMode()
+                }
+                true
+            }
+        }
+
+        container.addView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = getString(R.string.today_notification_feed_title)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        includeFontPadding = false
+                    },
+                )
+                when {
+                    !hasNotificationAccess() -> {
+                        addNotificationTextRow(
+                            title = getString(R.string.today_notification_access_needed),
+                            text = getString(R.string.today_notification_access_action),
+                        )
+                    }
+                    displayedNotifications.isEmpty() -> {
+                        addNotificationTextRow(
+                            title = getString(R.string.today_notification_feed_empty),
+                            text = "",
+                        )
+                    }
+                    else -> {
+                        displayedNotifications.forEach { notification ->
+                            addNotificationTextRow(
+                                title = notification.title,
+                                text = notificationSubtitle(notification),
+                            )
+                        }
+                    }
+                }
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            },
+        )
+
+        if (isTodayEditMode) {
+            addTodayResizeIndicator(container)
+            configureTodayWidgetDrag(container, widget)
+        }
+        return container
+    }
+
+    private fun LinearLayout.addNotificationTextRow(title: String, text: String) {
+        addView(
+            LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                addView(
+                    TextView(this@MainActivity).apply {
+                        this.text = title
+                        setTextColor(getColor(R.color.launcher_text))
+                        textSize = 16f
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                    },
+                )
+                if (text.isNotBlank()) {
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            this.text = text
+                            setTextColor(getColor(R.color.launcher_text_secondary))
+                            textSize = 12f
+                            maxLines = 1
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                            includeFontPadding = false
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ).apply {
+                                topMargin = 5.dp
+                            }
+                        },
+                    )
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f,
+                ).apply {
+                    topMargin = 8.dp
+                }
+            },
+        )
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createPinnedNoteWidgetView(widget: TodayWidget): View {
+        val pinnedNote = currentNotes.firstOrNull { it.isPinned }
+        val container = android.widget.FrameLayout(this).apply {
+            tag = widget
+            background = todayWidgetBackground(isEditing = isTodayEditMode)
+            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+            isClickable = true
+            isLongClickable = true
+            setOnClickListener {
+                if (!isTodayEditMode && pinnedNote != null) {
+                    showNoteEditor(pinnedNote)
+                }
+            }
+            setOnLongClickListener {
+                if (isTodayEditMode) {
+                    showTodayWidgetContextMenu(it, widget)
+                } else {
+                    enterTodayEditMode()
+                }
+                true
+            }
+        }
+
+        container.addView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = getString(R.string.today_pinned_note_title)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        includeFontPadding = false
+                    },
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = pinnedNote?.text ?: getString(R.string.today_pinned_note_empty)
+                        setTextColor(getColor(R.color.launcher_text))
+                        textSize = 17f
+                        maxLines = (widget.rowSpan * 2).coerceAtLeast(2)
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = 8.dp
                         }
                     },
                 )
@@ -2021,11 +2231,20 @@ class MainActivity : AppCompatActivity() {
     private fun showTodayWidgetContextMenu(anchor: View, widget: TodayWidget) {
         showActionContextMenu(
             anchor = anchor,
-            actions = listOf(
-                ContextMenuAction(getString(R.string.today_remove_widget)) {
-                    removeTodayWidget(widget)
-                },
-            ),
+            actions = buildList {
+                if (widget.type == TodayWidgetType.NotificationFeed) {
+                    add(
+                        ContextMenuAction(getString(R.string.today_edit_widget)) {
+                            showNotificationWidgetConfig(widget)
+                        },
+                    )
+                }
+                add(
+                    ContextMenuAction(getString(R.string.today_remove_widget)) {
+                        removeTodayWidget(widget)
+                    },
+                )
+            },
         )
     }
 
@@ -2051,6 +2270,8 @@ class MainActivity : AppCompatActivity() {
         return getString(
             when (type) {
                 TodayWidgetType.NextEvent -> R.string.today_next_event_title
+                TodayWidgetType.NotificationFeed -> R.string.today_notification_feed_title
+                TodayWidgetType.PinnedNote -> R.string.today_pinned_note_title
             },
         )
     }
@@ -2064,6 +2285,8 @@ class MainActivity : AppCompatActivity() {
         }
         val widget = when (type) {
             TodayWidgetType.NextEvent -> todayWidgetRepository.defaultNextEventWidget()
+            TodayWidgetType.NotificationFeed -> todayWidgetRepository.defaultNotificationFeedWidget()
+            TodayWidgetType.PinnedNote -> todayWidgetRepository.defaultPinnedNoteWidget()
         }.copy(
             column = placement.column,
             row = placement.row,
@@ -2073,6 +2296,10 @@ class MainActivity : AppCompatActivity() {
         todayWidgets = todayWidgets + widget
         todayWidgetRepository.saveWidgets(todayWidgets)
         renderTodayWidgets()
+        if (type == TodayWidgetType.NotificationFeed && !hasNotificationAccess()) {
+            Toast.makeText(this, R.string.today_notification_access_prompt, Toast.LENGTH_LONG).show()
+            openNotificationAccessSettings()
+        }
     }
 
     private fun findFreeTodayWidgetPlacement(): TodayWidgetPlacement? {
@@ -2118,6 +2345,181 @@ class MainActivity : AppCompatActivity() {
         todayWidgets = todayWidgets.filterNot { it.id == widget.id }
         todayWidgetRepository.saveWidgets(todayWidgets)
         renderTodayWidgets()
+    }
+
+    private fun filteredNotificationsForWidget(widget: TodayWidget): List<TodayNotificationItem> {
+        val allowedPackages = widget.notificationAppPackageNames
+        return if (allowedPackages.isEmpty()) {
+            todayNotifications
+        } else {
+            todayNotifications.filter { it.packageName in allowedPackages }
+        }
+    }
+
+    private fun notificationSubtitle(notification: TodayNotificationItem): String {
+        return listOf(notification.appLabel, notification.text)
+            .filter { it.isNotBlank() }
+            .joinToString(" - ")
+    }
+
+    private fun showNotificationWidgetConfig(widget: TodayWidget) {
+        val selectedPackages = widget.notificationAppPackageNames.toMutableSet()
+        val appOptions = notificationConfigAppOptions()
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(getColor(R.color.launcher_background))
+                setStroke(1.dp, getColor(R.color.launcher_text))
+            }
+            setPadding(22.dp, 18.dp, 22.dp, 12.dp)
+        }
+        val popup = PopupWindow(
+            content,
+            (resources.displayMetrics.widthPixels - 48.dp).coerceAtLeast(280.dp),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true,
+        ).apply {
+            isOutsideTouchable = true
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            elevation = 0f
+        }
+
+        content.addView(
+            TextView(this).apply {
+                text = getString(R.string.today_notification_config_title)
+                setTextColor(getColor(R.color.launcher_text))
+                textSize = 22f
+                maxLines = 1
+                includeFontPadding = false
+            },
+        )
+        content.addView(
+            TextView(this).apply {
+                text = getString(R.string.today_notification_config_hint)
+                setTextColor(getColor(R.color.launcher_text_secondary))
+                textSize = 14f
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                ).apply {
+                    topMargin = 10.dp
+                    bottomMargin = 10.dp
+                }
+            },
+        )
+
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        appOptions.forEach { option ->
+            list.addView(createNotificationConfigRow(option, selectedPackages))
+        }
+        content.addView(
+            ScrollView(this).apply {
+                addView(list)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    360.dp,
+                )
+            },
+        )
+        content.addView(
+            TextView(this).apply {
+                text = getString(R.string.today_notification_config_done)
+                setTextColor(getColor(R.color.launcher_text))
+                textSize = 17f
+                gravity = android.view.Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    52.dp,
+                ).apply {
+                    topMargin = 8.dp
+                }
+                setOnClickListener {
+                    updateTodayWidget(widget.copy(notificationAppPackageNames = selectedPackages))
+                    renderTodayWidgets()
+                    popup.dismiss()
+                }
+            },
+        )
+
+        popup.showAtLocation(binding.root, android.view.Gravity.CENTER, 0, 0)
+    }
+
+    private fun createNotificationConfigRow(
+        option: NotificationAppOption,
+        selectedPackages: MutableSet<String>,
+    ): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                56.dp,
+            )
+        }
+        val label = TextView(this).apply {
+            text = option.label
+            setTextColor(getColor(R.color.launcher_text))
+            textSize = 16f
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(
+                0,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                1f,
+            )
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        val checkbox = MaterialCheckBox(this).apply {
+            isChecked = option.packageName in selectedPackages
+            setUseMaterialThemeColors(true)
+        }
+        fun toggleSelection() {
+            val shouldSelect = option.packageName !in selectedPackages
+            if (shouldSelect) {
+                selectedPackages.add(option.packageName)
+            } else {
+                selectedPackages.remove(option.packageName)
+            }
+            checkbox.isChecked = shouldSelect
+        }
+        row.setOnClickListener { toggleSelection() }
+        checkbox.setOnClickListener { toggleSelection() }
+        row.addView(label)
+        row.addView(checkbox)
+        return row
+    }
+
+    private fun notificationConfigAppOptions(): List<NotificationAppOption> {
+        val launchableApps = installedAppsRepository.loadLaunchableApps()
+            .distinctBy { it.packageName }
+            .map { NotificationAppOption(it.packageName, it.label) }
+        val notifyingApps = todayNotifications
+            .map { NotificationAppOption(it.packageName, it.appLabel) }
+            .distinctBy { it.packageName }
+        return (launchableApps + notifyingApps)
+            .distinctBy { it.packageName }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
+    }
+
+    private fun hasNotificationAccess(): Boolean {
+        val enabledListeners = Settings.Secure.getString(
+            contentResolver,
+            "enabled_notification_listeners",
+        ) ?: return false
+        val listener = ComponentName(this, TodayNotificationListenerService::class.java)
+        val flattened = listener.flattenToString()
+        val shortFlattened = listener.flattenToShortString()
+        return enabledListeners.split(':').any { enabledListener ->
+            enabledListener.equals(flattened, ignoreCase = true) ||
+                enabledListener.equals(shortFlattened, ignoreCase = true)
+        }
+    }
+
+    private fun openNotificationAccessSettings() {
+        startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
 
     private fun todayWidgetBackground(isEditing: Boolean): Drawable {
@@ -2475,7 +2877,12 @@ class MainActivity : AppCompatActivity() {
         showActionContextMenu(
             anchor = anchor,
             actions = listOf(
-                ContextMenuAction(getString(R.string.delete_shortcut)) {
+                ContextMenuAction(
+                    getString(if (note.isPinned) R.string.unpin_note else R.string.pin_note),
+                ) {
+                    viewModel.setNotePinned(note, !note.isPinned)
+                },
+                ContextMenuAction(getString(R.string.delete_note)) {
                     viewModel.deleteNote(note)
                 },
             ),
@@ -3086,6 +3493,11 @@ class MainActivity : AppCompatActivity() {
     private fun Intent.isHomeLaunchIntent(): Boolean {
         return action == Intent.ACTION_MAIN && hasCategory(Intent.CATEGORY_HOME)
     }
+
+    private data class NotificationAppOption(
+        val packageName: String,
+        val label: String,
+    )
 
     private companion object {
         const val GOOGLE_KEEP_PACKAGE = "com.google.android.keep"

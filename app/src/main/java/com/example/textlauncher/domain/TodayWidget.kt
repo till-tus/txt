@@ -7,8 +7,11 @@ data class TodayWidget(
     val row: Int,
     val columnSpan: Int,
     val rowSpan: Int,
+    val notificationAppPackageNames: Set<String> = emptySet(),
 )
 
 enum class TodayWidgetType {
     NextEvent,
+    NotificationFeed,
+    PinnedNote,
 }

@@ -2,6 +2,7 @@ package com.example.textlauncher.ui
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.ViewGroup
 import android.view.View
 import android.widget.FrameLayout
 import kotlin.math.roundToInt
@@ -17,23 +18,71 @@ class TodayWidgetGridView @JvmOverloads constructor(
         }
 
     fun applyGridPosition(view: View, column: Int, row: Int, columnSpan: Int, rowSpan: Int) {
-        if (!hasGridSize) return
-
         val safeColumnSpan = columnSpan.coerceIn(MIN_COLUMN_SPAN, COLUMN_COUNT)
         val safeRowSpan = rowSpan.coerceIn(MIN_ROW_SPAN, ROW_COUNT)
         val safeColumn = columnForDrag(column, safeColumnSpan)
         val safeRow = rowForDrag(row, safeRowSpan)
-        val left = safeColumn * cellWidth
-        val top = safeRow * cellHeight
-        val right = (safeColumn + safeColumnSpan) * cellWidth
-        val bottom = (safeRow + safeRowSpan) * cellHeight
-        view.layoutParams = LayoutParams(
-            (right - left).roundToInt().coerceAtLeast(1),
-            (bottom - top).roundToInt().coerceAtLeast(1),
-        ).apply {
-            leftMargin = left.roundToInt()
-            topMargin = top.roundToInt()
+        val layoutParams = (view.layoutParams as? LayoutParams) ?: LayoutParams()
+        layoutParams.column = safeColumn
+        layoutParams.row = safeRow
+        layoutParams.columnSpan = safeColumnSpan
+        layoutParams.rowSpan = safeRowSpan
+        view.layoutParams = layoutParams
+        requestLayout()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        if (!hasGridSize) return
+
+        for (index in 0 until childCount) {
+            val child = getChildAt(index)
+            if (child.visibility == GONE) continue
+            val layoutParams = child.layoutParams as? LayoutParams ?: continue
+            val childWidth = (layoutParams.columnSpan * cellWidth).roundToInt().coerceAtLeast(1)
+            val childHeight = (layoutParams.rowSpan * cellHeight).roundToInt().coerceAtLeast(1)
+            child.measure(
+                MeasureSpec.makeMeasureSpec(childWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(childHeight, MeasureSpec.EXACTLY),
+            )
         }
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        for (index in 0 until childCount) {
+            val child = getChildAt(index)
+            if (child.visibility == GONE) continue
+            val layoutParams = child.layoutParams as? LayoutParams ?: continue
+            val childLeft = paddingLeft + (layoutParams.column * cellWidth).roundToInt()
+            val childTop = paddingTop + (layoutParams.row * cellHeight).roundToInt()
+            child.layout(
+                childLeft,
+                childTop,
+                childLeft + child.measuredWidth,
+                childTop + child.measuredHeight,
+            )
+        }
+    }
+
+    override fun generateDefaultLayoutParams(): LayoutParams {
+        return LayoutParams()
+    }
+
+    override fun generateLayoutParams(attrs: AttributeSet?): LayoutParams {
+        return LayoutParams(context, attrs)
+    }
+
+    override fun generateLayoutParams(layoutParams: ViewGroup.LayoutParams?): LayoutParams {
+        return when (layoutParams) {
+            is LayoutParams -> LayoutParams(layoutParams)
+            is ViewGroup.MarginLayoutParams -> LayoutParams(layoutParams)
+            null -> LayoutParams()
+            else -> LayoutParams(layoutParams)
+        }
+    }
+
+    override fun checkLayoutParams(layoutParams: ViewGroup.LayoutParams?): Boolean {
+        return layoutParams is LayoutParams
     }
 
     fun columnForDrag(rawColumn: Int, columnSpan: Int): Int {
@@ -86,5 +135,23 @@ class TodayWidgetGridView @JvmOverloads constructor(
         const val ROW_COUNT = 6
         const val MIN_COLUMN_SPAN = 2
         const val MIN_ROW_SPAN = 1
+    }
+
+    class LayoutParams : FrameLayout.LayoutParams {
+        var column: Int = 0
+        var row: Int = 0
+        var columnSpan: Int = MIN_COLUMN_SPAN
+        var rowSpan: Int = MIN_ROW_SPAN
+
+        constructor() : super(0, 0)
+        constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
+        constructor(layoutParams: ViewGroup.LayoutParams) : super(layoutParams)
+        constructor(layoutParams: ViewGroup.MarginLayoutParams) : super(layoutParams)
+        constructor(layoutParams: LayoutParams) : super(layoutParams) {
+            column = layoutParams.column
+            row = layoutParams.row
+            columnSpan = layoutParams.columnSpan
+            rowSpan = layoutParams.rowSpan
+        }
     }
 }

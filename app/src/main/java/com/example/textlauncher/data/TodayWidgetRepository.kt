@@ -23,6 +23,9 @@ class TodayWidgetRepository(context: Context) {
                     row = widget.getInt(FIELD_ROW),
                     columnSpan = widget.getInt(FIELD_COLUMN_SPAN),
                     rowSpan = widget.getInt(FIELD_ROW_SPAN),
+                    notificationAppPackageNames = widget.optJSONArray(FIELD_NOTIFICATION_APP_PACKAGE_NAMES)
+                        ?.toStringSet()
+                        .orEmpty(),
                 ).coerceToGrid()
             }
         }.getOrElse { defaultWidgets() }
@@ -39,7 +42,11 @@ class TodayWidgetRepository(context: Context) {
                     .put(FIELD_COLUMN, coerced.column)
                     .put(FIELD_ROW, coerced.row)
                     .put(FIELD_COLUMN_SPAN, coerced.columnSpan)
-                    .put(FIELD_ROW_SPAN, coerced.rowSpan),
+                    .put(FIELD_ROW_SPAN, coerced.rowSpan)
+                    .put(
+                        FIELD_NOTIFICATION_APP_PACKAGE_NAMES,
+                        JSONArray(coerced.notificationAppPackageNames.sorted()),
+                    ),
             )
         }
         preferences.edit {
@@ -62,6 +69,28 @@ class TodayWidgetRepository(context: Context) {
         )
     }
 
+    fun defaultNotificationFeedWidget(): TodayWidget {
+        return TodayWidget(
+            id = NOTIFICATION_FEED_WIDGET_ID,
+            type = TodayWidgetType.NotificationFeed,
+            column = 0,
+            row = 0,
+            columnSpan = MIN_COLUMN_SPAN,
+            rowSpan = MIN_ROW_SPAN,
+        )
+    }
+
+    fun defaultPinnedNoteWidget(): TodayWidget {
+        return TodayWidget(
+            id = PINNED_NOTE_WIDGET_ID,
+            type = TodayWidgetType.PinnedNote,
+            column = 0,
+            row = 0,
+            columnSpan = MIN_COLUMN_SPAN,
+            rowSpan = MIN_ROW_SPAN,
+        )
+    }
+
     private fun TodayWidget.coerceToGrid(): TodayWidget {
         val coercedColumnSpan = columnSpan.coerceIn(MIN_COLUMN_SPAN, GRID_COLUMNS)
         val coercedRowSpan = rowSpan.coerceIn(MIN_ROW_SPAN, GRID_ROWS)
@@ -73,6 +102,12 @@ class TodayWidgetRepository(context: Context) {
         )
     }
 
+    private fun JSONArray.toStringSet(): Set<String> {
+        return List(length()) { index -> optString(index) }
+            .filter { it.isNotBlank() }
+            .toSet()
+    }
+
     private companion object {
         const val PREFERENCES_NAME = "today_widgets"
         const val KEY_WIDGETS = "widgets"
@@ -82,7 +117,10 @@ class TodayWidgetRepository(context: Context) {
         const val FIELD_ROW = "row"
         const val FIELD_COLUMN_SPAN = "columnSpan"
         const val FIELD_ROW_SPAN = "rowSpan"
+        const val FIELD_NOTIFICATION_APP_PACKAGE_NAMES = "notificationAppPackageNames"
         const val NEXT_EVENT_WIDGET_ID = "next_event"
+        const val NOTIFICATION_FEED_WIDGET_ID = "notification_feed"
+        const val PINNED_NOTE_WIDGET_ID = "pinned_note"
         const val GRID_COLUMNS = 4
         const val GRID_ROWS = 6
         const val MIN_COLUMN_SPAN = 2
