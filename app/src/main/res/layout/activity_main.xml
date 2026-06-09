@@ -1089,38 +1089,6 @@
             android:background="@color/settings_option_divider" />
 
         <LinearLayout
-            android:id="@+id/showCalendarPageRow"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="24dp"
-            android:paddingEnd="20dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:gravity="center_vertical"
-                android:text="@string/show_calendar_page"
-                android:textColor="@color/launcher_text"
-                android:textSize="17sp" />
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/showCalendarPageSwitch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:useMaterialThemeColors="true" />
-
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="24dp"
-            android:background="@color/settings_option_divider" />
-
-        <LinearLayout
             android:id="@+id/showTodayPageRow"
             android:layout_width="match_parent"
             android:layout_height="64dp"
@@ -1140,6 +1108,38 @@
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/showTodayPageSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:useMaterialThemeColors="true" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/showCalendarPageRow"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="20dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/show_calendar_page"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/showCalendarPageSwitch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 app:useMaterialThemeColors="true" />

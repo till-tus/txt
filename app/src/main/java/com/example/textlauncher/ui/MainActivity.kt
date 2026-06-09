@@ -116,6 +116,7 @@ class MainActivity : AppCompatActivity() {
     private var isTodayEditMode = false
     private var isScreenTimeVisible = false
     private var isNoteEditorVisible = false
+    private var didOpenNoteEditorFromToday = false
     private var isScreenTimeExpanded = false
     private var isScreenTimeIntentionsExpanded = false
     private var appListMode = AppListMode.AddShortcut
@@ -3184,6 +3185,11 @@ class MainActivity : AppCompatActivity() {
         if (isNotesVisible) {
             binding.notesRoot.visibility = View.GONE
         }
+        didOpenNoteEditorFromToday = isTodayVisible
+        if (didOpenNoteEditorFromToday) {
+            binding.todayRoot.animate().cancel()
+            binding.todayRoot.visibility = View.GONE
+        }
         binding.noteEditorInput.setText(note?.text.orEmpty())
         binding.noteEditorInput.setSelection(binding.noteEditorInput.text?.length ?: 0)
         binding.noteEditorRoot.alpha = 0f
@@ -3207,6 +3213,10 @@ class MainActivity : AppCompatActivity() {
         if (isNotesVisible) {
             binding.notesRoot.visibility = View.VISIBLE
         }
+        if (didOpenNoteEditorFromToday && isTodayVisible) {
+            binding.todayRoot.visibility = View.VISIBLE
+        }
+        didOpenNoteEditorFromToday = false
     }
 
     private fun saveCurrentNote() {
