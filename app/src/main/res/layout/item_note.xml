@@ -30,6 +30,43 @@
         android:textColor="@color/launcher_text"
         android:textSize="18sp" />
 
+    <LinearLayout
+        android:id="@+id/voiceNoteRow"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/playVoiceNoteButton"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/play_voice_note"
+            android:padding="11dp"
+            android:src="@drawable/ic_play"
+            app:tint="@color/launcher_text" />
+
+        <com.example.textlauncher.ui.VoiceWaveformView
+            android:id="@+id/voiceWaveform"
+            android:layout_width="0dp"
+            android:layout_height="32dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/voiceNoteDuration"
+            android:layout_width="48dp"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical|end"
+            android:includeFontPadding="false"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="13sp" />
+
+    </LinearLayout>
+
     <ImageButton
         android:id="@+id/copyNoteButton"
         android:layout_width="48dp"

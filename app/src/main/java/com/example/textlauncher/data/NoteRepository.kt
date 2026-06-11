@@ -17,8 +17,14 @@ class NoteRepository(context: Context) {
                 val note = notes.getJSONObject(index)
                 QuickNote(
                     id = note.getLong(FIELD_ID),
-                    text = note.getString(FIELD_TEXT),
+                    text = note.optString(FIELD_TEXT),
                     isPinned = note.optBoolean(FIELD_IS_PINNED, false),
+                    audioFileName = note.optString(FIELD_AUDIO_FILE_NAME)
+                        .takeIf { it.isNotBlank() },
+                    audioDurationMillis = note.optLong(FIELD_AUDIO_DURATION_MILLIS, 0L),
+                    audioWaveform = note.optJSONArray(FIELD_AUDIO_WAVEFORM)
+                        ?.toIntList()
+                        .orEmpty(),
                 )
             }.withSinglePinnedNote()
         }.getOrElse { emptyList() }
@@ -32,7 +38,10 @@ class NoteRepository(context: Context) {
                     JSONObject()
                         .put(FIELD_ID, note.id)
                         .put(FIELD_TEXT, note.text)
-                        .put(FIELD_IS_PINNED, note.isPinned),
+                        .put(FIELD_IS_PINNED, note.isPinned)
+                        .put(FIELD_AUDIO_FILE_NAME, note.audioFileName.orEmpty())
+                        .put(FIELD_AUDIO_DURATION_MILLIS, note.audioDurationMillis)
+                        .put(FIELD_AUDIO_WAVEFORM, JSONArray(note.audioWaveform)),
                 )
             }
         }
@@ -55,11 +64,19 @@ class NoteRepository(context: Context) {
         }.sortedWith(compareByDescending<QuickNote> { it.isPinned }.thenBy { it.id })
     }
 
+    private fun JSONArray.toIntList(): List<Int> {
+        return List(length()) { index -> optInt(index) }
+            .map { it.coerceIn(0, 100) }
+    }
+
     private companion object {
         const val PREFERENCES_NAME = "quick_notes"
         const val KEY_NOTES = "notes"
         const val FIELD_ID = "id"
         const val FIELD_TEXT = "text"
         const val FIELD_IS_PINNED = "isPinned"
+        const val FIELD_AUDIO_FILE_NAME = "audioFileName"
+        const val FIELD_AUDIO_DURATION_MILLIS = "audioDurationMillis"
+        const val FIELD_AUDIO_WAVEFORM = "audioWaveform"
     }
 }

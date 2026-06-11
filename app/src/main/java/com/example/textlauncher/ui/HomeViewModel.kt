@@ -253,7 +253,25 @@ class HomeViewModel(
         }
     }
 
+    fun addVoiceNote(audioFileName: String, durationMillis: Long, waveform: List<Int>) {
+        if (audioFileName.isBlank() || durationMillis <= 0L) return
+
+        _uiState.update { state ->
+            val updatedNotes = state.notes + QuickNote(
+                id = System.currentTimeMillis(),
+                text = "",
+                audioFileName = audioFileName,
+                audioDurationMillis = durationMillis,
+                audioWaveform = waveform,
+            )
+            val sortedNotes = updatedNotes.sortedForNotesPage()
+            noteRepository.saveNotes(sortedNotes)
+            state.copy(notes = sortedNotes)
+        }
+    }
+
     fun updateNote(note: QuickNote, text: String) {
+        if (note.audioFileName != null) return
         val trimmedText = text.trim()
         _uiState.update { state ->
             val updatedNotes = if (trimmedText.isEmpty()) {
