@@ -23,7 +23,7 @@ The goal is simple: make the phone useful without making it irresistible.
 - Notes page for quick local notes.
 - Calendar page for upcoming events, with selectable calendars.
 - Today page with a small configurable widget grid for glanceable information.
-- Today widgets for the next calendar event, active notifications, and a pinned note.
+- Today widgets for weather, the next calendar event, active notifications, and a pinned note.
 - Pinned notes that stay at the top of the notes page and can appear on the Today page.
 - Configurable gestures for opening Screen Time or locking the screen.
 - Context menus for removing shortcuts, blocking apps, and starting Android's app uninstall flow.
@@ -41,6 +41,7 @@ This project is intentionally small, plain, and hackable. It favors Android plat
 Text Launcher can be set as your Android home app. Some features ask for optional permissions or use Android system capabilities:
 
 - Calendar access: used only to show upcoming calendar events in the launcher.
+- Approximate location and network access: used only by the Today weather widget to request current weather from Open-Meteo.
 - Notification access: optional Android special access, requested only when adding the notifications widget, used only to show active notifications on the Today page.
 - Usage access: used only to calculate screen-time summaries and app budget prompts.
 - Accessibility access: optional, used only when the lock-screen gesture is enabled and triggered. Text Launcher uses Android's lock-screen accessibility action instead of Device Admin so biometric unlock can continue to behave like a normal screen lock.

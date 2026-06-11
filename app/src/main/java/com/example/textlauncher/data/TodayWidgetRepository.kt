@@ -80,6 +80,17 @@ class TodayWidgetRepository(context: Context) {
         )
     }
 
+    fun defaultWeatherWidget(): TodayWidget {
+        return TodayWidget(
+            id = WEATHER_WIDGET_ID,
+            type = TodayWidgetType.Weather,
+            column = 0,
+            row = 0,
+            columnSpan = MIN_COLUMN_SPAN,
+            rowSpan = MIN_ROW_SPAN,
+        )
+    }
+
     fun defaultPinnedNoteWidget(): TodayWidget {
         return TodayWidget(
             id = PINNED_NOTE_WIDGET_ID,
@@ -119,6 +130,7 @@ class TodayWidgetRepository(context: Context) {
         const val FIELD_ROW_SPAN = "rowSpan"
         const val FIELD_NOTIFICATION_APP_PACKAGE_NAMES = "notificationAppPackageNames"
         const val NEXT_EVENT_WIDGET_ID = "next_event"
+        const val WEATHER_WIDGET_ID = "weather"
         const val NOTIFICATION_FEED_WIDGET_ID = "notification_feed"
         const val PINNED_NOTE_WIDGET_ID = "pinned_note"
         const val GRID_COLUMNS = 4

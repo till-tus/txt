@@ -12,6 +12,7 @@ data class TodayWidget(
 
 enum class TodayWidgetType {
     NextEvent,
+    Weather,
     NotificationFeed,
     PinnedNote,
 }

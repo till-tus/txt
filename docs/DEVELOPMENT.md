@@ -6,7 +6,7 @@ This guide is for contributors working on Text Launcher. It covers the local set
 
 Text Launcher is a native Android launcher written in Kotlin. It uses XML layouts with ViewBinding and keeps state local to the device through SharedPreferences and Android platform APIs.
 
-The app intentionally has no network permission and no analytics. Features that read personal device data, such as calendar events, active notifications, and app usage, should remain optional, local, and easy to explain.
+The app intentionally has no analytics. Features that read personal device data, such as calendar events, approximate location, active notifications, and app usage, should remain optional, narrowly scoped, and easy to explain.
 
 ## Requirements
 
@@ -61,6 +61,7 @@ The current storage model is intentionally plain:
 - `TodayNotificationCenter`: in-memory active-notification state for the Today notification widget.
 - `AppUsageIntentionRepository`: daily intended app-use minutes.
 - `CalendarRepository`: reads calendars and upcoming events through `CalendarContract`.
+- `OpenMeteoWeatherRepository`: fetches current temperature and precipitation probability for the Today weather widget.
 - `ScreenTimeRepository`: reads app usage through `UsageStatsManager`.
 - `InstalledAppsRepository`: lists launchable apps through `PackageManager`.
 
@@ -71,12 +72,14 @@ Keep business rules in small testable classes where possible. If behavior can be
 The app currently declares:
 
 - `READ_CALENDAR`: optional, used to show selected upcoming calendar events.
+- `ACCESS_COARSE_LOCATION`: optional, requested only for the Today weather widget.
+- `INTERNET`: used only by the Today weather widget to request current weather from Open-Meteo.
 - `BIND_NOTIFICATION_LISTENER_SERVICE`: required by Android for the optional notification listener service. The user grants notification access through Android settings when adding the Today notification widget.
 - `PACKAGE_USAGE_STATS`: optional special access, used for screen-time summaries and app budget prompts.
 - `REQUEST_DELETE_PACKAGES`: used only after the user chooses an uninstall action.
 - `BIND_ACCESSIBILITY_SERVICE`: required by Android for the optional lock-screen accessibility service.
 
-The manifest deliberately omits `INTERNET`, disables cleartext traffic, and disables app backup. Do not add network, analytics, sync, backup, or export behavior without updating `PRIVACY.md`, `SECURITY.md` when relevant, and this guide.
+The manifest disables cleartext traffic and app backup. Do not add analytics, sync, backup, export behavior, or new network uses beyond weather without updating `PRIVACY.md`, `SECURITY.md` when relevant, and this guide.
 
 Notification access should stay scoped to active notifications displayed by the Today widget. Do not persist notification content beyond the current in-memory feed without updating the privacy documentation and reviewing the change as privacy-sensitive.
 
