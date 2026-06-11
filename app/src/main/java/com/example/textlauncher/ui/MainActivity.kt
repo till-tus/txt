@@ -24,6 +24,8 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
+import android.location.Location
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
@@ -73,6 +75,7 @@ import com.example.textlauncher.data.CalendarRepository
 import com.example.textlauncher.data.InstalledAppsRepository
 import com.example.textlauncher.data.LauncherSettingsRepository
 import com.example.textlauncher.data.NoteRepository
+import com.example.textlauncher.data.OpenMeteoWeatherRepository
 import com.example.textlauncher.data.ScreenTimeRepository
 import com.example.textlauncher.data.ShortcutRepository
 import com.example.textlauncher.data.TodayNotificationCenter
@@ -94,9 +97,11 @@ import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TodayWidget
 import com.example.textlauncher.domain.TodayWidgetType
 import com.example.textlauncher.domain.TodayNotificationItem
+import com.example.textlauncher.domain.WeatherSnapshot
 import com.google.android.material.checkbox.MaterialCheckBox
 import java.text.DateFormat
 import java.util.Date
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -135,6 +140,11 @@ class MainActivity : AppCompatActivity() {
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
     private var todayWidgets = emptyList<TodayWidget>()
     private var todayNextEvent: CalendarEvent? = null
+    private var todayWeather: WeatherSnapshot? = null
+    private var todayWeatherError: String? = null
+    private var isTodayWeatherLoading = false
+    private var todayWeatherLoadedAtMillis = 0L
+    private var hasRequestedWeatherLocationPermission = false
     private var todayNotifications = emptyList<TodayNotificationItem>()
     private var currentNotes = emptyList<QuickNote>()
     private var editingNote: QuickNote? = null
@@ -179,6 +189,7 @@ class MainActivity : AppCompatActivity() {
     private val calendarRepository by lazy { CalendarRepository(applicationContext) }
     private val screenTimeRepository by lazy { ScreenTimeRepository(applicationContext) }
     private val todayWidgetRepository by lazy { TodayWidgetRepository(applicationContext) }
+    private val weatherRepository by lazy { OpenMeteoWeatherRepository() }
     private val requestCalendarPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
@@ -187,6 +198,16 @@ class MainActivity : AppCompatActivity() {
             refreshCalendars()
             refreshCalendarEvents()
             refreshTodayWidgets()
+        }
+    }
+    private val requestWeatherLocationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            refreshTodayWeather(force = true)
+        } else {
+            todayWeatherError = getString(R.string.today_weather_location_needed)
+            renderTodayWidgets()
         }
     }
     private val viewModel: HomeViewModel by viewModels {
@@ -1996,6 +2017,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             null
         }
+        refreshTodayWeather()
         renderTodayWidgets()
     }
 
@@ -2007,6 +2029,7 @@ class MainActivity : AppCompatActivity() {
         todayWidgets.forEach { widget ->
             val widgetView = when (widget.type) {
                 TodayWidgetType.NextEvent -> createNextEventWidgetView(widget)
+                TodayWidgetType.Weather -> createWeatherWidgetView(widget)
                 TodayWidgetType.NotificationFeed -> createNotificationFeedWidgetView(widget)
                 TodayWidgetType.PinnedNote -> createPinnedNoteWidgetView(widget)
             }
@@ -2088,6 +2111,93 @@ class MainActivity : AppCompatActivity() {
                         ellipsize = android.text.TextUtils.TruncateAt.END
                         includeFontPadding = false
                         layoutParams = android.widget.LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = 6.dp
+                        }
+                    },
+                )
+                layoutParams = android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                )
+            },
+        )
+
+        if (isTodayEditMode) {
+            addTodayResizeIndicator(container)
+            configureTodayWidgetDrag(container, widget)
+        }
+        return container
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun createWeatherWidgetView(widget: TodayWidget): View {
+        val weather = todayWeather
+        val container = android.widget.FrameLayout(this).apply {
+            tag = widget
+            background = todayWidgetBackground(isEditing = isTodayEditMode)
+            setPadding(16.dp, 12.dp, 16.dp, 12.dp)
+            isClickable = true
+            isLongClickable = true
+            setOnClickListener {
+                if (!isTodayEditMode) {
+                    if (hasWeatherLocationPermission()) {
+                        refreshTodayWeather(force = true)
+                    } else {
+                        requestWeatherLocationPermissionFromToday()
+                    }
+                }
+            }
+            setOnLongClickListener {
+                if (isTodayEditMode) {
+                    showTodayWidgetContextMenu(it, widget)
+                } else {
+                    enterTodayEditMode()
+                }
+                true
+            }
+        }
+
+        container.addView(
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.TOP or android.view.Gravity.START
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = getString(R.string.today_weather_title)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        includeFontPadding = false
+                    },
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = weatherPrimaryText(weather)
+                        setTextColor(getColor(R.color.launcher_text))
+                        textSize = 28f
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                        layoutParams = LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ).apply {
+                            topMargin = 5.dp
+                        }
+                    },
+                )
+                addView(
+                    TextView(this@MainActivity).apply {
+                        text = weatherSecondaryText(weather)
+                        setTextColor(getColor(R.color.launcher_text_secondary))
+                        textSize = 13f
+                        maxLines = 1
+                        ellipsize = android.text.TextUtils.TruncateAt.END
+                        includeFontPadding = false
+                        layoutParams = LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.WRAP_CONTENT,
                         ).apply {
@@ -2436,6 +2546,100 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun weatherPrimaryText(weather: WeatherSnapshot?): String {
+        return when {
+            !hasWeatherLocationPermission() -> getString(R.string.today_weather_location_needed)
+            isTodayWeatherLoading -> getString(R.string.today_weather_loading)
+            weather != null -> getString(
+                R.string.today_weather_temp,
+                weather.temperatureCelsius.roundToInt(),
+            )
+            else -> todayWeatherError ?: getString(R.string.today_weather_unavailable)
+        }
+    }
+
+    private fun weatherSecondaryText(weather: WeatherSnapshot?): String {
+        return when {
+            !hasWeatherLocationPermission() -> getString(R.string.today_weather_location_action)
+            weather?.precipitationChancePercent != null -> getString(
+                R.string.today_weather_precipitation,
+                weather.precipitationChancePercent,
+            )
+            weather != null -> getString(R.string.today_weather_precipitation_unknown)
+            else -> ""
+        }
+    }
+
+    private fun refreshTodayWeather(force: Boolean = false) {
+        if (todayWidgets.none { it.type == TodayWidgetType.Weather }) return
+        if (!hasWeatherLocationPermission()) {
+            todayWeatherError = getString(R.string.today_weather_location_needed)
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (
+            !force &&
+            (isTodayWeatherLoading || (todayWeather != null && now - todayWeatherLoadedAtMillis < WEATHER_CACHE_MS))
+        ) {
+            return
+        }
+        val location = currentWeatherLocation()
+        if (location == null) {
+            todayWeatherError = getString(R.string.today_weather_unavailable)
+            return
+        }
+        isTodayWeatherLoading = true
+        todayWeatherError = null
+        lifecycleScope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    weatherRepository.loadCurrentWeather(location.latitude, location.longitude)
+                }
+            }
+            isTodayWeatherLoading = false
+            result.onSuccess { weather ->
+                todayWeather = weather
+                todayWeatherLoadedAtMillis = System.currentTimeMillis()
+                todayWeatherError = null
+            }.onFailure {
+                todayWeatherError = getString(R.string.today_weather_unavailable)
+            }
+            if (isTodayVisible) {
+                renderTodayWidgets()
+            }
+        }
+    }
+
+    private fun hasWeatherLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestWeatherLocationPermissionFromToday() {
+        if (
+            hasRequestedWeatherLocationPermission &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)
+        ) {
+            openAppPermissionSettings()
+        } else {
+            hasRequestedWeatherLocationPermission = true
+            requestWeatherLocationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun currentWeatherLocation(): Location? {
+        if (!hasWeatherLocationPermission()) return null
+        val locationManager = getSystemService(LocationManager::class.java)
+        return locationManager.getProviders(true)
+            .mapNotNull { provider ->
+                runCatching { locationManager.getLastKnownLocation(provider) }.getOrNull()
+            }
+            .maxByOrNull { it.time }
+    }
+
     private fun requestCalendarPermissionFromToday() {
         if (hasRequestedCalendarPermission && !shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR)) {
             openAppPermissionSettings()
@@ -2504,6 +2708,7 @@ class MainActivity : AppCompatActivity() {
         return getString(
             when (type) {
                 TodayWidgetType.NextEvent -> R.string.today_next_event_title
+                TodayWidgetType.Weather -> R.string.today_weather_title
                 TodayWidgetType.NotificationFeed -> R.string.today_notification_feed_title
                 TodayWidgetType.PinnedNote -> R.string.today_pinned_note_title
             },
@@ -2519,6 +2724,7 @@ class MainActivity : AppCompatActivity() {
         }
         val widget = when (type) {
             TodayWidgetType.NextEvent -> todayWidgetRepository.defaultNextEventWidget()
+            TodayWidgetType.Weather -> todayWidgetRepository.defaultWeatherWidget()
             TodayWidgetType.NotificationFeed -> todayWidgetRepository.defaultNotificationFeedWidget()
             TodayWidgetType.PinnedNote -> todayWidgetRepository.defaultPinnedNoteWidget()
         }.copy(
@@ -2533,6 +2739,13 @@ class MainActivity : AppCompatActivity() {
         if (type == TodayWidgetType.NotificationFeed && !hasNotificationAccess()) {
             Toast.makeText(this, R.string.today_notification_access_prompt, Toast.LENGTH_LONG).show()
             openNotificationAccessSettings()
+        }
+        if (type == TodayWidgetType.Weather) {
+            if (hasWeatherLocationPermission()) {
+                refreshTodayWeather(force = true)
+            } else {
+                requestWeatherLocationPermissionFromToday()
+            }
         }
     }
 
@@ -3777,6 +3990,7 @@ class MainActivity : AppCompatActivity() {
         const val TODAY_WIDGET_EDIT_STROKE_DP = 1
         const val DISABLED_ACTION_ALPHA = 0.34f
         const val MILLIS_PER_MINUTE = 60_000L
+        const val WEATHER_CACHE_MS = 30 * MILLIS_PER_MINUTE
         const val MINUTES_PER_HOUR = 60L
         const val SETTINGS_FADE_MS = 160L
         const val SCREEN_TIME_FADE_MS = 180L

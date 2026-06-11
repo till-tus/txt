@@ -23,6 +23,7 @@ This data is stored with Android shared preferences.
 Text Launcher can request:
 
 - Calendar access, to show upcoming events from selected calendars.
+- Approximate location, to request current weather for the Today page weather widget.
 - Notification access, to show active notifications in the Today page notification widget. This access is requested only when that widget is added.
 - Usage access, to show screen-time summaries and compare app usage against daily budgets.
 - Accessibility access, only to lock the screen when the configured lock-screen gesture is used.
@@ -35,7 +36,7 @@ Text Launcher can ask Android to uninstall an app when you choose Uninstall from
 
 ## Network
 
-The current app does not include a network permission and is not designed to collect analytics.
+The Today page weather widget uses Open-Meteo to fetch current weather for the device's approximate location. The app is not designed to collect analytics, and no calendar events, notifications, usage stats, notes, shortcuts, app budgets, blocked-app selections, or intention entries should be sent over the network.
 
 ## Backups
 

@@ -100,6 +100,14 @@
     <string name="today_calendar_permission_prompt">Calendar access needed</string>
     <string name="today_next_event_all_day">All day - %1$s</string>
     <string name="today_next_event_time">%1$s - %2$s</string>
+    <string name="today_weather_title">Weather</string>
+    <string name="today_weather_loading">Loading</string>
+    <string name="today_weather_location_needed">Location needed</string>
+    <string name="today_weather_location_action">Tap to enable</string>
+    <string name="today_weather_unavailable">Weather unavailable</string>
+    <string name="today_weather_temp">%1$d°</string>
+    <string name="today_weather_precipitation">%1$d%% precip</string>
+    <string name="today_weather_precipitation_unknown">Precip unknown</string>
     <string name="today_notification_feed_title">Notifications</string>
     <string name="today_notification_feed_empty">No notifications</string>
     <string name="today_notification_access_needed">Notification access needed</string>
