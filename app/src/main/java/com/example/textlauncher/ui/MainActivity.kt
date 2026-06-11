@@ -2274,6 +2274,7 @@ class MainActivity : AppCompatActivity() {
                             addNotificationTextRow(
                                 title = notification.title,
                                 text = notificationSubtitle(notification),
+                                notification = notification,
                             )
                         }
                     }
@@ -2292,11 +2293,24 @@ class MainActivity : AppCompatActivity() {
         return container
     }
 
-    private fun LinearLayout.addNotificationTextRow(title: String, text: String) {
+    private fun LinearLayout.addNotificationTextRow(
+        title: String,
+        text: String,
+        notification: TodayNotificationItem? = null,
+    ) {
         addView(
             LinearLayout(this@MainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.TOP or android.view.Gravity.START
+                if (notification != null) {
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        if (!isTodayEditMode) {
+                            launchNotificationSourceApp(notification)
+                        }
+                    }
+                }
                 addView(
                     TextView(this@MainActivity).apply {
                         this.text = title
@@ -2333,6 +2347,22 @@ class MainActivity : AppCompatActivity() {
                     topMargin = 8.dp
                 }
             },
+        )
+    }
+
+    private fun launchNotificationSourceApp(notification: TodayNotificationItem) {
+        val launchIntent = packageManager.getLaunchIntentForPackage(notification.packageName)
+        val componentName = launchIntent?.component ?: launchIntent?.resolveActivity(packageManager)
+        if (componentName == null) {
+            showQuickAccessUnavailable()
+            return
+        }
+        launchShortcutWithAppBlocking(
+            AppShortcut(
+                label = notification.appLabel,
+                packageName = componentName.packageName,
+                activityName = componentName.className,
+            ),
         )
     }
 
