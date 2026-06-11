@@ -89,6 +89,7 @@
     <string name="app_blocking_proceed_countdown">Proceed (%1$d)</string>
     <string name="app_blocking_cancel">Cancel</string>
     <string name="notes_page_title">Notes</string>
+    <string name="voice_notes_mode">Voice notes</string>
     <string name="today_page_title">Today</string>
     <string name="today_edit_mode_label">Edit Today</string>
     <string name="today_add_widget">Add widget</string>
@@ -121,6 +122,15 @@
     <string name="today_widget_no_space">Change the layout to make space</string>
     <string name="today_widget_none_available">No widgets available</string>
     <string name="add_note">Add note</string>
+    <string name="start_voice_note">Start voice note</string>
+    <string name="stop_voice_note">Stop voice note</string>
+    <string name="play_voice_note">Play voice note</string>
+    <string name="pause_voice_note">Pause voice note</string>
+    <string name="voice_note_label">Voice note</string>
+    <string name="voice_note_recording">Recording</string>
+    <string name="voice_note_recording_failed">Could not record voice note</string>
+    <string name="voice_note_unavailable">Voice note unavailable</string>
+    <string name="microphone_permission_prompt">Microphone access is needed to record voice notes.</string>
     <string name="copy_note">Copy note</string>
     <string name="note_copied">Copied</string>
     <string name="pin_note">Pin</string>

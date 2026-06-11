@@ -20,7 +20,7 @@ The goal is simple: make the phone useful without making it irresistible.
 - App blocking prompts that slow down impulsive launches.
 - Daily app budgets for selected apps.
 - Intention tracking so each intentional app launch can be paired with a planned duration.
-- Notes page for quick local notes.
+- Notes page for quick local text notes and optional voice notes.
 - Calendar page for upcoming events, with selectable calendars.
 - Today page with a small configurable widget grid for glanceable information.
 - Today widgets for weather, the next calendar event, active notifications, and a pinned note.
@@ -42,12 +42,13 @@ Text Launcher can be set as your Android home app. Some features ask for optiona
 
 - Calendar access: used only to show upcoming calendar events in the launcher.
 - Approximate location and network access: used only by the Today weather widget to request current weather from Open-Meteo.
+- Microphone access: optional, requested only when starting a voice-note recording.
 - Notification access: optional Android special access, requested only when adding the notifications widget, used only to show active notifications on the Today page.
 - Usage access: used only to calculate screen-time summaries and app budget prompts.
 - Accessibility access: optional, used only when the lock-screen gesture is enabled and triggered. Text Launcher uses Android's lock-screen accessibility action instead of Device Admin so biometric unlock can continue to behave like a normal screen lock.
 - Package deletion request: used only when you choose Uninstall from an app context menu. Android still shows its normal uninstall confirmation flow, and Text Launcher removes shortcuts for apps after they are uninstalled.
 
-The app stores launcher settings, Today widget layout, notes, shortcuts, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
+The app stores launcher settings, Today widget layout, text notes, voice-note audio, shortcuts, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
 
 ## Requirements
 

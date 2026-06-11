@@ -6,7 +6,7 @@ This guide is for contributors working on Text Launcher. It covers the local set
 
 Text Launcher is a native Android launcher written in Kotlin. It uses XML layouts with ViewBinding and keeps state local to the device through SharedPreferences and Android platform APIs.
 
-The app intentionally has no analytics. Features that read personal device data, such as calendar events, approximate location, active notifications, and app usage, should remain optional, narrowly scoped, and easy to explain.
+The app intentionally has no analytics. Features that read or capture personal device data, such as calendar events, approximate location, microphone audio, active notifications, and app usage, should remain optional, narrowly scoped, and easy to explain.
 
 ## Requirements
 
@@ -56,7 +56,7 @@ The current storage model is intentionally plain:
 
 - `LauncherSettingsRepository`: preferences for visible pages, gestures, shortcut limits, app budgets, blocked apps, and selected calendar IDs.
 - `ShortcutRepository`: chosen home-screen shortcuts.
-- `NoteRepository`: quick notes.
+- `NoteRepository`: quick text notes and voice-note metadata.
 - `TodayWidgetRepository`: Today page widget layout and widget configuration.
 - `TodayNotificationCenter`: in-memory active-notification state for the Today notification widget.
 - `AppUsageIntentionRepository`: daily intended app-use minutes.
@@ -73,6 +73,7 @@ The app currently declares:
 
 - `READ_CALENDAR`: optional, used to show selected upcoming calendar events.
 - `ACCESS_COARSE_LOCATION`: optional, requested only for the Today weather widget.
+- `RECORD_AUDIO`: optional, requested only when the user starts recording a voice note.
 - `INTERNET`: used only by the Today weather widget to request current weather from Open-Meteo.
 - `BIND_NOTIFICATION_LISTENER_SERVICE`: required by Android for the optional notification listener service. The user grants notification access through Android settings when adding the Today notification widget.
 - `PACKAGE_USAGE_STATS`: optional special access, used for screen-time summaries and app budget prompts.
@@ -82,6 +83,8 @@ The app currently declares:
 The manifest disables cleartext traffic and app backup. Do not add analytics, sync, backup, export behavior, or new network uses beyond weather without updating `PRIVACY.md`, `SECURITY.md` when relevant, and this guide.
 
 Notification access should stay scoped to active notifications displayed by the Today widget. Do not persist notification content beyond the current in-memory feed without updating the privacy documentation and reviewing the change as privacy-sensitive.
+
+Voice-note audio should stay in app-private storage, remain local-only, and be deleted when its note is deleted. Do not add transcription, sync, export, or sharing without updating the privacy documentation and reviewing the change as privacy-sensitive.
 
 ## Public-Readiness Checklist
 

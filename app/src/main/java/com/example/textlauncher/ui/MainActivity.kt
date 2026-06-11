@@ -26,9 +26,13 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.location.Location
 import android.location.LocationManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Bundle
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.Process
 import android.provider.MediaStore
 import android.provider.CalendarContract
@@ -99,8 +103,10 @@ import com.example.textlauncher.domain.TodayWidgetType
 import com.example.textlauncher.domain.TodayNotificationItem
 import com.example.textlauncher.domain.WeatherSnapshot
 import com.google.android.material.checkbox.MaterialCheckBox
+import java.io.File
 import java.text.DateFormat
 import java.util.Date
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -148,6 +154,17 @@ class MainActivity : AppCompatActivity() {
     private var todayNotifications = emptyList<TodayNotificationItem>()
     private var currentNotes = emptyList<QuickNote>()
     private var editingNote: QuickNote? = null
+    private var noteInputMode = NoteInputMode.Text
+    private var voiceNoteRecorder: MediaRecorder? = null
+    private var voiceNoteRecordingFile: File? = null
+    private var voiceNoteRecordingStartedAtMillis = 0L
+    private var voiceNoteSamples = mutableListOf<Int>()
+    private var voiceNotePlayer: MediaPlayer? = null
+    private var playingVoiceNoteId: Long? = null
+    private var isVoicePlaybackPlaying = false
+    private var voicePlaybackProgressFraction = 0f
+    private var todayPinnedVoiceWaveform: VoiceWaveformView? = null
+    private var todayPinnedVoicePlayButton: android.widget.ImageButton? = null
     private var pageSwipeStartX = 0f
     private var pageSwipeStartY = 0f
     private var activePageSwipeTarget: PageSwipeTarget? = null
@@ -184,6 +201,20 @@ class MainActivity : AppCompatActivity() {
     private var wasSettingsImeVisible = false
     private var editModePulseAnimator: ValueAnimator? = null
     private var renderedShortcutCount = 0
+    private val voiceNoteSampleHandler = Handler(Looper.getMainLooper())
+    private val voiceNoteSampleRunnable = object : Runnable {
+        override fun run() {
+            sampleVoiceNoteAmplitude()
+            voiceNoteSampleHandler.postDelayed(this, VOICE_NOTE_SAMPLE_INTERVAL_MS)
+        }
+    }
+    private val voiceNotePlaybackProgressHandler = Handler(Looper.getMainLooper())
+    private val voiceNotePlaybackProgressRunnable = object : Runnable {
+        override fun run() {
+            updateVoiceNotePlaybackProgress()
+            voiceNotePlaybackProgressHandler.postDelayed(this, VOICE_NOTE_PLAYBACK_PROGRESS_INTERVAL_MS)
+        }
+    }
     private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
     private val calendarRepository by lazy { CalendarRepository(applicationContext) }
@@ -208,6 +239,15 @@ class MainActivity : AppCompatActivity() {
         } else {
             todayWeatherError = getString(R.string.today_weather_location_needed)
             renderTodayWidgets()
+        }
+    }
+    private val requestMicrophonePermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { isGranted ->
+        if (isGranted) {
+            startVoiceNoteRecording()
+        } else {
+            Toast.makeText(this, R.string.microphone_permission_prompt, Toast.LENGTH_LONG).show()
         }
     }
     private val viewModel: HomeViewModel by viewModels {
@@ -269,7 +309,13 @@ class MainActivity : AppCompatActivity() {
         binding.appPickerList.layoutManager = LinearLayoutManager(this)
         binding.appPickerList.adapter = appPickerAdapter
 
-        noteAdapter = NoteAdapter(::showNoteEditor, ::copyNote, ::showNoteContextMenu)
+        noteAdapter = NoteAdapter(
+            ::showNoteEditor,
+            ::copyNote,
+            ::showNoteContextMenu,
+            ::toggleVoiceNotePlayback,
+            ::resetVoiceNotePlaybackFromNotesList,
+        )
         binding.notesList.layoutManager = LinearLayoutManager(this)
         binding.notesList.addItemDecoration(NotesDividerDecoration(this))
         binding.notesList.adapter = noteAdapter
@@ -349,11 +395,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        stopVoiceNoteRecording(save = true)
+        stopVoiceNotePlayback()
         resetInFlightAppListDrag()
         super.onStop()
     }
 
     override fun onDestroy() {
+        stopVoiceNoteRecording(save = false)
+        releaseVoiceNotePlayer()
         resetInFlightAppListDrag()
         unregisterReceiver(packageRemovedReceiver)
         appBlockPromptController.cancel()
@@ -1508,7 +1558,15 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     private fun configureNotes() {
         binding.addNoteButton.setOnClickListener {
-            showNoteEditor(note = null)
+            when {
+                noteInputMode == NoteInputMode.Text -> showNoteEditor(note = null)
+                voiceNoteRecorder == null -> requestVoiceNoteRecording()
+                else -> stopVoiceNoteRecording(save = true)
+            }
+        }
+        binding.addNoteButton.setOnLongClickListener {
+            toggleNoteInputMode()
+            true
         }
         binding.saveNoteButton.setOnClickListener {
             saveCurrentNote()
@@ -1528,6 +1586,7 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
+        updateAddNoteButton()
 
     }
 
@@ -1541,6 +1600,51 @@ class MainActivity : AppCompatActivity() {
                 requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
             }
         }
+    }
+
+    private fun toggleNoteInputMode() {
+        if (voiceNoteRecorder != null) return
+        noteInputMode = when (noteInputMode) {
+            NoteInputMode.Text -> NoteInputMode.Voice
+            NoteInputMode.Voice -> NoteInputMode.Text
+        }
+        performLightHapticFeedback()
+        updateAddNoteButton()
+    }
+
+    private fun updateAddNoteButton() {
+        val icon = when {
+            voiceNoteRecorder != null -> R.drawable.ic_stop
+            noteInputMode == NoteInputMode.Voice -> R.drawable.ic_mic
+            else -> R.drawable.ic_edit
+        }
+        val description = when {
+            voiceNoteRecorder != null -> R.string.stop_voice_note
+            noteInputMode == NoteInputMode.Voice -> R.string.start_voice_note
+            else -> R.string.add_note
+        }
+        binding.addNoteButton.setImageResource(icon)
+        binding.addNoteButton.contentDescription = getString(description)
+        binding.notesTitle.text = when {
+            voiceNoteRecorder != null -> getString(R.string.voice_note_recording)
+            noteInputMode == NoteInputMode.Voice -> getString(R.string.voice_notes_mode)
+            else -> getString(R.string.notes_page_title)
+        }
+    }
+
+    private fun requestVoiceNoteRecording() {
+        if (hasMicrophonePermission()) {
+            startVoiceNoteRecording()
+        } else {
+            requestMicrophonePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun hasMicrophonePermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2023,6 +2127,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderTodayWidgets() {
         binding.todayWidgetGrid.isEditingWidgets = isTodayEditMode
+        todayPinnedVoiceWaveform = null
+        todayPinnedVoicePlayButton = null
         binding.todayWidgetGrid.removeAllViews()
         if (todayWidgets.isEmpty()) return
 
@@ -2377,7 +2483,11 @@ class MainActivity : AppCompatActivity() {
             isLongClickable = true
             setOnClickListener {
                 if (!isTodayEditMode && pinnedNote != null) {
-                    showNoteEditor(pinnedNote)
+                    if (pinnedNote.audioFileName == null) {
+                        showNoteEditor(pinnedNote)
+                    } else {
+                        toggleVoiceNotePlayback(pinnedNote)
+                    }
                 }
             }
             setOnLongClickListener {
@@ -2403,22 +2513,26 @@ class MainActivity : AppCompatActivity() {
                         includeFontPadding = false
                     },
                 )
-                addView(
-                    TextView(this@MainActivity).apply {
-                        text = pinnedNote?.text ?: getString(R.string.today_pinned_note_empty)
-                        setTextColor(getColor(R.color.launcher_text))
-                        textSize = 17f
-                        maxLines = (widget.rowSpan * 2).coerceAtLeast(2)
-                        ellipsize = android.text.TextUtils.TruncateAt.END
-                        includeFontPadding = false
-                        layoutParams = LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ).apply {
-                            topMargin = 8.dp
-                        }
-                    },
-                )
+                if (pinnedNote?.audioFileName == null) {
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = pinnedNote?.displayText() ?: getString(R.string.today_pinned_note_empty)
+                            setTextColor(getColor(R.color.launcher_text))
+                            textSize = 17f
+                            maxLines = (widget.rowSpan * 2).coerceAtLeast(2)
+                            ellipsize = android.text.TextUtils.TruncateAt.END
+                            includeFontPadding = false
+                            layoutParams = LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ).apply {
+                                topMargin = 8.dp
+                            }
+                        },
+                    )
+                } else {
+                    addView(createPinnedVoiceNotePlaybackRow(pinnedNote))
+                }
                 layoutParams = android.widget.FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT,
@@ -2431,6 +2545,59 @@ class MainActivity : AppCompatActivity() {
             configureTodayWidgetDrag(container, widget)
         }
         return container
+    }
+
+    private fun createPinnedVoiceNotePlaybackRow(note: QuickNote): View {
+        val isActive = note.id == playingVoiceNoteId
+        val isPlaying = isActive && isVoicePlaybackPlaying
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                48.dp,
+            ).apply {
+                topMargin = 8.dp
+            }
+            val playButton = android.widget.ImageButton(this@MainActivity).apply {
+                setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+                contentDescription = getString(if (isPlaying) R.string.pause_voice_note else R.string.play_voice_note)
+                background = ColorDrawable(Color.TRANSPARENT)
+                setColorFilter(getColor(R.color.launcher_text))
+                setPadding(11.dp, 11.dp, 11.dp, 11.dp)
+                layoutParams = LinearLayout.LayoutParams(44.dp, 44.dp)
+                setOnClickListener {
+                    if (!isTodayEditMode) {
+                        toggleVoiceNotePlayback(note)
+                    }
+                }
+            }
+            val waveform = VoiceWaveformView(this@MainActivity).apply {
+                samples = note.audioWaveform
+                progressFraction = if (isActive) voicePlaybackProgressFraction else 0f
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    32.dp,
+                    1f,
+                ).apply {
+                    marginStart = 6.dp
+                }
+            }
+            addView(playButton)
+            addView(waveform)
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = formatVoiceNoteDuration(note.audioDurationMillis)
+                    setTextColor(getColor(R.color.launcher_text_secondary))
+                    textSize = 13f
+                    gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END
+                    includeFontPadding = false
+                    layoutParams = LinearLayout.LayoutParams(48.dp, ViewGroup.LayoutParams.MATCH_PARENT)
+                },
+            )
+            todayPinnedVoicePlayButton = playButton
+            todayPinnedVoiceWaveform = waveform
+        }
     }
 
     private fun addTodayResizeIndicator(container: android.widget.FrameLayout) {
@@ -3330,6 +3497,10 @@ class MainActivity : AppCompatActivity() {
                     viewModel.setNotePinned(note, !note.isPinned)
                 },
                 ContextMenuAction(getString(R.string.delete_note)) {
+                    if (note.id == playingVoiceNoteId) {
+                        stopVoiceNotePlayback()
+                    }
+                    deleteVoiceNoteFile(note)
                     viewModel.deleteNote(note)
                 },
             ),
@@ -3631,6 +3802,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showNoteEditor(note: QuickNote?) {
+        if (note?.audioFileName != null) return
         editingNote = note
         isNoteEditorVisible = true
         if (isNotesVisible) {
@@ -3682,9 +3854,234 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun copyNote(note: QuickNote) {
+        if (note.audioFileName != null) return
         val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.setPrimaryClip(ClipData.newPlainText(getString(R.string.copy_note), note.text))
         Toast.makeText(this, R.string.note_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun QuickNote.displayText(): String {
+        return if (audioFileName == null) text else getString(R.string.voice_note_label)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startVoiceNoteRecording() {
+        if (voiceNoteRecorder != null || !hasMicrophonePermission()) return
+        stopVoiceNotePlayback()
+        val outputFile = File(voiceNotesDirectory(), "voice_note_${System.currentTimeMillis()}.m4a")
+        val recorder = createVoiceNoteRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(64_000)
+            setAudioSamplingRate(44_100)
+            setOutputFile(outputFile.absolutePath)
+        }
+        runCatching {
+            recorder.prepare()
+            recorder.start()
+        }.onSuccess {
+            voiceNoteRecorder = recorder
+            voiceNoteRecordingFile = outputFile
+            voiceNoteRecordingStartedAtMillis = System.currentTimeMillis()
+            voiceNoteSamples = mutableListOf()
+            voiceNoteSampleHandler.post(voiceNoteSampleRunnable)
+            performLightHapticFeedback()
+            updateAddNoteButton()
+        }.onFailure {
+            recorder.release()
+            outputFile.delete()
+            Toast.makeText(this, R.string.voice_note_recording_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopVoiceNoteRecording(save: Boolean) {
+        val recorder = voiceNoteRecorder ?: return
+        val outputFile = voiceNoteRecordingFile
+        voiceNoteSampleHandler.removeCallbacks(voiceNoteSampleRunnable)
+        voiceNoteRecorder = null
+        voiceNoteRecordingFile = null
+        val durationMillis = System.currentTimeMillis() - voiceNoteRecordingStartedAtMillis
+        voiceNoteRecordingStartedAtMillis = 0L
+        val samples = voiceNoteSamples.toList()
+        voiceNoteSamples = mutableListOf()
+        val didStop = runCatching { recorder.stop() }.isSuccess
+        recorder.release()
+        if (save && didStop && outputFile != null && outputFile.exists() && durationMillis >= MIN_VOICE_NOTE_DURATION_MS) {
+            viewModel.addVoiceNote(
+                audioFileName = outputFile.name,
+                durationMillis = durationMillis,
+                waveform = samples.normalizedVoiceWaveform(),
+            )
+        } else {
+            outputFile?.delete()
+        }
+        performLightHapticFeedback()
+        updateAddNoteButton()
+    }
+
+    private fun sampleVoiceNoteAmplitude() {
+        val recorder = voiceNoteRecorder ?: return
+        val sample = runCatching { recorder.maxAmplitude }.getOrDefault(0)
+        val normalized = ((sample.coerceAtLeast(0) / MAX_MEDIA_RECORDER_AMPLITUDE.toFloat()) * 100f)
+            .roundToInt()
+            .coerceIn(0, 100)
+        voiceNoteSamples.add(normalized)
+        if (voiceNoteSamples.size > MAX_VOICE_WAVEFORM_SAMPLES) {
+            voiceNoteSamples.removeAt(0)
+        }
+    }
+
+    private fun toggleVoiceNotePlayback(note: QuickNote) {
+        val audioFileName = note.audioFileName ?: return
+        if (note.id == playingVoiceNoteId) {
+            if (voiceNotePlayer?.isPlaying == true) {
+                pauseVoiceNotePlayback()
+            } else {
+                resumeVoiceNotePlayback()
+            }
+            return
+        }
+        stopVoiceNotePlayback()
+        val audioFile = File(voiceNotesDirectory(), audioFileName)
+        if (!audioFile.exists()) {
+            Toast.makeText(this, R.string.voice_note_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val player = MediaPlayer().apply {
+            setDataSource(audioFile.absolutePath)
+            setOnCompletionListener {
+                stopVoiceNotePlayback()
+            }
+        }
+        runCatching {
+            player.prepare()
+            player.start()
+        }.onSuccess {
+            voiceNotePlayer = player
+            playingVoiceNoteId = note.id
+            isVoicePlaybackPlaying = true
+            voicePlaybackProgressFraction = 0f
+            noteAdapter.playingVoiceNoteId = playingVoiceNoteId
+            noteAdapter.isVoicePlaybackPlaying = isVoicePlaybackPlaying
+            updateVoiceNotePlaybackProgress()
+            voiceNotePlaybackProgressHandler.post(voiceNotePlaybackProgressRunnable)
+            updateTodayPinnedVoicePlaybackUi()
+        }.onFailure {
+            player.release()
+            Toast.makeText(this, R.string.voice_note_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun pauseVoiceNotePlayback() {
+        val player = voiceNotePlayer ?: return
+        updateVoiceNotePlaybackProgress()
+        runCatching { player.pause() }
+        voiceNotePlaybackProgressHandler.removeCallbacks(voiceNotePlaybackProgressRunnable)
+        isVoicePlaybackPlaying = false
+        noteAdapter.isVoicePlaybackPlaying = false
+        updateTodayPinnedVoicePlaybackUi()
+    }
+
+    private fun resumeVoiceNotePlayback() {
+        val player = voiceNotePlayer ?: return
+        runCatching { player.start() }.onSuccess {
+            isVoicePlaybackPlaying = true
+            noteAdapter.isVoicePlaybackPlaying = true
+            updateVoiceNotePlaybackProgress()
+            voiceNotePlaybackProgressHandler.post(voiceNotePlaybackProgressRunnable)
+            updateTodayPinnedVoicePlaybackUi()
+        }.onFailure {
+            stopVoiceNotePlayback()
+            Toast.makeText(this, R.string.voice_note_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun resetVoiceNotePlaybackFromNotesList(note: QuickNote) {
+        if (note.id != playingVoiceNoteId) return
+        val player = voiceNotePlayer ?: return
+        runCatching { player.seekTo(0) }.onFailure { return }
+        voicePlaybackProgressFraction = 0f
+        noteAdapter.voicePlaybackProgressFraction = 0f
+        updateTodayPinnedVoicePlaybackUi()
+        if (player.isPlaying) {
+            updateVoiceNotePlaybackProgress()
+        }
+    }
+
+    private fun stopVoiceNotePlayback() {
+        voiceNotePlaybackProgressHandler.removeCallbacks(voiceNotePlaybackProgressRunnable)
+        releaseVoiceNotePlayer()
+        playingVoiceNoteId = null
+        isVoicePlaybackPlaying = false
+        voicePlaybackProgressFraction = 0f
+        if (::noteAdapter.isInitialized) {
+            noteAdapter.voicePlaybackProgressFraction = 0f
+            noteAdapter.isVoicePlaybackPlaying = false
+            noteAdapter.playingVoiceNoteId = null
+        }
+        updateTodayPinnedVoicePlaybackUi()
+    }
+
+    private fun updateVoiceNotePlaybackProgress() {
+        val player = voiceNotePlayer ?: return
+        val duration = player.duration.takeIf { it > 0 } ?: return
+        voicePlaybackProgressFraction = player.currentPosition / duration.toFloat()
+        noteAdapter.voicePlaybackProgressFraction = voicePlaybackProgressFraction
+        updateTodayPinnedVoicePlaybackUi()
+    }
+
+    private fun updateTodayPinnedVoicePlaybackUi() {
+        val pinnedNote = currentNotes.firstOrNull { it.isPinned && it.audioFileName != null }
+        val isActive = pinnedNote?.id == playingVoiceNoteId
+        val isPlaying = isActive && isVoicePlaybackPlaying
+        todayPinnedVoiceWaveform?.progressFraction = if (isActive) voicePlaybackProgressFraction else 0f
+        todayPinnedVoicePlayButton?.apply {
+            setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
+            contentDescription = getString(if (isPlaying) R.string.pause_voice_note else R.string.play_voice_note)
+        }
+    }
+
+    private fun releaseVoiceNotePlayer() {
+        voiceNotePlayer?.runCatching {
+            if (isPlaying) stop()
+        }
+        voiceNotePlayer?.release()
+        voiceNotePlayer = null
+    }
+
+    private fun deleteVoiceNoteFile(note: QuickNote) {
+        val audioFileName = note.audioFileName ?: return
+        File(voiceNotesDirectory(), audioFileName).delete()
+    }
+
+    private fun formatVoiceNoteDuration(durationMillis: Long): String {
+        val totalSeconds = (durationMillis / 1_000L).coerceAtLeast(1L)
+        return String.format(Locale.US, "%d:%02d", totalSeconds / 60L, totalSeconds % 60L)
+    }
+
+    private fun voiceNotesDirectory(): File {
+        return File(filesDir, VOICE_NOTES_DIRECTORY).apply { mkdirs() }
+    }
+
+    private fun List<Int>.normalizedVoiceWaveform(): List<Int> {
+        val source = if (isEmpty()) listOf(12, 20, 16, 24) else this
+        if (source.size <= MAX_VOICE_WAVEFORM_SAMPLES) return source.map { it.coerceIn(0, 100) }
+        val bucketSize = source.size / MAX_VOICE_WAVEFORM_SAMPLES.toFloat()
+        return List(MAX_VOICE_WAVEFORM_SAMPLES) { bucket ->
+            val start = (bucket * bucketSize).toInt()
+            val end = ((bucket + 1) * bucketSize).toInt().coerceAtLeast(start + 1).coerceAtMost(source.size)
+            source.subList(start, end).maxOrNull()?.coerceIn(0, 100) ?: 0
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun createVoiceNoteRecorder(): MediaRecorder {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            MediaRecorder(this)
+        } else {
+            MediaRecorder()
+        }
     }
 
     private fun openCalendarEventDay(event: CalendarEvent) {
@@ -4022,6 +4419,12 @@ class MainActivity : AppCompatActivity() {
         const val MILLIS_PER_MINUTE = 60_000L
         const val WEATHER_CACHE_MS = 30 * MILLIS_PER_MINUTE
         const val MINUTES_PER_HOUR = 60L
+        const val VOICE_NOTES_DIRECTORY = "voice_notes"
+        const val VOICE_NOTE_SAMPLE_INTERVAL_MS = 120L
+        const val VOICE_NOTE_PLAYBACK_PROGRESS_INTERVAL_MS = 80L
+        const val MIN_VOICE_NOTE_DURATION_MS = 400L
+        const val MAX_MEDIA_RECORDER_AMPLITUDE = 32_767
+        const val MAX_VOICE_WAVEFORM_SAMPLES = 48
         const val SETTINGS_FADE_MS = 160L
         const val SCREEN_TIME_FADE_MS = 180L
     }
