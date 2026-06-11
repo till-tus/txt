@@ -11,6 +11,14 @@ The goal is simple: make the phone useful without making it irresistible.
   <img src="docs/screenshots/notes.png" alt="Text Launcher notes screen" width="240">
 </p>
 
+## Screen Layout
+
+The launcher is organized around a central Home screen. Calendar and Notes sit to the left and right, while Today sits below Home for glanceable widgets.
+
+<p>
+  <img src="docs/screenshots/page-layout-diagram.png" alt="2D page layout diagram showing Calendar left of Home, Notes right of Home, and Today below Home" width="640">
+</p>
+
 ## Features
 
 - Text-first home screen with configurable app shortcuts, text alignment, and wallpaper dimming.
@@ -30,13 +38,21 @@ The goal is simple: make the phone useful without making it irresistible.
 - Settings for hiding or showing launcher pages and adjusting shortcut limits.
 - Local-first storage using Android shared preferences.
 
+## Core Screens
+
+- Home: the default launcher surface, with selected shortcuts, search, clock/date options, and quick actions.
+- Calendar: upcoming events from the device calendars the user chooses to show.
+- Notes: quick local notes, pinned notes, and optional voice-note recording.
+- Today: a small widget grid for weather, next event, active notifications, and a pinned note.
+- Screen Time: usage summaries, weekly context, app budgets, and intentional-launch prompts.
+
 ## Philosophy
 
 Text Launcher is built around friction with a purpose. It should still be easy to call someone, check your calendar, write a note, or open a tool you genuinely need. It should just be a little harder to fall into a loop you did not choose.
 
 This project is intentionally small, plain, and hackable. It favors Android platform APIs and simple Kotlin over heavy framework choices.
 
-## Screens and Permissions
+## Permissions
 
 Text Launcher can be set as your Android home app. Some features ask for optional permissions or use Android system capabilities:
 
@@ -83,6 +99,13 @@ This is a Kotlin Android app using XML layouts and ViewBinding. The main app cod
 - `app/src/main/java/com/example/textlauncher/domain`
 - `app/src/main/java/com/example/textlauncher/ui`
 - `app/src/main/res`
+
+The rough split is:
+
+- `data`: repositories for Android system data and local persistence.
+- `domain`: small models and enums shared across the app.
+- `ui`: `MainActivity`, `HomeViewModel`, adapters, custom views, and UI controllers.
+- `res`: XML layouts, drawables, strings, dimensions, colors, and launcher assets.
 
 Run unit tests before opening a pull request:
 
