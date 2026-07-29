@@ -199,6 +199,7 @@ class MainActivity : AppCompatActivity() {
     }
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
+    private var openAppListKeyboardAutomatically = true
     private var editModePulseAnimator: ValueAnimator? = null
     private var renderedShortcutCount = 0
     private val voiceNoteSampleHandler = Handler(Looper.getMainLooper())
@@ -735,8 +736,7 @@ class MainActivity : AppCompatActivity() {
                 .setDuration(PAGE_SETTLE_MS)
                 .setInterpolator(DecelerateInterpolator())
                 .start()
-            binding.appSearchInput.requestFocus()
-            showKeyboard()
+            applyAppListKeyboardPreference()
         } else {
             resetAppListHomeTreatment()
             binding.appPickerRoot.animate()
@@ -1180,6 +1180,14 @@ class MainActivity : AppCompatActivity() {
             binding.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
         }
         binding.maxShortcutsValue.text = getString(R.string.integer_value, state.maxShortcuts)
+        openAppListKeyboardAutomatically = state.openAppListKeyboardAutomatically
+        if (
+            binding.openAppListKeyboardAutomaticallySwitch.isChecked !=
+            state.openAppListKeyboardAutomatically
+        ) {
+            binding.openAppListKeyboardAutomaticallySwitch.isChecked =
+                state.openAppListKeyboardAutomatically
+        }
         val canAddShortcut = state.shortcuts.size < state.maxShortcuts
         binding.addShortcutButton.isEnabled = canAddShortcut
         binding.addShortcutButton.alpha = if (canAddShortcut) 1f else DISABLED_ACTION_ALPHA
@@ -1353,6 +1361,14 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 viewModel.setMaxShortcuts(value.toInt())
             }
+        }
+        binding.openAppListKeyboardAutomaticallySwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setOpenAppListKeyboardAutomatically(isChecked)
+        }
+        binding.openAppListKeyboardAutomaticallyRow.setOnClickListener {
+            viewModel.setOpenAppListKeyboardAutomatically(
+                !binding.openAppListKeyboardAutomaticallySwitch.isChecked,
+            )
         }
         binding.openScreenTimeGestureRow.setOnClickListener {
             showGesturePicker(GestureAction.OpenScreenTime, currentOpenScreenTimeGesture)
@@ -4137,8 +4153,7 @@ class MainActivity : AppCompatActivity() {
             binding.appPickerRoot.alpha = 1f
             binding.appPickerRoot.translationY = 0f
         }
-        binding.appSearchInput.requestFocus()
-        showKeyboard()
+        applyAppListKeyboardPreference()
     }
 
     private fun hideAppPicker() {
@@ -4210,6 +4225,15 @@ class MainActivity : AppCompatActivity() {
         binding.appSearchInput.post {
             val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.showSoftInput(binding.appSearchInput, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun applyAppListKeyboardPreference() {
+        if (openAppListKeyboardAutomatically) {
+            binding.appSearchInput.requestFocus()
+            showKeyboard()
+        } else {
+            binding.appSearchInput.clearFocus()
         }
     }
 

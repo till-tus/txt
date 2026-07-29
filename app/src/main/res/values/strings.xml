@@ -24,6 +24,7 @@
     <string name="alignment_center">Center</string>
     <string name="alignment_right">Right</string>
     <string name="max_shortcuts">App shortcuts</string>
+    <string name="open_app_list_keyboard_automatically">Open keyboard automatically</string>
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
     <string name="pages_section">Pages</string>
     <string name="show_notes_page">Notes page</string>
