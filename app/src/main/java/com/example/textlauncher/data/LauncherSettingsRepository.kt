@@ -23,6 +23,10 @@ class LauncherSettingsRepository(context: Context) {
                 ?.let(::runCatchingShortcutTextAlignment)
                 ?: ShortcutTextAlignment.Left,
             maxShortcuts = preferences.getInt(KEY_MAX_SHORTCUTS, 5).coerceIn(3, 7),
+            openAppListKeyboardAutomatically = preferences.getBoolean(
+                KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY,
+                true,
+            ),
             openScreenTimeGesture = loadGesture(
                 key = KEY_OPEN_SCREEN_TIME_GESTURE,
                 defaultGesture = if (preferences.getBoolean(KEY_SHOW_SCREEN_TIME_PAGE, true)) {
@@ -56,6 +60,10 @@ class LauncherSettingsRepository(context: Context) {
             putInt(KEY_WALLPAPER_DIM_PERCENT, settings.wallpaperDimPercent.coerceIn(0, 100))
             putString(KEY_SHORTCUT_TEXT_ALIGNMENT, settings.shortcutTextAlignment.name)
             putInt(KEY_MAX_SHORTCUTS, settings.maxShortcuts.coerceIn(3, 7))
+            putBoolean(
+                KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY,
+                settings.openAppListKeyboardAutomatically,
+            )
             putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
             putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
             putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
@@ -103,6 +111,7 @@ class LauncherSettingsRepository(context: Context) {
         const val KEY_WALLPAPER_DIM_PERCENT = "wallpaperDimPercent"
         const val KEY_SHORTCUT_TEXT_ALIGNMENT = "shortcutTextAlignment"
         const val KEY_MAX_SHORTCUTS = "maxShortcuts"
+        const val KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY = "openAppListKeyboardAutomatically"
         const val KEY_SHOW_SCREEN_TIME_PAGE = "showScreenTimePage"
         const val KEY_OPEN_SCREEN_TIME_GESTURE = "openScreenTimeGesture"
         const val KEY_LOCK_SCREEN_GESTURE = "lockScreenGesture"
