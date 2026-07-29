@@ -13,7 +13,6 @@ import com.example.textlauncher.R
 import com.example.textlauncher.domain.ClockDisplayMode
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
@@ -151,8 +150,9 @@ class AnalogClockView @JvmOverloads constructor(
     ) {
         digitalPaint.textSize = min(radius * DIGITAL_TEXT_SIZE_RATIO, MAX_DIGITAL_TEXT_SIZE_DP.dpFloat)
         val baseline = centerY - (digitalPaint.ascent() + digitalPaint.descent()) / 2f
-        val hourText = SimpleDateFormat(HOUR_PATTERN, Locale.getDefault()).format(time.time)
-        val minuteText = SimpleDateFormat(MINUTE_PATTERN, Locale.getDefault()).format(time.time)
+        val locale = resources.configuration.locales[0]
+        val hourText = SimpleDateFormat(HOUR_PATTERN, locale).format(time.time)
+        val minuteText = SimpleDateFormat(MINUTE_PATTERN, locale).format(time.time)
         val colonText = ":"
         val hourWidth = digitalPaint.measureText(hourText)
         val colonWidth = digitalPaint.measureText(colonText)

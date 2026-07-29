@@ -6,9 +6,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.textlauncher.R
 import com.example.textlauncher.databinding.ItemCalendarEventBinding
 import com.example.textlauncher.domain.CalendarEvent
 import java.text.DateFormat
+import java.util.Calendar
 import java.util.Date
 
 class CalendarEventAdapter(
@@ -29,35 +31,38 @@ class CalendarEventAdapter(
     }
 
     private fun isSameDay(first: CalendarEvent, second: CalendarEvent): Boolean {
-        return dayFormat.format(Date(first.startMillis)) == dayFormat.format(Date(second.startMillis))
+        val firstDay = Calendar.getInstance().apply { timeInMillis = first.startMillis }
+        val secondDay = Calendar.getInstance().apply { timeInMillis = second.startMillis }
+        return firstDay.get(Calendar.ERA) == secondDay.get(Calendar.ERA) &&
+            firstDay.get(Calendar.YEAR) == secondDay.get(Calendar.YEAR) &&
+            firstDay.get(Calendar.DAY_OF_YEAR) == secondDay.get(Calendar.DAY_OF_YEAR)
     }
 
     class EventViewHolder(
         private val binding: ItemCalendarEventBinding,
         private val onEventClick: (CalendarEvent) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
-        private val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM)
-        private val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT)
-
         fun bind(event: CalendarEvent, showDayHeader: Boolean) {
+            val context = binding.root.context
+            val locale = context.resources.configuration.locales[0]
+            val dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
+            val timeFormat = DateFormat.getTimeInstance(DateFormat.SHORT, locale)
             binding.eventDayHeader.visibility = if (showDayHeader) View.VISIBLE else View.GONE
             binding.eventDayDivider.visibility = if (showDayHeader) View.VISIBLE else View.GONE
             binding.eventDayHeader.text = dateFormat.format(Date(event.startMillis))
             binding.eventTime.text = if (event.isAllDay) {
-                "All day"
+                context.getString(R.string.calendar_event_all_day)
             } else {
                 timeFormat.format(Date(event.startMillis))
             }
-            binding.eventTitle.text = event.title
+            binding.eventTitle.text = event.title.ifBlank {
+                context.getString(R.string.calendar_event_untitled)
+            }
             binding.eventCalendar.text = event.calendarName
             binding.root.setOnClickListener {
                 onEventClick(event)
             }
         }
-    }
-
-    private companion object {
-        val dayFormat: DateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM)
     }
 
     private object DiffCallback : DiffUtil.ItemCallback<CalendarEvent>() {

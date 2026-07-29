@@ -106,7 +106,6 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -1239,7 +1238,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindCurrentDate() {
-        binding.dateText.text = DateFormat.getDateInstance(DateFormat.FULL).format(Date())
+        binding.dateText.text = DateFormat.getDateInstance(
+            DateFormat.FULL,
+            resources.configuration.locales[0],
+        ).format(Date())
     }
 
     private fun configureSystemInsets() {
@@ -2090,9 +2092,9 @@ class MainActivity : AppCompatActivity() {
         val hours = totalMinutes / MINUTES_PER_HOUR
         val minutes = totalMinutes % MINUTES_PER_HOUR
         return if (hours > 0) {
-            "${hours}h ${minutes}m"
+            getString(R.string.duration_hours_minutes, hours, minutes)
         } else {
-            "${minutes}m"
+            getString(R.string.duration_minutes, minutes)
         }
     }
 
@@ -2742,7 +2744,7 @@ class MainActivity : AppCompatActivity() {
         return when {
             !hasCalendarPermission() -> getString(R.string.today_calendar_permission_prompt)
             event == null -> getString(R.string.today_next_event_empty)
-            else -> event.title
+            else -> event.title.ifBlank { getString(R.string.calendar_event_untitled) }
         }
     }
 
@@ -2753,7 +2755,10 @@ class MainActivity : AppCompatActivity() {
             event.isAllDay -> getString(R.string.today_next_event_all_day, event.calendarName)
             else -> getString(
                 R.string.today_next_event_time,
-                DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(event.startMillis)),
+                DateFormat.getTimeInstance(
+                    DateFormat.SHORT,
+                    resources.configuration.locales[0],
+                ).format(Date(event.startMillis)),
                 event.calendarName,
             )
         }
@@ -4073,7 +4078,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun formatVoiceNoteDuration(durationMillis: Long): String {
         val totalSeconds = (durationMillis / 1_000L).coerceAtLeast(1L)
-        return String.format(Locale.US, "%d:%02d", totalSeconds / 60L, totalSeconds % 60L)
+        return getString(
+            R.string.voice_note_duration,
+            totalSeconds / 60L,
+            totalSeconds % 60L,
+        )
     }
 
     private fun voiceNotesDirectory(): File {

@@ -1,5 +1,6 @@
 package com.example.textlauncher.ui
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.textlauncher.R
 import com.example.textlauncher.databinding.ItemNoteBinding
 import com.example.textlauncher.domain.QuickNote
-import java.util.Locale
 
 class NoteAdapter(
     private val onNoteClick: (QuickNote) -> Unit,
@@ -82,7 +82,7 @@ class NoteAdapter(
                 }
                 binding.voiceWaveform.samples = note.audioWaveform
                 binding.voiceWaveform.progressFraction = if (isActive) voicePlaybackProgressFraction else 0f
-                binding.voiceNoteDuration.text = formatDuration(note.audioDurationMillis)
+                binding.voiceNoteDuration.text = formatDuration(note.audioDurationMillis, binding.root.context)
             } else {
                 binding.playVoiceNoteButton.setOnClickListener(null)
                 binding.playVoiceNoteButton.setOnLongClickListener(null)
@@ -93,9 +93,13 @@ class NoteAdapter(
         }
     }
 
-    private fun formatDuration(durationMillis: Long): String {
+    private fun formatDuration(durationMillis: Long, context: Context): String {
         val totalSeconds = (durationMillis / 1_000L).coerceAtLeast(1L)
-        return String.format(Locale.US, "%d:%02d", totalSeconds / 60L, totalSeconds % 60L)
+        return context.getString(
+            R.string.voice_note_duration,
+            totalSeconds / 60L,
+            totalSeconds % 60L,
+        )
     }
 
     private fun notifyVoiceNoteChanged(noteId: Long?) {
