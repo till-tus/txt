@@ -736,12 +736,7 @@ class MainActivity : AppCompatActivity() {
                 .setDuration(PAGE_SETTLE_MS)
                 .setInterpolator(DecelerateInterpolator())
                 .start()
-            if (openAppListKeyboardAutomatically) {
-                binding.appSearchInput.requestFocus()
-                showKeyboard()
-            } else {
-                binding.appSearchInput.clearFocus()
-            }
+            applyAppListKeyboardPreference()
         } else {
             resetAppListHomeTreatment()
             binding.appPickerRoot.animate()
@@ -4158,8 +4153,7 @@ class MainActivity : AppCompatActivity() {
             binding.appPickerRoot.alpha = 1f
             binding.appPickerRoot.translationY = 0f
         }
-        binding.appSearchInput.requestFocus()
-        showKeyboard()
+        applyAppListKeyboardPreference()
     }
 
     private fun hideAppPicker() {
@@ -4231,6 +4225,15 @@ class MainActivity : AppCompatActivity() {
         binding.appSearchInput.post {
             val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             inputMethodManager.showSoftInput(binding.appSearchInput, InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+
+    private fun applyAppListKeyboardPreference() {
+        if (openAppListKeyboardAutomatically) {
+            binding.appSearchInput.requestFocus()
+            showKeyboard()
+        } else {
+            binding.appSearchInput.clearFocus()
         }
     }
 
