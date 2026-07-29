@@ -32,6 +32,7 @@ class HomeViewModel(
             wallpaperDimPercent = initialSettings.wallpaperDimPercent,
             shortcutTextAlignment = initialSettings.shortcutTextAlignment,
             maxShortcuts = initialSettings.maxShortcuts,
+            openAppListKeyboardAutomatically = initialSettings.openAppListKeyboardAutomatically,
             openScreenTimeGesture = initialSettings.openScreenTimeGesture,
             lockScreenGesture = initialSettings.lockScreenGesture,
             showNotesPage = initialSettings.showNotesPage,
@@ -134,6 +135,14 @@ class HomeViewModel(
     fun setMaxShortcuts(maxShortcuts: Int) {
         _uiState.update { state ->
             val updated = state.copy(maxShortcuts = maxShortcuts.coerceIn(3, 7))
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setOpenAppListKeyboardAutomatically(openAutomatically: Boolean) {
+        _uiState.update { state ->
+            val updated = state.copy(openAppListKeyboardAutomatically = openAutomatically)
             settingsRepository.saveSettings(updated.toSettings())
             updated
         }
@@ -332,6 +341,7 @@ class HomeViewModel(
             wallpaperDimPercent = wallpaperDimPercent,
             shortcutTextAlignment = shortcutTextAlignment,
             maxShortcuts = maxShortcuts,
+            openAppListKeyboardAutomatically = openAppListKeyboardAutomatically,
             openScreenTimeGesture = openScreenTimeGesture,
             lockScreenGesture = lockScreenGesture,
             showNotesPage = showNotesPage,
