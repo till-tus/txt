@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.textlauncher.R
 import com.example.textlauncher.databinding.ItemScreenTimeAppBinding
 import com.example.textlauncher.domain.ScreenTimeAppUsage
 
@@ -32,9 +33,9 @@ class ScreenTimeAdapter : ListAdapter<ScreenTimeAppUsage, ScreenTimeAdapter.Scre
             val hours = totalMinutes / MINUTES_PER_HOUR
             val minutes = totalMinutes % MINUTES_PER_HOUR
             return if (hours > 0) {
-                "${hours}h ${minutes}m"
+                binding.root.context.getString(R.string.duration_hours_minutes, hours, minutes)
             } else {
-                "${minutes}m"
+                binding.root.context.getString(R.string.duration_minutes, minutes)
             }
         }
     }

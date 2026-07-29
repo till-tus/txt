@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home and app picker -->
+    <string name="app_picker_empty">Keine startbaren Apps gefunden</string>
+    <string name="delete_shortcut">Löschen</string>
+    <string name="remove_shortcut">Entfernen</string>
+    <string name="uninstall_app">Deinstallieren</string>
+    <string name="block_app">App sperren</string>
+    <string name="blocked_app">Gesperrt</string>
+    <string name="search_hint">Suchen&#8230;</string>
+    <string name="add_shortcut">App hinzufügen</string>
+    <string name="launcher_settings">Launcher-Einstellungen</string>
+    <string name="edit_mode_label">Bearbeiten</string>
+
+    <!-- Settings -->
+    <string name="home_screen_section">Startbildschirm</string>
+    <string name="show_date">Datum anzeigen</string>
+    <string name="default_digital_clock">Digitaluhr als Standard</string>
+    <string name="clock_app_unavailable">Uhr-App nicht verfügbar</string>
+    <string name="show_quick_access">Schnellzugriff anzeigen</string>
+    <string name="wallpaper_dim">Hintergrund abdunkeln</string>
+    <string name="shortcut_text_alignment">Ausrichtung der App-Namen</string>
+    <string name="alignment_left">Links</string>
+    <string name="alignment_center">Mittig</string>
+    <string name="alignment_right">Rechts</string>
+    <string name="max_shortcuts">App-Kürzel</string>
+    <string name="open_app_list_keyboard_automatically">Tastatur automatisch öffnen</string>
+    <string name="shortcut_limit_reached">Maximale App-Anzahl erreicht</string>
+    <string name="pages_section">Seiten</string>
+    <string name="show_notes_page">Notizen</string>
+    <string name="show_calendar_page">Kalender</string>
+    <string name="show_today_page">Heute</string>
+
+    <!-- Gestures and accessibility -->
+    <string name="gestures_section">Gesten</string>
+    <string name="gesture_action_open_screen_time">Bildschirmzeit öffnen</string>
+    <string name="gesture_action_lock_screen">Bildschirm sperren</string>
+    <string name="gesture_none">Keine</string>
+    <string name="gesture_two_finger_swipe_down">Mit zwei Fingern nach unten wischen</string>
+    <string name="gesture_double_tap">Doppeltippen</string>
+    <string name="gesture_conflict_warning">%1$s war zuvor für %2$s eingestellt. Diese Aktion ist jetzt auf „Keine“ gesetzt.</string>
+    <string name="gesture_picker_close">Gestenauswahl schließen</string>
+    <string name="lock_screen_permission_prompt">Aktiviere Text Launcher in den Bedienungshilfen, damit die Sperrbildschirm-Geste den Bildschirm ausschalten kann.</string>
+    <string name="lock_screen_accessibility_description">Ermöglicht Text Launcher, den Bildschirm mit der eingestellten Sperrbildschirm-Geste zu sperren.</string>
+
+    <!-- Calendar -->
+    <string name="calendar_page_title">Kalender</string>
+    <string name="calendar_empty">Keine Termine in den nächsten zwei Tagen</string>
+    <string name="calendar_permission_prompt">Kalenderzugriff ist nötig, um anstehende Termine anzuzeigen.</string>
+    <string name="calendar_permission_button">Kalenderzugriff erlauben</string>
+    <string name="calendar_selection_permission_hint">Erlaube den Kalenderzugriff auf der Kalenderseite, um Kalender auszuwählen.</string>
+    <string name="calendar_selection_title">Kalender</string>
+    <string name="calendar_event_all_day">Ganztägig</string>
+    <string name="calendar_event_untitled">Termin ohne Titel</string>
+
+    <!-- Screen time -->
+    <string name="screen_time_page_title">Bildschirmzeit</string>
+    <string name="screen_time_recap_top_app">Top-App</string>
+    <string name="screen_time_recap_today">Heute</string>
+    <string name="screen_time_recap_vs_average">Zum Ø</string>
+    <string name="screen_time_recap_no_top_app">Noch keine App-Nutzung</string>
+    <string name="screen_time_recap_percent">%1$s %2$d%%</string>
+    <string name="screen_time_average">Ø %1$s</string>
+    <string name="screen_time_intentions_title">Nutzungsziele</string>
+    <string name="screen_time_intended_today">Für heute geplant</string>
+    <string name="screen_time_actual_today">Heute genutzt</string>
+    <string name="screen_time_today">Heute</string>
+    <string name="screen_time_empty">Heute noch keine Bildschirmzeit erfasst</string>
+    <string name="screen_time_permission_prompt">Zugriff auf Nutzungsdaten ist nötig, um die Bildschirmzeit nach App anzuzeigen.</string>
+    <string name="screen_time_permission_button">Nutzungszugriff erlauben</string>
+    <string name="screen_time_settings_section">Bildschirmzeit</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+
+    <!-- App blocking, budgets, and intentions -->
+    <string name="app_blocking_title">Apps sperren</string>
+    <plurals name="app_blocking_count">
+        <item quantity="one">%1$d App gesperrt</item>
+        <item quantity="other">%1$d Apps gesperrt</item>
+    </plurals>
+    <string name="app_blocking_search_hint">Zu sperrende Apps suchen&#8230;</string>
+    <string name="app_budgets_title">Tägliche App-Limits</string>
+    <plurals name="app_budgets_count">
+        <item quantity="one">%1$d App-Limit</item>
+        <item quantity="other">%1$d App-Limits</item>
+    </plurals>
+    <string name="app_budgets_search_hint">Apps für Limits suchen&#8230;</string>
+    <string name="app_budget_usage_progress">%1$s / %2$s</string>
+    <string name="app_budget_15">15 min</string>
+    <string name="app_budget_30">30 min</string>
+    <string name="app_budget_60">1 h</string>
+    <string name="reset_intentions_data">Nutzungsziele zurücksetzen</string>
+    <string name="intentions_data_reset">Nutzungsziele zurückgesetzt</string>
+    <string name="app_blocking_prompt_title">%1$s öffnen?</string>
+    <string name="app_blocking_prompt_message">Diese App steht auf deiner Sperrliste.</string>
+    <string name="app_budget_prompt_message">Heutiges Limit überschritten: %1$s geplant, %2$s genutzt.</string>
+    <string name="app_blocking_intention_prompt">Wie lange möchtest du die App nutzen?</string>
+    <string name="app_blocking_intention_5">5 min</string>
+    <string name="app_blocking_intention_10">10 min</string>
+    <string name="app_blocking_intention_15">15 min</string>
+    <string name="app_blocking_proceed">Öffnen</string>
+    <string name="app_blocking_proceed_countdown">Öffnen (%1$d)</string>
+    <string name="app_blocking_cancel">Abbrechen</string>
+
+    <!-- Notes -->
+    <string name="notes_page_title">Notizen</string>
+    <string name="voice_notes_mode">Sprachnotizen</string>
+
+    <!-- Today -->
+    <string name="today_page_title">Heute</string>
+    <string name="today_edit_mode_label">Heute bearbeiten</string>
+    <string name="today_add_widget">Widget hinzufügen</string>
+    <string name="today_add_next_event">Nächsten Termin hinzufügen</string>
+    <string name="today_edit_widget">Bearbeiten</string>
+    <string name="today_remove_widget">Entfernen</string>
+    <string name="today_next_event_title">Nächster Termin</string>
+    <string name="today_next_event_empty">Keine anstehenden Termine</string>
+    <string name="today_calendar_permission_prompt">Kalenderzugriff nötig</string>
+    <string name="today_next_event_all_day">Ganztägig · %1$s</string>
+    <string name="today_next_event_time">%1$s · %2$s</string>
+    <string name="today_weather_title">Wetter</string>
+    <string name="today_weather_loading">Wird geladen</string>
+    <string name="today_weather_location_needed">Standort nötig</string>
+    <string name="today_weather_location_action">Zum Aktivieren tippen</string>
+    <string name="today_weather_unavailable">Wetter nicht verfügbar</string>
+    <string name="today_weather_temp">%1$d°</string>
+    <string name="today_weather_precipitation">%1$d%% Niederschlag</string>
+    <string name="today_weather_precipitation_unknown">Niederschlag unbekannt</string>
+    <string name="today_notification_feed_title">Benachrichtigungen</string>
+    <string name="today_notification_feed_empty">Keine Benachrichtigungen</string>
+    <string name="today_notification_access_needed">Benachrichtigungszugriff nötig</string>
+    <string name="today_notification_access_action">Zum Aktivieren tippen</string>
+    <string name="today_notification_access_prompt">Benachrichtigungszugriff für Text Launcher erlauben</string>
+    <string name="today_notification_config_title">Benachrichtigungen</string>
+    <string name="today_notification_config_hint">Apps für dieses Widget auswählen. Ohne Auswahl werden alle angezeigt.</string>
+    <string name="today_notification_config_done">Fertig</string>
+    <string name="today_pinned_note_title">Angepinnte Notiz</string>
+    <string name="today_pinned_note_empty">Keine angepinnte Notiz</string>
+    <string name="today_widget_no_space">Layout ändern, um Platz zu schaffen</string>
+    <string name="today_widget_none_available">Keine Widgets verfügbar</string>
+
+    <!-- Note actions and editor -->
+    <string name="add_note">Notiz hinzufügen</string>
+    <string name="start_voice_note">Sprachnotiz aufnehmen</string>
+    <string name="stop_voice_note">Aufnahme beenden</string>
+    <string name="play_voice_note">Sprachnotiz abspielen</string>
+    <string name="pause_voice_note">Sprachnotiz pausieren</string>
+    <string name="voice_note_label">Sprachnotiz</string>
+    <string name="voice_note_recording">Aufnahme läuft</string>
+    <string name="voice_note_recording_failed">Sprachnotiz konnte nicht aufgenommen werden</string>
+    <string name="voice_note_unavailable">Sprachnotiz nicht verfügbar</string>
+    <string name="microphone_permission_prompt">Mikrofonzugriff ist nötig, um Sprachnotizen aufzunehmen.</string>
+    <string name="copy_note">Notiz kopieren</string>
+    <string name="note_copied">Kopiert</string>
+    <string name="pin_note">Anpinnen</string>
+    <string name="unpin_note">Lösen</string>
+    <string name="delete_note">Löschen</string>
+    <string name="notes_empty">Keine Notizen</string>
+    <string name="note_editor_hint">Schreib etwas&#8230;</string>
+    <string name="save_note">Speichern</string>
+    <string name="cancel_note_edit">Abbrechen</string>
+
+    <!-- Quick access -->
+    <string name="quick_access_camera">Kamera öffnen</string>
+    <string name="quick_access_keep">Keep-Notizen öffnen</string>
+    <string name="quick_access_unavailable">Nicht verfügbar</string>
+</resources>

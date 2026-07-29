@@ -92,7 +92,7 @@ class CalendarRepository(context: Context) {
                     add(
                         CalendarEvent(
                             id = cursor.getLong(idIndex),
-                            title = cursor.getString(titleIndex).orEmpty().ifBlank { "Untitled" },
+                            title = cursor.getString(titleIndex).orEmpty(),
                             calendarName = cursor.getString(calendarIndex).orEmpty(),
                             startMillis = cursor.getLong(beginIndex),
                             endMillis = cursor.getLong(endIndex),
