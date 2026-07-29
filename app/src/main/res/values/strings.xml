@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">txt</string>
+    <!-- App -->
+    <string name="app_name" translatable="false">txt</string>
+
+    <!-- Home and app picker -->
     <string name="app_picker_empty">No launchable apps found</string>
     <string name="delete_shortcut">Delete</string>
     <string name="remove_shortcut">Remove</string>
@@ -11,14 +14,16 @@
     <string name="add_shortcut">Add shortcut</string>
     <string name="launcher_settings">Launcher settings</string>
     <string name="edit_mode_label">Edit</string>
+
+    <!-- Settings -->
     <string name="home_screen_section">Home screen</string>
     <string name="show_date">Show date</string>
     <string name="default_digital_clock">Digital clock by default</string>
     <string name="clock_app_unavailable">Clock app unavailable</string>
     <string name="show_quick_access">Show quick access buttons</string>
     <string name="wallpaper_dim">Wallpaper dim</string>
-    <string name="integer_value">%1$d</string>
-    <string name="percentage_value">%1$d%%</string>
+    <string name="integer_value" translatable="false">%1$d</string>
+    <string name="percentage_value" translatable="false">%1$d%%</string>
     <string name="shortcut_text_alignment">Shortcut text alignment</string>
     <string name="alignment_left">Left</string>
     <string name="alignment_center">Center</string>
@@ -30,6 +35,8 @@
     <string name="show_notes_page">Notes page</string>
     <string name="show_calendar_page">Calendar page</string>
     <string name="show_today_page">Today page</string>
+
+    <!-- Gestures and accessibility -->
     <string name="gestures_section">Gestures</string>
     <string name="gesture_action_open_screen_time">Open Screen time</string>
     <string name="gesture_action_lock_screen">Lock screen</string>
@@ -40,12 +47,18 @@
     <string name="gesture_picker_close">Close gesture picker</string>
     <string name="lock_screen_permission_prompt">Enable Text Launcher in Accessibility settings to let the lock-screen gesture turn the screen off.</string>
     <string name="lock_screen_accessibility_description">Allows Text Launcher to lock the screen when the configured lock-screen gesture is used.</string>
+
+    <!-- Calendar -->
     <string name="calendar_page_title">Calendar</string>
     <string name="calendar_empty">No events in the next two days</string>
     <string name="calendar_permission_prompt">Calendar access is needed to show upcoming events.</string>
     <string name="calendar_permission_button">Enable calendar access</string>
     <string name="calendar_selection_permission_hint">Enable calendar access from the Calendar page to choose calendars.</string>
     <string name="calendar_selection_title">Calendars</string>
+    <string name="calendar_event_all_day">All day</string>
+    <string name="calendar_event_untitled">Untitled event</string>
+
+    <!-- Screen time -->
     <string name="screen_time_page_title">Screen time</string>
     <string name="screen_time_recap_top_app">Top app</string>
     <string name="screen_time_recap_today">Today</string>
@@ -61,6 +74,10 @@
     <string name="screen_time_permission_prompt">Usage access is needed to show screen time by app.</string>
     <string name="screen_time_permission_button">Enable usage access</string>
     <string name="screen_time_settings_section">Screen time</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%1$d min</string>
+
+    <!-- App blocking, budgets, and intentions -->
     <string name="app_blocking_title">App blocking</string>
     <plurals name="app_blocking_count">
         <item quantity="one">%1$d app blocked</item>
@@ -89,8 +106,13 @@
     <string name="app_blocking_proceed">Proceed</string>
     <string name="app_blocking_proceed_countdown">Proceed (%1$d)</string>
     <string name="app_blocking_cancel">Cancel</string>
+
+    <!-- Notes -->
     <string name="notes_page_title">Notes</string>
     <string name="voice_notes_mode">Voice notes</string>
+    <string name="voice_note_duration" translatable="false">%1$d:%2$02d</string>
+
+    <!-- Today -->
     <string name="today_page_title">Today</string>
     <string name="today_edit_mode_label">Edit Today</string>
     <string name="today_add_widget">Add widget</string>
@@ -122,6 +144,8 @@
     <string name="today_pinned_note_empty">No pinned note</string>
     <string name="today_widget_no_space">Change the layout to make space</string>
     <string name="today_widget_none_available">No widgets available</string>
+
+    <!-- Note actions and editor -->
     <string name="add_note">Add note</string>
     <string name="start_voice_note">Start voice note</string>
     <string name="stop_voice_note">Stop voice note</string>
@@ -141,6 +165,8 @@
     <string name="note_editor_hint">Write anything&#8230;</string>
     <string name="save_note">Save</string>
     <string name="cancel_note_edit">Cancel</string>
+
+    <!-- Quick access -->
     <string name="quick_access_camera">Open camera</string>
     <string name="quick_access_keep">Open Keep notes</string>
     <string name="quick_access_unavailable">Not available</string>

@@ -9,7 +9,6 @@ import com.example.textlauncher.domain.ScreenTimeAppUsage
 import com.example.textlauncher.domain.ScreenTimeDayUsage
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 
 class ScreenTimeRepository(
     private val context: Context,
@@ -54,7 +53,7 @@ class ScreenTimeRepository(
                 add(Calendar.DAY_OF_WEEK, -1)
             }
         }
-        val dayFormat = SimpleDateFormat("EEE", Locale.getDefault())
+        val dayFormat = SimpleDateFormat("EEE", context.resources.configuration.locales[0])
 
         return (0 until DAYS_PER_WEEK).map { offset ->
             val dayStartCalendar = weekStart.clone() as Calendar
