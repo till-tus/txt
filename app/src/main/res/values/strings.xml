@@ -16,6 +16,17 @@
     <string name="edit_mode_label">Edit</string>
 
     <!-- Settings -->
+    <string name="settings_back">Back to settings</string>
+    <string name="settings_category_appearance">Appearance &amp; launcher</string>
+    <string name="settings_category_appearance_summary">Clock, shortcuts, wallpaper, and search</string>
+    <string name="settings_category_notes">Notes</string>
+    <string name="settings_category_notes_summary">Page visibility and deleted notes</string>
+    <string name="settings_category_calendar">Calendar &amp; Today</string>
+    <string name="settings_category_calendar_summary">Today page, Calendar page, and calendars</string>
+    <string name="settings_category_gestures">Gestures</string>
+    <string name="settings_category_gestures_summary">Launcher actions and lock screen</string>
+    <string name="settings_category_screen_time">App blocking &amp; screen time</string>
+    <string name="settings_category_screen_time_summary">Blocked apps, daily budgets, and intentions</string>
     <string name="home_screen_section">Home screen</string>
     <string name="show_date">Show date</string>
     <string name="default_digital_clock">Digital clock by default</string>

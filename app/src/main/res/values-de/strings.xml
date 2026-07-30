@@ -13,6 +13,17 @@
     <string name="edit_mode_label">Bearbeiten</string>
 
     <!-- Settings -->
+    <string name="settings_back">Zurück zu den Einstellungen</string>
+    <string name="settings_category_appearance">Darstellung &amp; Launcher</string>
+    <string name="settings_category_appearance_summary">Uhr, Apps, Hintergrund und Suche</string>
+    <string name="settings_category_notes">Notizen</string>
+    <string name="settings_category_notes_summary">Notizseite und gelöschte Notizen</string>
+    <string name="settings_category_calendar">Kalender &amp; Heute</string>
+    <string name="settings_category_calendar_summary">Heute-Seite, Kalenderseite und Kalender</string>
+    <string name="settings_category_gestures">Gesten</string>
+    <string name="settings_category_gestures_summary">Launcher-Aktionen und Sperrbildschirm</string>
+    <string name="settings_category_screen_time">Apps &amp; Bildschirmzeit</string>
+    <string name="settings_category_screen_time_summary">Gesperrte Apps, tägliche Limits und Nutzungsziele</string>
     <string name="home_screen_section">Startbildschirm</string>
     <string name="show_date">Datum anzeigen</string>
     <string name="default_digital_clock">Digitaluhr als Standard</string>
