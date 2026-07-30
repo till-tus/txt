@@ -69,6 +69,8 @@ class HomeViewModel(
         ),
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val settingsPersistenceLock = Any()
+    private var lastPersistedSettings = initialSettings
 
     init {
         uiState
@@ -81,7 +83,7 @@ class HomeViewModel(
             .map { it.toSettings() }
             .distinctUntilChanged()
             .debounce(SETTINGS_PERSISTENCE_DEBOUNCE_MS)
-            .onEach(settingsRepository::saveSettings)
+            .onEach(::persistSettings)
             .flowOn(persistenceDispatcher)
             .launchIn(viewModelScope)
         uiState
@@ -90,6 +92,22 @@ class HomeViewModel(
             .onEach(noteRepository::saveState)
             .flowOn(persistenceDispatcher)
             .launchIn(viewModelScope)
+    }
+
+    internal fun flushPendingSettings() {
+        persistSettings(_uiState.value.toSettings())
+    }
+
+    override fun onCleared() {
+        flushPendingSettings()
+    }
+
+    private fun persistSettings(settings: LauncherSettings) {
+        synchronized(settingsPersistenceLock) {
+            if (settings == lastPersistedSettings) return
+            settingsRepository.saveSettings(settings)
+            lastPersistedSettings = settings
+        }
     }
 
     fun addShortcut(shortcut: AppShortcut) {
