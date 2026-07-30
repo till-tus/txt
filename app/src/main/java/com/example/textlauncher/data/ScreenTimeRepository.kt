@@ -15,7 +15,7 @@ class ScreenTimeRepository(
 ) {
     private val usageStatsManager = context.getSystemService(UsageStatsManager::class.java)
 
-    fun loadTodayUsage(): List<ScreenTimeAppUsage> {
+    fun loadTodayUsage(excludedPackageNames: Set<String> = emptySet()): List<ScreenTimeAppUsage> {
         val start = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
             set(Calendar.MINUTE, 0)
@@ -23,7 +23,7 @@ class ScreenTimeRepository(
             set(Calendar.MILLISECOND, 0)
         }.timeInMillis
         val end = System.currentTimeMillis()
-        val packageUsage = loadUsageByPackage(start, end)
+        val packageUsage = loadUsageByPackage(start, end, excludedPackageNames)
 
         return packageUsage
             .asSequence()
@@ -42,7 +42,7 @@ class ScreenTimeRepository(
             .toList()
     }
 
-    fun loadCurrentWeekUsage(): List<ScreenTimeDayUsage> {
+    fun loadCurrentWeekUsage(excludedPackageNames: Set<String> = emptySet()): List<ScreenTimeDayUsage> {
         val now = System.currentTimeMillis()
         val weekStart = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -64,7 +64,7 @@ class ScreenTimeRepository(
             }.timeInMillis
             val isElapsed = dayStart <= now
             val usageMillis = if (isElapsed) {
-                loadUsageTotal(dayStart, minOf(dayEnd, now))
+                loadUsageTotal(dayStart, minOf(dayEnd, now), excludedPackageNames)
             } else {
                 0L
             }
@@ -77,12 +77,16 @@ class ScreenTimeRepository(
         }
     }
 
-    private fun loadUsageTotal(start: Long, end: Long): Long {
+    private fun loadUsageTotal(start: Long, end: Long, excludedPackageNames: Set<String>): Long {
         if (end <= start) return 0L
-        return loadUsageByPackage(start, end).values.sum()
+        return loadUsageByPackage(start, end, excludedPackageNames).values.sum()
     }
 
-    private fun loadUsageByPackage(start: Long, end: Long): Map<String, Long> {
+    private fun loadUsageByPackage(
+        start: Long,
+        end: Long,
+        excludedPackageNames: Set<String>,
+    ): Map<String, Long> {
         if (end <= start) return emptyMap()
         val events = mutableListOf<ScreenTimeUsageEvent>()
         val usageEvents = usageStatsManager.queryEvents(start - EVENT_LOOKBACK_MILLIS, end)
@@ -101,7 +105,7 @@ class ScreenTimeRepository(
             events = events,
             startMillis = start,
             endMillis = end,
-            ignoredPackageNames = setOf(context.packageName),
+            ignoredPackageNames = excludedPackageNames + context.packageName,
         )
     }
 

@@ -3,6 +3,7 @@ package com.example.textlauncher.ui
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.example.textlauncher.data.LauncherSettingsRepository
 import com.example.textlauncher.data.ShortcutRepository
 
 class PackageRemovedReceiver : BroadcastReceiver() {
@@ -12,5 +13,6 @@ class PackageRemovedReceiver : BroadcastReceiver() {
 
         val packageName = intent.data?.schemeSpecificPart ?: return
         ShortcutRepository(context.applicationContext).deleteShortcutsForPackage(packageName)
+        LauncherSettingsRepository(context.applicationContext).removePackageReferences(packageName)
     }
 }
