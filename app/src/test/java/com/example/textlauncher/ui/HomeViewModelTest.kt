@@ -56,6 +56,31 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun pendingSettings_areFlushedBeforeDebounceCompletes() = runTest(dispatcher) {
+        val settings = FakeSettingsStore()
+        val viewModel = HomeViewModel(
+            shortcutRepository = FakeShortcutStore(),
+            settingsRepository = settings,
+            noteRepository = FakeNoteStore(),
+            persistenceDispatcher = dispatcher,
+        )
+        advanceUntilIdle()
+
+        viewModel.setAppBlocked("blocked.package", isBlocked = true)
+        advanceTimeBy(199)
+        assertEquals(emptyList<LauncherSettings>(), settings.saved)
+
+        viewModel.flushPendingSettings()
+        assertEquals(
+            listOf(setOf("blocked.package")),
+            settings.saved.map { it.blockedAppPackageNames },
+        )
+
+        advanceUntilIdle()
+        assertEquals(1, settings.saved.size)
+    }
+
+    @Test
     fun shortcutAndNoteMutations_arePersistedFromStateChanges() = runTest(dispatcher) {
         val shortcuts = FakeShortcutStore()
         val notes = FakeNoteStore()
