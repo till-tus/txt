@@ -1,0 +1,432 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settingsAppearancePage"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:text="@string/home_screen_section"
+        android:textColor="@color/launcher_text"
+        android:textSize="21sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:id="@+id/showDateRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/show_date"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+android:id="@+id/showDateSwitch"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+app:useMaterialThemeColors="true" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/defaultDigitalClockRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/default_digital_clock"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+android:id="@+id/defaultDigitalClockSwitch"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+app:useMaterialThemeColors="true"
+tools:ignore="TooManyViews" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/leftQuickAccessRow"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/quick_access_left"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <TextView
+android:id="@+id/leftQuickAccessValue"
+android:layout_width="wrap_content"
+android:layout_height="match_parent"
+android:ellipsize="end"
+android:gravity="center_vertical|end"
+android:maxWidth="200dp"
+android:maxLines="1"
+android:textColor="@color/launcher_text_secondary"
+android:textSize="15sp" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/rightQuickAccessRow"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/quick_access_right"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <TextView
+android:id="@+id/rightQuickAccessValue"
+android:layout_width="wrap_content"
+android:layout_height="match_parent"
+android:ellipsize="end"
+android:gravity="center_vertical|end"
+android:maxWidth="200dp"
+android:maxLines="1"
+android:textColor="@color/launcher_text_secondary"
+android:textSize="15sp" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/quickAccessPositionRow"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/quick_access_position"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <TextView
+android:id="@+id/quickAccessPositionValue"
+android:layout_width="wrap_content"
+android:layout_height="match_parent"
+android:gravity="center_vertical|end"
+android:textColor="@color/launcher_text_secondary"
+android:textSize="15sp" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingTop="22dp"
+        android:paddingEnd="24dp"
+        android:text="@string/page_arrangement_title"
+        android:textColor="@color/launcher_text"
+        android:textSize="17sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="24dp"
+        android:text="@string/page_arrangement_hint"
+        android:textColor="@color/launcher_text_secondary"
+        android:textSize="13sp" />
+
+    <com.example.textlauncher.ui.PageArrangementView
+        android:id="@+id/pageArrangementView"
+        android:layout_width="match_parent"
+        android:layout_height="280dp"
+        android:layout_marginHorizontal="12dp"
+        android:importantForAccessibility="yes" />
+
+    <TextView
+        android:id="@+id/resetPageArrangementButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:text="@string/page_arrangement_reset"
+        android:textColor="@color/launcher_text"
+        android:textSize="17sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/wallpaperDimRow"
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp">
+
+        <LinearLayout
+android:layout_width="match_parent"
+android:layout_height="36dp"
+android:gravity="center_vertical"
+android:orientation="horizontal">
+
+<TextView
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:gravity="center_vertical"
+    android:text="@string/wallpaper_dim"
+    android:textColor="@color/launcher_text"
+    android:textSize="17sp" />
+
+<TextView
+    android:id="@+id/wallpaperDimValue"
+    android:layout_width="56dp"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical|end"
+    android:textColor="@color/launcher_text_secondary"
+    android:textSize="17sp" />
+
+        </LinearLayout>
+
+        <com.google.android.material.slider.Slider
+android:id="@+id/wallpaperDimSlider"
+android:layout_width="match_parent"
+android:layout_height="44dp"
+android:stepSize="1"
+android:valueFrom="0"
+android:valueTo="100" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/shortcutTextAlignmentRow"
+        android:layout_width="match_parent"
+        android:layout_height="104dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp">
+
+        <TextView
+android:layout_width="match_parent"
+android:layout_height="36dp"
+android:gravity="center_vertical"
+android:text="@string/shortcut_text_alignment"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <LinearLayout
+android:layout_width="match_parent"
+android:layout_height="44dp"
+android:gravity="center_vertical"
+android:orientation="horizontal">
+
+<TextView
+    android:id="@+id/shortcutAlignLeftOption"
+    android:layout_width="0dp"
+    android:layout_height="36dp"
+    android:layout_weight="1"
+    android:gravity="center"
+    android:text="@string/alignment_left"
+    android:textColor="@color/launcher_text"
+    android:textSize="15sp" />
+
+<Space
+    android:layout_width="8dp"
+    android:layout_height="1dp" />
+
+<TextView
+    android:id="@+id/shortcutAlignCenterOption"
+    android:layout_width="0dp"
+    android:layout_height="36dp"
+    android:layout_weight="1"
+    android:gravity="center"
+    android:text="@string/alignment_center"
+    android:textColor="@color/launcher_text"
+    android:textSize="15sp" />
+
+<Space
+    android:layout_width="8dp"
+    android:layout_height="1dp" />
+
+<TextView
+    android:id="@+id/shortcutAlignRightOption"
+    android:layout_width="0dp"
+    android:layout_height="36dp"
+    android:layout_weight="1"
+    android:gravity="center"
+    android:text="@string/alignment_right"
+    android:textColor="@color/launcher_text"
+    android:textSize="15sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/maxShortcutsRow"
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:gravity="center_vertical"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp">
+
+        <LinearLayout
+android:layout_width="match_parent"
+android:layout_height="36dp"
+android:gravity="center_vertical"
+android:orientation="horizontal">
+
+<TextView
+    android:layout_width="0dp"
+    android:layout_height="match_parent"
+    android:layout_weight="1"
+    android:gravity="center_vertical"
+    android:text="@string/max_shortcuts"
+    android:textColor="@color/launcher_text"
+    android:textSize="17sp" />
+
+<TextView
+    android:id="@+id/maxShortcutsValue"
+    android:layout_width="40dp"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical|end"
+    android:textColor="@color/launcher_text_secondary"
+    android:textSize="17sp" />
+
+        </LinearLayout>
+
+        <com.google.android.material.slider.Slider
+android:id="@+id/maxShortcutsSlider"
+android:layout_width="match_parent"
+android:layout_height="44dp"
+android:stepSize="1"
+android:valueFrom="3"
+android:valueTo="7" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/openAppListKeyboardAutomaticallyRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/open_app_list_keyboard_automatically"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+android:id="@+id/openAppListKeyboardAutomaticallySwitch"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:contentDescription="@string/open_app_list_keyboard_automatically"
+app:useMaterialThemeColors="true" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -21,7 +21,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
@@ -62,6 +61,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -80,6 +80,7 @@ import com.example.textlauncher.data.AppUsageIntentionRepository
 import com.example.textlauncher.data.CalendarRepository
 import com.example.textlauncher.data.InstalledAppsRepository
 import com.example.textlauncher.data.LauncherSettingsRepository
+import com.example.textlauncher.data.LauncherDataSource
 import com.example.textlauncher.data.NoteRepository
 import com.example.textlauncher.data.OpenMeteoWeatherRepository
 import com.example.textlauncher.data.ScreenTimeRepository
@@ -119,17 +120,9 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-private enum class SettingsPage(val titleRes: Int) {
-    Index(R.string.launcher_settings),
-    Appearance(R.string.settings_category_appearance),
-    Notes(R.string.settings_category_notes),
-    Calendar(R.string.settings_category_calendar),
-    Gestures(R.string.settings_category_gestures),
-    ScreenTime(R.string.settings_category_screen_time),
-}
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -142,6 +135,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var actionContextMenu: ActionContextMenu
     private lateinit var noteBulletFormatter: NoteBulletFormatter
     private lateinit var appBlockPromptController: AppBlockPromptController
+    private lateinit var dateTextController: DateTextController
     private var shouldHandleBlankAreaLongPress = false
     private var shouldHandleHomeContentLongPress = false
     private var isAppPickerVisible = false
@@ -250,12 +244,24 @@ class MainActivity : AppCompatActivity() {
     private val noteUndoDismissRunnable = Runnable {
         hideNoteUndo()
     }
-    private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
-    private val calendarRepository by lazy { CalendarRepository(applicationContext) }
-    private val screenTimeRepository by lazy { ScreenTimeRepository(applicationContext) }
+    private val launcherDataSource by lazy {
+        LauncherDataSource(
+            installedAppsRepository = InstalledAppsRepository(applicationContext),
+            calendarRepository = CalendarRepository(applicationContext),
+            screenTimeRepository = ScreenTimeRepository(applicationContext),
+        )
+    }
     private val todayWidgetRepository by lazy { TodayWidgetRepository(applicationContext) }
     private val weatherRepository by lazy { OpenMeteoWeatherRepository() }
+    private var calendarsRefreshJob: Job? = null
+    private var calendarEventsRefreshJob: Job? = null
+    private var todayCalendarRefreshJob: Job? = null
+    private var appsRefreshJob: Job? = null
+    private var launchableAppsRefreshJob: Job? = null
+    private var quickAccessPickerJob: Job? = null
+    private var screenTimeRefreshJob: Job? = null
+    private var budgetCheckJob: Job? = null
     private val requestCalendarPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { isGranted ->
@@ -343,6 +349,8 @@ class MainActivity : AppCompatActivity() {
                 }
             },
         )
+        dateTextController = DateTextController(this, binding.dateText)
+        lifecycle.addObserver(dateTextController)
         binding.appPickerList.layoutManager = LinearLayoutManager(this)
         binding.appPickerList.adapter = appPickerAdapter
 
@@ -372,12 +380,11 @@ class MainActivity : AppCompatActivity() {
         binding.calendarEventList.adapter = calendarEventAdapter
 
         screenTimeAdapter = ScreenTimeAdapter()
-        binding.screenTimeList.layoutManager = LinearLayoutManager(this)
-        binding.screenTimeList.adapter = screenTimeAdapter
+        binding.screenTimePanel.screenTimeList.layoutManager = LinearLayoutManager(this)
+        binding.screenTimePanel.screenTimeList.adapter = screenTimeAdapter
         todayWidgets = todayWidgetRepository.loadWidgets()
 
         configureSystemInsets()
-        bindCurrentDate()
         configureAppSearch()
         configureSettings()
         configureEditControls()
@@ -389,6 +396,9 @@ class MainActivity : AppCompatActivity() {
         configureShortcutReordering()
         configureHomeLongPress()
         configureBackNavigation()
+
+        renderHomeState(viewModel.uiState.value)
+        savedInstanceState?.restoredLauncherSessionState()?.let(::restoreLauncherSessionState)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -406,6 +416,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         refreshLaunchableAppCache()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putSerializable(KEY_LAUNCHER_SESSION_STATE, captureLauncherSessionState())
+        super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
@@ -435,6 +450,102 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun captureLauncherSessionState(): LauncherSessionState {
+        val surface = when {
+            isSettingsVisible -> LauncherSurface.Settings
+            isAppPickerVisible -> LauncherSurface.AppPicker
+            isScreenTimeVisible -> LauncherSurface.ScreenTime
+            isNotesVisible -> LauncherSurface.Notes
+            isCalendarVisible -> LauncherSurface.Calendar
+            isTodayVisible -> LauncherSurface.Today
+            else -> LauncherSurface.Home
+        }
+        return LauncherSessionState(
+            surface = surface,
+            isEditMode = isEditMode,
+            isTodayEditMode = isTodayEditMode,
+            settingsPage = currentSettingsPage.name,
+            isNoteTrashVisible = isNoteTrashVisible,
+            isNoteEditorVisible = isNoteEditorVisible,
+            editingNoteId = editingNote?.id,
+            noteDraft = binding.noteEditorInput.text?.toString().orEmpty(),
+            noteInputMode = noteInputMode.name,
+            appListMode = appListMode.name,
+            isScreenTimeExpanded = isScreenTimeExpanded,
+            isScreenTimeIntentionsExpanded = isScreenTimeIntentionsExpanded,
+            isCalendarSelectionExpanded = isCalendarSelectionExpanded,
+            isAppBlockingExpanded = isAppBlockingExpanded,
+            isAppBudgetsExpanded = isAppBudgetsExpanded,
+            isScreenTimeExclusionsExpanded = isScreenTimeExclusionsExpanded,
+        )
+    }
+
+    private fun restoreLauncherSessionState(state: LauncherSessionState) {
+        isScreenTimeExpanded = state.isScreenTimeExpanded
+        isScreenTimeIntentionsExpanded = state.isScreenTimeIntentionsExpanded
+        isCalendarSelectionExpanded = state.isCalendarSelectionExpanded
+        isAppBlockingExpanded = state.isAppBlockingExpanded
+        isAppBudgetsExpanded = state.isAppBudgetsExpanded
+        isScreenTimeExclusionsExpanded = state.isScreenTimeExclusionsExpanded
+        noteInputMode = state.restoredNoteInputMode()
+        updateAddNoteButton()
+        if (state.isEditMode) {
+            enterEditMode(performHaptic = false)
+        }
+
+        when (state.surface) {
+            LauncherSurface.Home -> Unit
+            LauncherSurface.Notes -> restoreConfiguredPage(LauncherPage.Notes)
+            LauncherSurface.Calendar -> restoreConfiguredPage(LauncherPage.Calendar)
+            LauncherSurface.Today -> {
+                restoreConfiguredPage(LauncherPage.Today)
+                if (state.isTodayEditMode) enterTodayEditMode(performHaptic = false)
+            }
+            LauncherSurface.ScreenTime -> showScreenTimePage(performHaptic = false)
+            LauncherSurface.Settings -> {
+                showSettings()
+                showSettingsPage(state.restoredSettingsPage())
+                if (state.isNoteTrashVisible) showNoteTrash()
+            }
+            LauncherSurface.AppPicker -> showAppList(state.restoredAppListMode())
+        }
+
+        if (state.isNoteEditorVisible) {
+            val note = state.editingNoteId?.let { id ->
+                viewModel.uiState.value.notes.firstOrNull { it.id == id }
+            }
+            showNoteEditor(note)
+            binding.noteEditorInput.setText(state.noteDraft)
+            binding.noteEditorInput.setSelection(binding.noteEditorInput.text?.length ?: 0)
+        }
+    }
+
+    private fun restoreConfiguredPage(page: LauncherPage) {
+        if (!isPageEnabled(page)) return
+        setPageVisible(page, true)
+        binding.homeContent.visibility = View.GONE
+        pageRoot(page).apply {
+            animate().cancel()
+            visibility = View.VISIBLE
+            translationX = 0f
+            translationY = 0f
+        }
+        when (page) {
+            LauncherPage.Notes -> Unit
+            LauncherPage.Calendar -> onCalendarPageVisible()
+            LauncherPage.Today -> refreshTodayWidgets()
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun Bundle.restoredLauncherSessionState(): LauncherSessionState? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getSerializable(KEY_LAUNCHER_SESSION_STATE, LauncherSessionState::class.java)
+        } else {
+            getSerializable(KEY_LAUNCHER_SESSION_STATE) as? LauncherSessionState
+        }
+    }
+
     override fun onStop() {
         stopVoiceNoteRecording(save = true)
         stopVoiceNotePlayback()
@@ -443,6 +554,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        calendarsRefreshJob?.cancel()
+        calendarEventsRefreshJob?.cancel()
+        todayCalendarRefreshJob?.cancel()
+        appsRefreshJob?.cancel()
+        launchableAppsRefreshJob?.cancel()
+        quickAccessPickerJob?.cancel()
+        screenTimeRefreshJob?.cancel()
+        budgetCheckJob?.cancel()
         stopVoiceNoteRecording(save = false)
         releaseVoiceNotePlayer()
         resetInFlightAppListDrag()
@@ -1067,9 +1186,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun isPageEnabled(page: LauncherPage): Boolean {
         return when (page) {
-            LauncherPage.Notes -> binding.showNotesPageSwitch.isChecked
-            LauncherPage.Today -> binding.showTodayPageSwitch.isChecked
-            LauncherPage.Calendar -> binding.showCalendarPageSwitch.isChecked
+            LauncherPage.Notes -> binding.settingsPanel.showNotesPageSwitch.isChecked
+            LauncherPage.Today -> binding.settingsPanel.showTodayPageSwitch.isChecked
+            LauncherPage.Calendar -> binding.settingsPanel.showCalendarPageSwitch.isChecked
         }
     }
 
@@ -1185,7 +1304,7 @@ class MainActivity : AppCompatActivity() {
         trashNoteAdapter.submitList(currentTrashedNotes)
         binding.noteTrashList.visibility = if (currentTrashedNotes.isEmpty()) View.GONE else View.VISIBLE
         binding.noteTrashEmpty.visibility = if (currentTrashedNotes.isEmpty()) View.VISIBLE else View.GONE
-        binding.notesTrashCount.text = resources.getQuantityString(
+        binding.settingsPanel.notesTrashCount.text = resources.getQuantityString(
             R.plurals.notes_trash_count,
             currentTrashedNotes.size,
             currentTrashedNotes.size,
@@ -1195,12 +1314,12 @@ class MainActivity : AppCompatActivity() {
         }
         binding.dateText.visibility = if (state.showDate) View.VISIBLE else View.GONE
         binding.clockView.setDisplayMode(state.clockDisplayMode)
-        if (binding.showDateSwitch.isChecked != state.showDate) {
-            binding.showDateSwitch.isChecked = state.showDate
+        if (binding.settingsPanel.settingsAppearancePanel.showDateSwitch.isChecked != state.showDate) {
+            binding.settingsPanel.settingsAppearancePanel.showDateSwitch.isChecked = state.showDate
         }
         val isDigitalClock = state.clockDisplayMode == ClockDisplayMode.Digital
-        if (binding.defaultDigitalClockSwitch.isChecked != isDigitalClock) {
-            binding.defaultDigitalClockSwitch.isChecked = isDigitalClock
+        if (binding.settingsPanel.settingsAppearancePanel.defaultDigitalClockSwitch.isChecked != isDigitalClock) {
+            binding.settingsPanel.settingsAppearancePanel.defaultDigitalClockSwitch.isChecked = isDigitalClock
         }
         currentLeftQuickAccess = state.leftQuickAccess
         currentRightQuickAccess = state.rightQuickAccess
@@ -1208,53 +1327,53 @@ class MainActivity : AppCompatActivity() {
         renderQuickAccess()
         val wallpaperDimPercent = state.wallpaperDimPercent.coerceIn(0, 100)
         binding.wallpaperDimOverlay.alpha = wallpaperDimPercent / 100f
-        if (binding.wallpaperDimSlider.value.toInt() != wallpaperDimPercent) {
-            binding.wallpaperDimSlider.value = wallpaperDimPercent.toFloat()
+        if (binding.settingsPanel.settingsAppearancePanel.wallpaperDimSlider.value.toInt() != wallpaperDimPercent) {
+            binding.settingsPanel.settingsAppearancePanel.wallpaperDimSlider.value = wallpaperDimPercent.toFloat()
         }
-        binding.wallpaperDimValue.text = getString(R.string.percentage_value, wallpaperDimPercent)
+        binding.settingsPanel.settingsAppearancePanel.wallpaperDimValue.text = getString(R.string.percentage_value, wallpaperDimPercent)
         renderShortcutTextAlignmentOptions(state.shortcutTextAlignment)
-        if (binding.maxShortcutsSlider.value.toInt() != state.maxShortcuts) {
-            binding.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
+        if (binding.settingsPanel.settingsAppearancePanel.maxShortcutsSlider.value.toInt() != state.maxShortcuts) {
+            binding.settingsPanel.settingsAppearancePanel.maxShortcutsSlider.value = state.maxShortcuts.toFloat()
         }
-        binding.maxShortcutsValue.text = getString(R.string.integer_value, state.maxShortcuts)
+        binding.settingsPanel.settingsAppearancePanel.maxShortcutsValue.text = getString(R.string.integer_value, state.maxShortcuts)
         openAppListKeyboardAutomatically = state.openAppListKeyboardAutomatically
         if (
-            binding.openAppListKeyboardAutomaticallySwitch.isChecked !=
+            binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.isChecked !=
             state.openAppListKeyboardAutomatically
         ) {
-            binding.openAppListKeyboardAutomaticallySwitch.isChecked =
+            binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.isChecked =
                 state.openAppListKeyboardAutomatically
         }
         val canAddShortcut = state.shortcuts.size < state.maxShortcuts
         binding.addShortcutButton.isEnabled = canAddShortcut
         binding.addShortcutButton.alpha = if (canAddShortcut) 1f else DISABLED_ACTION_ALPHA
-        if (binding.showNotesPageSwitch.isChecked != state.showNotesPage) {
-            binding.showNotesPageSwitch.isChecked = state.showNotesPage
+        if (binding.settingsPanel.showNotesPageSwitch.isChecked != state.showNotesPage) {
+            binding.settingsPanel.showNotesPageSwitch.isChecked = state.showNotesPage
         }
         isRenderingSettingsState = true
-        if (binding.showCalendarPageSwitch.isChecked != state.showCalendarPage) {
-            binding.showCalendarPageSwitch.isChecked = state.showCalendarPage
+        if (binding.settingsPanel.showCalendarPageSwitch.isChecked != state.showCalendarPage) {
+            binding.settingsPanel.showCalendarPageSwitch.isChecked = state.showCalendarPage
         }
         isRenderingSettingsState = false
-        if (binding.showTodayPageSwitch.isChecked != state.showTodayPage) {
-            binding.showTodayPageSwitch.isChecked = state.showTodayPage
+        if (binding.settingsPanel.showTodayPageSwitch.isChecked != state.showTodayPage) {
+            binding.settingsPanel.showTodayPageSwitch.isChecked = state.showTodayPage
         }
         currentPageArrangement = state.pageArrangement
-        if (binding.pageArrangementView.arrangement != state.pageArrangement) {
-            binding.pageArrangementView.arrangement = state.pageArrangement
+        if (binding.settingsPanel.settingsAppearancePanel.pageArrangementView.arrangement != state.pageArrangement) {
+            binding.settingsPanel.settingsAppearancePanel.pageArrangementView.arrangement = state.pageArrangement
         }
         val enabledPages = buildSet {
             if (state.showNotesPage) add(LauncherPage.Notes)
             if (state.showTodayPage) add(LauncherPage.Today)
             if (state.showCalendarPage) add(LauncherPage.Calendar)
         }
-        if (binding.pageArrangementView.enabledPages != enabledPages) {
-            binding.pageArrangementView.enabledPages = enabledPages
+        if (binding.settingsPanel.settingsAppearancePanel.pageArrangementView.enabledPages != enabledPages) {
+            binding.settingsPanel.settingsAppearancePanel.pageArrangementView.enabledPages = enabledPages
         }
         currentOpenScreenTimeGesture = state.openScreenTimeGesture
         currentLockScreenGesture = state.lockScreenGesture
-        binding.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
-        binding.lockScreenGestureValue.text = gestureLabel(state.lockScreenGesture)
+        binding.settingsPanel.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
+        binding.settingsPanel.lockScreenGestureValue.text = gestureLabel(state.lockScreenGesture)
         currentSelectedCalendarIds = state.selectedCalendarIds
         currentBlockedAppPackageNames = state.blockedAppPackageNames
         currentAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
@@ -1294,13 +1413,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindCurrentDate() {
-        binding.dateText.text = DateFormat.getDateInstance(
-            DateFormat.FULL,
-            resources.configuration.locales[0],
-        ).format(Date())
-    }
-
     private fun configureSystemInsets() {
         val topInsetRoots = listOf(
             binding.homeContent,
@@ -1308,9 +1420,9 @@ class MainActivity : AppCompatActivity() {
             binding.notesRoot,
             binding.noteTrashRoot,
             binding.todayRoot,
-            binding.screenTimeRoot,
+            binding.screenTimePanel.root,
             binding.editControls,
-            binding.settingsRoot,
+            binding.settingsPanel.root,
         )
         val topInsetRootBasePaddings = topInsetRoots.associateWith { view ->
             intArrayOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom)
@@ -1328,8 +1440,8 @@ class MainActivity : AppCompatActivity() {
         val notesListBaseBottomPadding = binding.notesList.paddingBottom
         val noteTrashListBaseBottomPadding = binding.noteTrashList.paddingBottom
         val calendarEventListBaseBottomPadding = binding.calendarEventList.paddingBottom
-        val screenTimeScrollBaseBottomPadding = binding.screenTimeScroll.paddingBottom
-        val settingsScrollBaseBottomPadding = binding.settingsScroll.paddingBottom
+        val screenTimeScrollBaseBottomPadding = binding.screenTimePanel.screenTimeScroll.paddingBottom
+        val settingsScrollBaseBottomPadding = binding.settingsPanel.settingsScroll.paddingBottom
         val editControlsBaseHeight = binding.editControls.layoutParams.height
         val noteEditorBaseLeftPadding = binding.noteEditorRoot.paddingLeft
         val noteEditorBaseTopPadding = binding.noteEditorRoot.paddingTop
@@ -1381,8 +1493,8 @@ class MainActivity : AppCompatActivity() {
             binding.notesList.updatePadding(bottom = notesListBaseBottomPadding + safeDrawing.bottom)
             binding.noteTrashList.updatePadding(bottom = noteTrashListBaseBottomPadding + safeDrawing.bottom)
             binding.calendarEventList.updatePadding(bottom = calendarEventListBaseBottomPadding + safeDrawing.bottom)
-            binding.screenTimeScroll.updatePadding(bottom = screenTimeScrollBaseBottomPadding + safeDrawing.bottom)
-            binding.settingsScroll.updatePadding(bottom = settingsScrollBaseBottomPadding + bottomInset)
+            binding.screenTimePanel.screenTimeScroll.updatePadding(bottom = screenTimeScrollBaseBottomPadding + safeDrawing.bottom)
+            binding.settingsPanel.settingsScroll.updatePadding(bottom = settingsScrollBaseBottomPadding + bottomInset)
             if (isImeVisible && !wasSettingsImeVisible && shouldScrollSettingsForFocusedSearch()) {
                 scrollSettingsToFocusedSearch()
             }
@@ -1395,76 +1507,76 @@ class MainActivity : AppCompatActivity() {
         return isSettingsVisible &&
             (
                 isAppBlockingExpanded &&
-                    binding.appBlockingSearchInput.hasFocus() ||
+                    binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.hasFocus() ||
                     isAppBudgetsExpanded &&
-                    binding.appBudgetsSearchInput.hasFocus() ||
+                    binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.hasFocus() ||
                     isScreenTimeExclusionsExpanded &&
-                    binding.screenTimeExclusionsSearchInput.hasFocus()
+                    binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.hasFocus()
                 )
     }
 
     private fun scrollSettingsToFocusedSearch() {
-        binding.settingsScroll.post {
+        binding.settingsPanel.settingsScroll.post {
             val focusedSearch = when {
-                binding.appBudgetsSearchInput.hasFocus() -> binding.appBudgetsSearchInput
-                binding.screenTimeExclusionsSearchInput.hasFocus() -> binding.screenTimeExclusionsSearchInput
-                else -> binding.appBlockingSearchInput
+                binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.hasFocus() -> binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput
+                binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.hasFocus() -> binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput
+                else -> binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput
             }
             val targetTop = (focusedSearch.top - SETTINGS_KEYBOARD_SCROLL_TOP_OFFSET_DP.dp)
                 .coerceAtLeast(0)
-            binding.settingsScroll.smoothScrollTo(0, targetTop)
+            binding.settingsPanel.settingsScroll.smoothScrollTo(0, targetTop)
         }
     }
 
     private fun configureSettings() {
-        binding.settingsBackButton.setOnClickListener {
+        binding.settingsPanel.settingsBackButton.setOnClickListener {
             showSettingsPage(SettingsPage.Index)
         }
-        binding.settingsAppearanceCategory.setOnClickListener {
+        binding.settingsPanel.settingsAppearanceCategory.setOnClickListener {
             showSettingsPage(SettingsPage.Appearance)
         }
-        binding.settingsNotesCategory.setOnClickListener {
+        binding.settingsPanel.settingsNotesCategory.setOnClickListener {
             showSettingsPage(SettingsPage.Notes)
         }
-        binding.settingsCalendarCategory.setOnClickListener {
+        binding.settingsPanel.settingsCalendarCategory.setOnClickListener {
             showSettingsPage(SettingsPage.Calendar)
         }
-        binding.settingsGesturesCategory.setOnClickListener {
+        binding.settingsPanel.settingsGesturesCategory.setOnClickListener {
             showSettingsPage(SettingsPage.Gestures)
         }
-        binding.settingsScreenTimeCategory.setOnClickListener {
+        binding.settingsPanel.settingsScreenTimeCategory.setOnClickListener {
             showSettingsPage(SettingsPage.ScreenTime)
         }
-        binding.showDateSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.settingsAppearancePanel.showDateSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowDate(isChecked)
         }
-        binding.showDateRow.setOnClickListener {
-            viewModel.setShowDate(!binding.showDateSwitch.isChecked)
+        binding.settingsPanel.settingsAppearancePanel.showDateRow.setOnClickListener {
+            viewModel.setShowDate(!binding.settingsPanel.settingsAppearancePanel.showDateSwitch.isChecked)
         }
-        binding.defaultDigitalClockSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.settingsAppearancePanel.defaultDigitalClockSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setClockDisplayMode(
                 if (isChecked) ClockDisplayMode.Digital else ClockDisplayMode.Analog,
             )
         }
-        binding.defaultDigitalClockRow.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.defaultDigitalClockRow.setOnClickListener {
             viewModel.setClockDisplayMode(
-                if (binding.defaultDigitalClockSwitch.isChecked) {
+                if (binding.settingsPanel.settingsAppearancePanel.defaultDigitalClockSwitch.isChecked) {
                     ClockDisplayMode.Analog
                 } else {
                     ClockDisplayMode.Digital
                 },
             )
         }
-        binding.leftQuickAccessRow.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.leftQuickAccessRow.setOnClickListener {
             showQuickAccessAppPicker(left = true)
         }
-        binding.rightQuickAccessRow.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.rightQuickAccessRow.setOnClickListener {
             showQuickAccessAppPicker(left = false)
         }
-        binding.quickAccessPositionRow.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.quickAccessPositionRow.setOnClickListener {
             showQuickAccessPositionPicker()
         }
-        binding.pageArrangementView.setLabels(
+        binding.settingsPanel.settingsAppearancePanel.pageArrangementView.setLabels(
             pageLabels = mapOf(
                 LauncherPage.Notes to getString(R.string.notes_page_title),
                 LauncherPage.Today to getString(R.string.today_page_title),
@@ -1475,48 +1587,48 @@ class MainActivity : AppCompatActivity() {
             enabledLabel = getString(R.string.page_arrangement_enabled),
             disabledLabel = getString(R.string.page_arrangement_disabled),
         )
-        binding.pageArrangementView.onArrangementChanged = viewModel::setPageArrangement
-        binding.pageArrangementView.onPageEnabledChanged = { page, isEnabled ->
+        binding.settingsPanel.settingsAppearancePanel.pageArrangementView.onArrangementChanged = viewModel::setPageArrangement
+        binding.settingsPanel.settingsAppearancePanel.pageArrangementView.onPageEnabledChanged = { page, isEnabled ->
             when (page) {
                 LauncherPage.Notes -> viewModel.setShowNotesPage(isEnabled)
                 LauncherPage.Today -> viewModel.setShowTodayPage(isEnabled)
                 LauncherPage.Calendar -> handleCalendarPageSettingChanged(isEnabled)
             }
         }
-        binding.resetPageArrangementButton.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.resetPageArrangementButton.setOnClickListener {
             viewModel.setPageArrangement(PageArrangement.Default)
         }
-        binding.wallpaperDimSlider.addOnChangeListener { _, value, fromUser ->
+        binding.settingsPanel.settingsAppearancePanel.wallpaperDimSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 viewModel.setWallpaperDimPercent(value.toInt())
             }
         }
-        binding.shortcutAlignLeftOption.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.shortcutAlignLeftOption.setOnClickListener {
             viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Left)
         }
-        binding.shortcutAlignCenterOption.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.shortcutAlignCenterOption.setOnClickListener {
             viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Center)
         }
-        binding.shortcutAlignRightOption.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.shortcutAlignRightOption.setOnClickListener {
             viewModel.setShortcutTextAlignment(ShortcutTextAlignment.Right)
         }
-        binding.maxShortcutsSlider.addOnChangeListener { _, value, fromUser ->
+        binding.settingsPanel.settingsAppearancePanel.maxShortcutsSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 viewModel.setMaxShortcuts(value.toInt())
             }
         }
-        binding.openAppListKeyboardAutomaticallySwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setOpenAppListKeyboardAutomatically(isChecked)
         }
-        binding.openAppListKeyboardAutomaticallyRow.setOnClickListener {
+        binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallyRow.setOnClickListener {
             viewModel.setOpenAppListKeyboardAutomatically(
-                !binding.openAppListKeyboardAutomaticallySwitch.isChecked,
+                !binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.isChecked,
             )
         }
-        binding.openScreenTimeGestureRow.setOnClickListener {
+        binding.settingsPanel.openScreenTimeGestureRow.setOnClickListener {
             showGesturePicker(GestureAction.OpenScreenTime, currentOpenScreenTimeGesture)
         }
-        binding.lockScreenGestureRow.setOnClickListener {
+        binding.settingsPanel.lockScreenGestureRow.setOnClickListener {
             showGesturePicker(GestureAction.LockScreen, currentLockScreenGesture)
         }
         binding.gesturePickerRoot.setOnClickListener {
@@ -1534,34 +1646,34 @@ class MainActivity : AppCompatActivity() {
         binding.gestureDoubleTapOption.setOnClickListener {
             handleGesturePickerSelection(LauncherGesture.DoubleTap)
         }
-        binding.showNotesPageSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.showNotesPageSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowNotesPage(isChecked)
         }
-        binding.showNotesPageRow.setOnClickListener {
-            viewModel.setShowNotesPage(!binding.showNotesPageSwitch.isChecked)
+        binding.settingsPanel.showNotesPageRow.setOnClickListener {
+            viewModel.setShowNotesPage(!binding.settingsPanel.showNotesPageSwitch.isChecked)
         }
-        binding.notesTrashRow.setOnClickListener {
+        binding.settingsPanel.notesTrashRow.setOnClickListener {
             showNoteTrash()
         }
-        binding.showCalendarPageSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.showCalendarPageSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isRenderingSettingsState) {
                 handleCalendarPageSettingChanged(isChecked)
             }
         }
-        binding.showCalendarPageRow.setOnClickListener {
-            handleCalendarPageSettingChanged(!binding.showCalendarPageSwitch.isChecked)
+        binding.settingsPanel.showCalendarPageRow.setOnClickListener {
+            handleCalendarPageSettingChanged(!binding.settingsPanel.showCalendarPageSwitch.isChecked)
         }
-        binding.showTodayPageSwitch.setOnCheckedChangeListener { _, isChecked ->
+        binding.settingsPanel.showTodayPageSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowTodayPage(isChecked)
         }
-        binding.showTodayPageRow.setOnClickListener {
-            viewModel.setShowTodayPage(!binding.showTodayPageSwitch.isChecked)
+        binding.settingsPanel.showTodayPageRow.setOnClickListener {
+            viewModel.setShowTodayPage(!binding.settingsPanel.showTodayPageSwitch.isChecked)
         }
-        binding.calendarSelectionHeaderRow.setOnClickListener {
+        binding.settingsPanel.calendarSelectionHeaderRow.setOnClickListener {
             isCalendarSelectionExpanded = !isCalendarSelectionExpanded
             renderCalendarSelection()
         }
-        binding.appBlockingHeaderRow.setOnClickListener {
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingHeaderRow.setOnClickListener {
             isAppBlockingExpanded = !isAppBlockingExpanded
             if (isAppBlockingExpanded && blockableApps.isEmpty()) {
                 refreshBlockableApps()
@@ -1569,7 +1681,7 @@ class MainActivity : AppCompatActivity() {
                 renderAppBlockingSelection()
             }
         }
-        binding.appBlockingSearchInput.addTextChangedListener(
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.addTextChangedListener(
             object : TextWatcher {
                 override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
 
@@ -1580,12 +1692,12 @@ class MainActivity : AppCompatActivity() {
                 override fun afterTextChanged(text: Editable?) = Unit
             },
         )
-        binding.appBlockingSearchInput.setOnFocusChangeListener { _, hasFocus ->
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && shouldScrollSettingsForFocusedSearch()) {
                 scrollSettingsToFocusedSearch()
             }
         }
-        binding.appBudgetsHeaderRow.setOnClickListener {
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsHeaderRow.setOnClickListener {
             isAppBudgetsExpanded = !isAppBudgetsExpanded
             if (isAppBudgetsExpanded && blockableApps.isEmpty()) {
                 refreshBlockableApps()
@@ -1593,7 +1705,7 @@ class MainActivity : AppCompatActivity() {
                 renderAppBudgetsSelection()
             }
         }
-        binding.appBudgetsSearchInput.addTextChangedListener(
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.addTextChangedListener(
             object : TextWatcher {
                 override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
 
@@ -1604,12 +1716,12 @@ class MainActivity : AppCompatActivity() {
                 override fun afterTextChanged(text: Editable?) = Unit
             },
         )
-        binding.appBudgetsSearchInput.setOnFocusChangeListener { _, hasFocus ->
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && shouldScrollSettingsForFocusedSearch()) {
                 scrollSettingsToFocusedSearch()
             }
         }
-        binding.screenTimeExclusionsHeaderRow.setOnClickListener {
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsHeaderRow.setOnClickListener {
             isScreenTimeExclusionsExpanded = !isScreenTimeExclusionsExpanded
             if (isScreenTimeExclusionsExpanded && blockableApps.isEmpty()) {
                 refreshBlockableApps()
@@ -1617,7 +1729,7 @@ class MainActivity : AppCompatActivity() {
                 renderScreenTimeExclusionsSelection()
             }
         }
-        binding.screenTimeExclusionsSearchInput.addTextChangedListener(
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.addTextChangedListener(
             object : TextWatcher {
                 override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
 
@@ -1628,12 +1740,12 @@ class MainActivity : AppCompatActivity() {
                 override fun afterTextChanged(text: Editable?) = Unit
             },
         )
-        binding.screenTimeExclusionsSearchInput.setOnFocusChangeListener { _, hasFocus ->
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && shouldScrollSettingsForFocusedSearch()) {
                 scrollSettingsToFocusedSearch()
             }
         }
-        binding.resetIntentionsDataRow.setOnClickListener {
+        binding.settingsPanel.settingsScreenTimePanel.resetIntentionsDataRow.setOnClickListener {
             appUsageIntentionRepository.resetIntentions()
             renderScreenTimeIntentionSummary()
             Toast.makeText(this, R.string.intentions_data_reset, Toast.LENGTH_SHORT).show()
@@ -1647,16 +1759,16 @@ class MainActivity : AppCompatActivity() {
         currentSettingsPage = page
 
         val isIndex = page == SettingsPage.Index
-        binding.settingsTitle.setText(page.titleRes)
-        binding.settingsBackButton.visibility = if (isIndex) View.INVISIBLE else View.VISIBLE
-        binding.settingsBackButton.isClickable = !isIndex
-        binding.settingsIndex.isVisible = isIndex
-        binding.settingsAppearancePage.isVisible = page == SettingsPage.Appearance
-        binding.settingsNotesPage.isVisible = page == SettingsPage.Notes
-        binding.settingsCalendarPage.isVisible = page == SettingsPage.Calendar
-        binding.settingsGesturesPage.isVisible = page == SettingsPage.Gestures
-        binding.settingsScreenTimePage.isVisible = page == SettingsPage.ScreenTime
-        binding.settingsScroll.scrollTo(0, 0)
+        binding.settingsPanel.settingsTitle.setText(page.titleRes)
+        binding.settingsPanel.settingsBackButton.visibility = if (isIndex) View.INVISIBLE else View.VISIBLE
+        binding.settingsPanel.settingsBackButton.isClickable = !isIndex
+        binding.settingsPanel.settingsIndex.isVisible = isIndex
+        binding.settingsPanel.settingsAppearancePanel.root.isVisible = page == SettingsPage.Appearance
+        binding.settingsPanel.settingsNotesPage.isVisible = page == SettingsPage.Notes
+        binding.settingsPanel.settingsCalendarPage.isVisible = page == SettingsPage.Calendar
+        binding.settingsPanel.settingsGesturesPage.isVisible = page == SettingsPage.Gestures
+        binding.settingsPanel.settingsScreenTimePanel.root.isVisible = page == SettingsPage.ScreenTime
+        binding.settingsPanel.settingsScroll.scrollTo(0, 0)
 
         when (page) {
             SettingsPage.Calendar -> refreshCalendars()
@@ -1675,9 +1787,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun hideSettingsSearchKeyboard() {
         val focusedSearch = when {
-            binding.appBlockingSearchInput.hasFocus() -> binding.appBlockingSearchInput
-            binding.appBudgetsSearchInput.hasFocus() -> binding.appBudgetsSearchInput
-            binding.screenTimeExclusionsSearchInput.hasFocus() -> binding.screenTimeExclusionsSearchInput
+            binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.hasFocus() -> binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput
+            binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.hasFocus() -> binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput
+            binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.hasFocus() -> binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput
             else -> null
         } ?: return
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -1784,9 +1896,9 @@ class MainActivity : AppCompatActivity() {
     private fun renderQuickAccess() {
         renderQuickAccessButton(binding.leftQuickAccessButton, currentLeftQuickAccess)
         renderQuickAccessButton(binding.rightQuickAccessButton, currentRightQuickAccess)
-        binding.leftQuickAccessValue.text = quickAccessSummary(currentLeftQuickAccess)
-        binding.rightQuickAccessValue.text = quickAccessSummary(currentRightQuickAccess)
-        binding.quickAccessPositionValue.text = quickAccessPositionLabel(currentQuickAccessPosition)
+        binding.settingsPanel.settingsAppearancePanel.leftQuickAccessValue.text = quickAccessSummary(currentLeftQuickAccess)
+        binding.settingsPanel.settingsAppearancePanel.rightQuickAccessValue.text = quickAccessSummary(currentRightQuickAccess)
+        binding.settingsPanel.settingsAppearancePanel.quickAccessPositionValue.text = quickAccessPositionLabel(currentQuickAccessPosition)
         binding.quickAccessSpacer.visibility = if (currentQuickAccessPosition == QuickAccessPosition.SplitEdges) {
             View.VISIBLE
         } else {
@@ -1855,19 +1967,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun showQuickAccessAppPicker(left: Boolean) {
         val slotLabel = getString(if (left) R.string.quick_access_left else R.string.quick_access_right)
-        val apps = installedAppsRepository.loadLaunchableApps()
-            .distinctBy { it.packageName }
-        val labels = listOf(getString(R.string.quick_access_none)) + apps.map { it.label }
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.quick_access_choose_app, slotLabel))
-            .setItems(labels.toTypedArray()) { _, index ->
-                if (index == 0) {
-                    viewModel.setQuickAccess(left, null)
-                } else {
-                    showQuickAccessIconPicker(left, apps[index - 1])
+        quickAccessPickerJob?.cancel()
+        quickAccessPickerJob = lifecycleScope.launch {
+            val apps = launcherDataSource.loadLaunchableApps()
+                .distinctBy { it.packageName }
+            val labels = listOf(getString(R.string.quick_access_none)) + apps.map { it.label }
+            MaterialAlertDialogBuilder(this@MainActivity)
+                .setTitle(getString(R.string.quick_access_choose_app, slotLabel))
+                .setItems(labels.toTypedArray()) { _, index ->
+                    if (index == 0) {
+                        viewModel.setQuickAccess(left, null)
+                    } else {
+                        showQuickAccessIconPicker(left, apps[index - 1])
+                    }
                 }
-            }
-            .show()
+                .show()
+        }
     }
 
     private fun showQuickAccessIconPicker(left: Boolean, shortcut: AppShortcut) {
@@ -2094,14 +2209,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureScreenTime() {
-        binding.screenTimeHeaderRow.setOnClickListener {
+        binding.screenTimePanel.screenTimeHeaderRow.setOnClickListener {
             isScreenTimeExpanded = !isScreenTimeExpanded
             renderScreenTimeList()
         }
-        binding.screenTimePermissionButton.setOnClickListener {
+        binding.screenTimePanel.screenTimePermissionButton.setOnClickListener {
             openUsageAccessSettings()
         }
-        binding.screenTimeIntentionsHeaderRow.setOnClickListener {
+        binding.screenTimePanel.screenTimeIntentionsHeaderRow.setOnClickListener {
             isScreenTimeIntentionsExpanded = !isScreenTimeIntentionsExpanded
             renderScreenTimeIntentionSummary()
         }
@@ -2120,13 +2235,13 @@ class MainActivity : AppCompatActivity() {
         binding.calendarPermissionPrompt.visibility = if (hasPermission) View.GONE else View.VISIBLE
         binding.calendarEventList.visibility = if (hasPermission) View.VISIBLE else View.GONE
         binding.calendarEmpty.visibility = View.GONE
-        binding.calendarSelectionHeaderRow.setExpandIcon(isCalendarSelectionExpanded)
-        binding.calendarSelectionHint.visibility = if (!hasPermission && isCalendarSelectionExpanded) {
+        binding.settingsPanel.calendarSelectionHeaderRow.setExpandIcon(isCalendarSelectionExpanded)
+        binding.settingsPanel.calendarSelectionHint.visibility = if (!hasPermission && isCalendarSelectionExpanded) {
             View.VISIBLE
         } else {
             View.GONE
         }
-        binding.calendarSelectionList.visibility = if (
+        binding.settingsPanel.calendarSelectionList.visibility = if (
             hasPermission &&
             isCalendarSelectionExpanded &&
             availableCalendars.isNotEmpty()
@@ -2142,17 +2257,22 @@ class MainActivity : AppCompatActivity() {
             renderCalendarPermissionState()
             return
         }
-        availableCalendars = calendarRepository.loadCalendars()
-        renderCalendarSelection()
-        renderCalendarPermissionState()
+        calendarsRefreshJob?.cancel()
+        calendarsRefreshJob = lifecycleScope.launch {
+            val calendars = launcherDataSource.loadCalendars()
+            if (!hasCalendarPermission()) return@launch
+            availableCalendars = calendars
+            renderCalendarSelection()
+            renderCalendarPermissionState()
+        }
     }
 
     private fun renderCalendarSelection() {
-        binding.calendarSelectionList.removeAllViews()
+        binding.settingsPanel.calendarSelectionList.removeAllViews()
         availableCalendars.forEach { calendar ->
             val row = ItemCalendarSelectionBinding.inflate(
                 layoutInflater,
-                binding.calendarSelectionList,
+                binding.settingsPanel.calendarSelectionList,
                 false,
             )
             row.calendarName.text = calendar.name
@@ -2165,38 +2285,41 @@ class MainActivity : AppCompatActivity() {
             row.calendarCheckbox.setOnCheckedChangeListener { _, isChecked ->
                 viewModel.setCalendarSelected(calendar.id, isChecked)
             }
-            binding.calendarSelectionList.addView(row.root)
+            binding.settingsPanel.calendarSelectionList.addView(row.root)
         }
         renderCalendarPermissionState()
     }
 
     private fun refreshBlockableApps() {
-        blockableApps = installedAppsRepository.loadLaunchableApps()
-            .distinctBy { it.packageName }
-        renderAppBlockingSelection()
-        renderAppBudgetsSelection()
-        renderScreenTimeExclusionsSelection()
+        appsRefreshJob?.cancel()
+        appsRefreshJob = lifecycleScope.launch {
+            val apps = launcherDataSource.loadLaunchableApps()
+                .distinctBy { it.packageName }
+            blockableApps = apps
+            renderAppBlockingSelection()
+            renderAppBudgetsSelection()
+            renderScreenTimeExclusionsSelection()
+        }
     }
 
     private fun renderAppBlockingSelection() {
-        binding.appBlockingCount.text = resources.getQuantityString(
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingCount.text = resources.getQuantityString(
             R.plurals.app_blocking_count,
             currentBlockedAppPackageNames.size,
             currentBlockedAppPackageNames.size,
         )
-        binding.appBlockingExpandIcon.setImageResource(
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingExpandIcon.setImageResource(
             if (isAppBlockingExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
         )
-        binding.appBlockingSearchInput.visibility = if (isAppBlockingExpanded) View.VISIBLE else View.GONE
-        binding.appBlockingList.visibility = if (isAppBlockingExpanded) View.VISIBLE else View.GONE
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.visibility = if (isAppBlockingExpanded) View.VISIBLE else View.GONE
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingList.visibility = if (isAppBlockingExpanded) View.VISIBLE else View.GONE
         if (!isAppBlockingExpanded) return
 
-        binding.appBlockingList.removeAllViews()
+        binding.settingsPanel.settingsScreenTimePanel.appBlockingList.removeAllViews()
         if (blockableApps.isEmpty()) {
-            blockableApps = installedAppsRepository.loadLaunchableApps()
-                .distinctBy { it.packageName }
+            return
         }
-        val query = binding.appBlockingSearchInput.text?.toString().orEmpty().trim()
+        val query = binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.text?.toString().orEmpty().trim()
         val displayedApps = if (query.isEmpty()) {
             blockableApps.filter { it.packageName in currentBlockedAppPackageNames }
         } else {
@@ -2205,7 +2328,7 @@ class MainActivity : AppCompatActivity() {
         displayedApps.forEach { shortcut ->
             val row = ItemAppBlockSelectionBinding.inflate(
                 layoutInflater,
-                binding.appBlockingList,
+                binding.settingsPanel.settingsScreenTimePanel.appBlockingList,
                 false,
             )
             row.blockedAppName.text = shortcut.label
@@ -2217,29 +2340,28 @@ class MainActivity : AppCompatActivity() {
             row.blockedAppCheckbox.setOnCheckedChangeListener { _, isChecked ->
                 viewModel.setAppBlocked(shortcut.packageName, isChecked)
             }
-            binding.appBlockingList.addView(row.root)
+            binding.settingsPanel.settingsScreenTimePanel.appBlockingList.addView(row.root)
         }
     }
 
     private fun renderAppBudgetsSelection() {
-        binding.appBudgetsCount.text = resources.getQuantityString(
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsCount.text = resources.getQuantityString(
             R.plurals.app_budgets_count,
             currentAppBudgetMinutesByPackage.size,
             currentAppBudgetMinutesByPackage.size,
         )
-        binding.appBudgetsExpandIcon.setImageResource(
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsExpandIcon.setImageResource(
             if (isAppBudgetsExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
         )
-        binding.appBudgetsSearchInput.visibility = if (isAppBudgetsExpanded) View.VISIBLE else View.GONE
-        binding.appBudgetsList.visibility = if (isAppBudgetsExpanded) View.VISIBLE else View.GONE
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.visibility = if (isAppBudgetsExpanded) View.VISIBLE else View.GONE
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsList.visibility = if (isAppBudgetsExpanded) View.VISIBLE else View.GONE
         if (!isAppBudgetsExpanded) return
 
-        binding.appBudgetsList.removeAllViews()
+        binding.settingsPanel.settingsScreenTimePanel.appBudgetsList.removeAllViews()
         if (blockableApps.isEmpty()) {
-            blockableApps = installedAppsRepository.loadLaunchableApps()
-                .distinctBy { it.packageName }
+            return
         }
-        val query = binding.appBudgetsSearchInput.text?.toString().orEmpty().trim()
+        val query = binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.text?.toString().orEmpty().trim()
         val displayedApps = if (query.isEmpty()) {
             blockableApps.filter { it.packageName in currentAppBudgetMinutesByPackage }
         } else {
@@ -2248,7 +2370,7 @@ class MainActivity : AppCompatActivity() {
         displayedApps.forEach { shortcut ->
             val row = ItemAppBudgetSelectionBinding.inflate(
                 layoutInflater,
-                binding.appBudgetsList,
+                binding.settingsPanel.settingsScreenTimePanel.appBudgetsList,
                 false,
             )
             row.budgetAppName.text = shortcut.label
@@ -2256,31 +2378,30 @@ class MainActivity : AppCompatActivity() {
             renderBudgetOption(row.budget15Button, selectedMinutes, 15, shortcut.packageName)
             renderBudgetOption(row.budget30Button, selectedMinutes, 30, shortcut.packageName)
             renderBudgetOption(row.budget60Button, selectedMinutes, 60, shortcut.packageName)
-            binding.appBudgetsList.addView(row.root)
+            binding.settingsPanel.settingsScreenTimePanel.appBudgetsList.addView(row.root)
         }
     }
 
     private fun renderScreenTimeExclusionsSelection() {
-        binding.screenTimeExclusionsCount.text = resources.getQuantityString(
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsCount.text = resources.getQuantityString(
             R.plurals.screen_time_exclusions_count,
             currentExcludedScreenTimePackageNames.size,
             currentExcludedScreenTimePackageNames.size,
         )
-        binding.screenTimeExclusionsExpandIcon.setImageResource(
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsExpandIcon.setImageResource(
             if (isScreenTimeExclusionsExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
         )
-        binding.screenTimeExclusionsSearchInput.visibility =
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.visibility =
             if (isScreenTimeExclusionsExpanded) View.VISIBLE else View.GONE
-        binding.screenTimeExclusionsList.visibility =
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsList.visibility =
             if (isScreenTimeExclusionsExpanded) View.VISIBLE else View.GONE
         if (!isScreenTimeExclusionsExpanded) return
 
-        binding.screenTimeExclusionsList.removeAllViews()
+        binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsList.removeAllViews()
         if (blockableApps.isEmpty()) {
-            blockableApps = installedAppsRepository.loadLaunchableApps()
-                .distinctBy { it.packageName }
+            return
         }
-        val query = binding.screenTimeExclusionsSearchInput.text?.toString().orEmpty().trim()
+        val query = binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsSearchInput.text?.toString().orEmpty().trim()
         val displayedApps = if (query.isEmpty()) {
             blockableApps.filter { it.packageName in currentExcludedScreenTimePackageNames }
         } else {
@@ -2289,7 +2410,7 @@ class MainActivity : AppCompatActivity() {
         displayedApps.forEach { shortcut ->
             val row = ItemAppBlockSelectionBinding.inflate(
                 layoutInflater,
-                binding.screenTimeExclusionsList,
+                binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsList,
                 false,
             )
             row.blockedAppName.text = shortcut.label
@@ -2305,7 +2426,7 @@ class MainActivity : AppCompatActivity() {
             row.blockedAppCheckbox.setOnCheckedChangeListener { _, isChecked ->
                 viewModel.setScreenTimeAppExcluded(shortcut.packageName, isChecked)
             }
-            binding.screenTimeExclusionsList.addView(row.root)
+            binding.settingsPanel.settingsScreenTimePanel.screenTimeExclusionsList.addView(row.root)
         }
     }
 
@@ -2324,17 +2445,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderShortcutTextAlignmentOptions(selectedAlignment: ShortcutTextAlignment) {
         renderShortcutTextAlignmentOption(
-            binding.shortcutAlignLeftOption,
+            binding.settingsPanel.settingsAppearancePanel.shortcutAlignLeftOption,
             selectedAlignment,
             ShortcutTextAlignment.Left,
         )
         renderShortcutTextAlignmentOption(
-            binding.shortcutAlignCenterOption,
+            binding.settingsPanel.settingsAppearancePanel.shortcutAlignCenterOption,
             selectedAlignment,
             ShortcutTextAlignment.Center,
         )
         renderShortcutTextAlignmentOption(
-            binding.shortcutAlignRightOption,
+            binding.settingsPanel.settingsAppearancePanel.shortcutAlignRightOption,
             selectedAlignment,
             ShortcutTextAlignment.Right,
         )
@@ -2376,36 +2497,41 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshScreenTime() {
         if (!hasScreenTimePermission()) {
+            screenTimeRefreshJob?.cancel()
             screenTimeUsages = emptyList()
             screenTimeWeekUsages = emptyList()
             renderScreenTimePermissionState()
             return
         }
-        screenTimeWeekUsages = screenTimeRepository.loadCurrentWeekUsage(
-            currentExcludedScreenTimePackageNames,
-        )
-        screenTimeUsages = screenTimeRepository.loadTodayUsage(
-            currentExcludedScreenTimePackageNames,
-        )
-        renderScreenTimeRecap()
-        renderScreenTimeWeekSummary()
-        renderScreenTimeIntentionSummary()
-        renderScreenTimeList()
+        val excludedPackages = currentExcludedScreenTimePackageNames
+        screenTimeRefreshJob?.cancel()
+        screenTimeRefreshJob = lifecycleScope.launch {
+            val overview = launcherDataSource.loadScreenTimeOverview(excludedPackages)
+            if (!hasScreenTimePermission() || excludedPackages != currentExcludedScreenTimePackageNames) {
+                return@launch
+            }
+            screenTimeWeekUsages = overview.week
+            screenTimeUsages = overview.today
+            renderScreenTimeRecap()
+            renderScreenTimeWeekSummary()
+            renderScreenTimeIntentionSummary()
+            renderScreenTimeList()
+        }
     }
 
     private fun renderScreenTimePermissionState() {
         val hasPermission = hasScreenTimePermission()
-        binding.screenTimeRecap.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeRecapDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeWeekSummary.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeGraphDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeIntentionsSummary.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeIntentionsDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimeHeaderRow.visibility = if (hasPermission) View.VISIBLE else View.GONE
-        binding.screenTimePermissionPrompt.visibility = if (hasPermission) View.GONE else View.VISIBLE
-        binding.screenTimeList.visibility = if (hasPermission && screenTimeUsages.isNotEmpty()) View.VISIBLE else View.GONE
-        binding.screenTimeEmpty.visibility = if (hasPermission && screenTimeUsages.isEmpty()) View.VISIBLE else View.GONE
-        binding.screenTimeHeaderRow.setExpandIcon(isScreenTimeExpanded)
+        binding.screenTimePanel.screenTimeRecap.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeRecapDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeWeekSummary.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeGraphDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeIntentionsSummary.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeIntentionsDivider.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeHeaderRow.visibility = if (hasPermission) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimePermissionPrompt.visibility = if (hasPermission) View.GONE else View.VISIBLE
+        binding.screenTimePanel.screenTimeList.visibility = if (hasPermission && screenTimeUsages.isNotEmpty()) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeEmpty.visibility = if (hasPermission && screenTimeUsages.isEmpty()) View.VISIBLE else View.GONE
+        binding.screenTimePanel.screenTimeHeaderRow.setExpandIcon(isScreenTimeExpanded)
     }
 
     private fun renderScreenTimeRecap() {
@@ -2414,14 +2540,14 @@ class MainActivity : AppCompatActivity() {
         val weeklyAverageMillis = elapsedWeekAverageMillis()
 
         if (topApp == null) {
-            binding.screenTimeTopApp.text = getString(R.string.screen_time_recap_no_top_app)
-            binding.screenTimeTopAppUsage.text = formatScreenTimeDuration(0)
+            binding.screenTimePanel.screenTimeTopApp.text = getString(R.string.screen_time_recap_no_top_app)
+            binding.screenTimePanel.screenTimeTopAppUsage.text = formatScreenTimeDuration(0)
         } else {
-            binding.screenTimeTopApp.text = topApp.label
-            binding.screenTimeTopAppUsage.text = formatScreenTimeDuration(topApp.usageMillis)
+            binding.screenTimePanel.screenTimeTopApp.text = topApp.label
+            binding.screenTimePanel.screenTimeTopAppUsage.text = formatScreenTimeDuration(topApp.usageMillis)
         }
-        binding.screenTimeTodayTotal.text = formatScreenTimeDuration(todayTotalMillis)
-        binding.screenTimeVsAverage.text = formatScreenTimeAverageComparison(
+        binding.screenTimePanel.screenTimeTodayTotal.text = formatScreenTimeDuration(todayTotalMillis)
+        binding.screenTimePanel.screenTimeVsAverage.text = formatScreenTimeAverageComparison(
             todayMillis = todayTotalMillis,
             averageMillis = weeklyAverageMillis,
         )
@@ -2443,11 +2569,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderScreenTimeWeekSummary() {
         val averageUsageMillis = elapsedWeekAverageMillis()
-        binding.screenTimeAverage.text = getString(
+        binding.screenTimePanel.screenTimeAverage.text = getString(
             R.string.screen_time_average,
             formatScreenTimeDuration(averageUsageMillis),
         )
-        binding.screenTimeWeekGraph.setWeekUsage(screenTimeWeekUsages)
+        binding.screenTimePanel.screenTimeWeekGraph.setWeekUsage(screenTimeWeekUsages)
     }
 
     private fun elapsedWeekAverageMillis(): Long {
@@ -2465,10 +2591,10 @@ class MainActivity : AppCompatActivity() {
         val actualMillis = screenTimeUsages
             .filter { it.packageName in intentionsByPackage }
             .sumOf { it.usageMillis }
-        binding.screenTimeIntendedToday.text = formatScreenTimeDuration(intendedMinutes * MILLIS_PER_MINUTE)
-        binding.screenTimeActualToday.text = formatScreenTimeDuration(actualMillis)
-        binding.screenTimeIntentionsHeaderRow.setExpandIcon(isScreenTimeIntentionsExpanded)
-        binding.screenTimeIntentionsList.visibility = if (
+        binding.screenTimePanel.screenTimeIntendedToday.text = formatScreenTimeDuration(intendedMinutes * MILLIS_PER_MINUTE)
+        binding.screenTimePanel.screenTimeActualToday.text = formatScreenTimeDuration(actualMillis)
+        binding.screenTimePanel.screenTimeIntentionsHeaderRow.setExpandIcon(isScreenTimeIntentionsExpanded)
+        binding.screenTimePanel.screenTimeIntentionsList.visibility = if (
             isScreenTimeIntentionsExpanded &&
             intentionsByPackage.isNotEmpty()
         ) {
@@ -2476,7 +2602,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             View.GONE
         }
-        binding.screenTimeIntentionsList.removeAllViews()
+        binding.screenTimePanel.screenTimeIntentionsList.removeAllViews()
         if (!isScreenTimeIntentionsExpanded) return
 
         intentionsByPackage.toList()
@@ -2486,7 +2612,7 @@ class MainActivity : AppCompatActivity() {
                     .firstOrNull { it.packageName == packageName }
                     ?.usageMillis
                     ?: 0L
-                binding.screenTimeIntentionsList.addView(
+                binding.screenTimePanel.screenTimeIntentionsList.addView(
                     android.widget.LinearLayout(this).apply {
                         orientation = android.widget.LinearLayout.HORIZONTAL
                         gravity = android.view.Gravity.CENTER_VERTICAL
@@ -2542,17 +2668,17 @@ class MainActivity : AppCompatActivity() {
         }
         updateScreenTimeListHeight(visibleUsages.size)
         screenTimeAdapter.submitList(visibleUsages) {
-            binding.screenTimeList.requestLayout()
-            binding.screenTimeContent.requestLayout()
-            binding.screenTimeScroll.requestLayout()
+            binding.screenTimePanel.screenTimeList.requestLayout()
+            binding.screenTimePanel.screenTimeContent.requestLayout()
+            binding.screenTimePanel.screenTimeScroll.requestLayout()
         }
     }
 
     private fun updateScreenTimeListHeight(itemCount: Int) {
-        val targetHeight = binding.screenTimeList.paddingTop +
-            binding.screenTimeList.paddingBottom +
+        val targetHeight = binding.screenTimePanel.screenTimeList.paddingTop +
+            binding.screenTimePanel.screenTimeList.paddingBottom +
             itemCount * SCREEN_TIME_APP_ROW_HEIGHT_DP.dp
-        binding.screenTimeList.layoutParams = binding.screenTimeList.layoutParams.apply {
+        binding.screenTimePanel.screenTimeList.layoutParams = binding.screenTimePanel.screenTimeList.layoutParams.apply {
             height = targetHeight
         }
     }
@@ -2583,11 +2709,18 @@ class MainActivity : AppCompatActivity() {
             renderCalendarPermissionState()
             return
         }
-        val events = calendarRepository.loadUpcomingEvents(currentSelectedCalendarIds)
-        calendarEventAdapter.submitList(events)
-        binding.calendarEmpty.visibility = if (events.isEmpty()) View.VISIBLE else View.GONE
-        binding.calendarEventList.visibility = if (events.isEmpty()) View.GONE else View.VISIBLE
-        binding.calendarPermissionPrompt.visibility = View.GONE
+        val selectedCalendarIds = currentSelectedCalendarIds
+        calendarEventsRefreshJob?.cancel()
+        calendarEventsRefreshJob = lifecycleScope.launch {
+            val events = launcherDataSource.loadUpcomingEvents(selectedCalendarIds)
+            if (!hasCalendarPermission() || selectedCalendarIds != currentSelectedCalendarIds) {
+                return@launch
+            }
+            calendarEventAdapter.submitList(events)
+            binding.calendarEmpty.visibility = if (events.isEmpty()) View.VISIBLE else View.GONE
+            binding.calendarEventList.visibility = if (events.isEmpty()) View.GONE else View.VISIBLE
+            binding.calendarPermissionPrompt.visibility = View.GONE
+        }
     }
 
     private fun onCalendarPageVisible() {
@@ -2604,13 +2737,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshTodayWidgets() {
-        todayNextEvent = if (hasCalendarPermission()) {
-            calendarRepository.loadUpcomingEvents(currentSelectedCalendarIds).firstOrNull()
-        } else {
-            null
-        }
         refreshTodayWeather()
         renderTodayWidgets()
+        todayCalendarRefreshJob?.cancel()
+        if (!hasCalendarPermission()) {
+            todayNextEvent = null
+            renderTodayWidgets()
+            return
+        }
+        val selectedCalendarIds = currentSelectedCalendarIds
+        todayCalendarRefreshJob = lifecycleScope.launch {
+            val nextEvent = launcherDataSource.loadUpcomingEvents(selectedCalendarIds).firstOrNull()
+            if (!hasCalendarPermission() || selectedCalendarIds != currentSelectedCalendarIds) {
+                return@launch
+            }
+            todayNextEvent = nextEvent
+            if (isTodayVisible) {
+                renderTodayWidgets()
+            }
+        }
     }
 
     private fun renderTodayWidgets() {
@@ -3050,7 +3195,7 @@ class MainActivity : AppCompatActivity() {
             val playButton = android.widget.ImageButton(this@MainActivity).apply {
                 setImageResource(if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play)
                 contentDescription = getString(if (isPlaying) R.string.pause_voice_note else R.string.play_voice_note)
-                background = ColorDrawable(Color.TRANSPARENT)
+                background = Color.TRANSPARENT.toDrawable()
                 setColorFilter(getColor(R.color.launcher_text))
                 setPadding(11.dp, 11.dp, 11.dp, 11.dp)
                 layoutParams = LinearLayout.LayoutParams(44.dp, 44.dp)
@@ -3335,12 +3480,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun enterTodayEditMode() {
+    private fun enterTodayEditMode(performHaptic: Boolean = true) {
         if (!isTodayVisible || isTodayEditMode) return
         isTodayEditMode = true
         binding.todayTitle.text = getString(R.string.today_edit_mode_label)
         binding.addTodayWidgetButton.visibility = View.VISIBLE
-        performLightHapticFeedback()
+        if (performHaptic) {
+            performLightHapticFeedback()
+        }
         renderTodayWidgets()
     }
 
@@ -3514,7 +3661,7 @@ class MainActivity : AppCompatActivity() {
             true,
         ).apply {
             isOutsideTouchable = true
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
             elevation = 0f
         }
 
@@ -3626,7 +3773,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun notificationConfigAppOptions(): List<NotificationAppOption> {
-        val launchableApps = installedAppsRepository.loadLaunchableApps()
+        val launchableApps = cachedLaunchableApps
             .distinctBy { it.packageName }
             .map { NotificationAppOption(it.packageName, it.label) }
         val notifyingApps = todayNotifications
@@ -4044,10 +4191,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun enterEditMode() {
+    private fun enterEditMode(performHaptic: Boolean = true) {
         if (isEditMode) return
         isEditMode = true
-        performEditModeHapticFeedback()
+        if (performHaptic) {
+            performEditModeHapticFeedback()
+        }
         shortcutAdapter.isEditMode = true
         binding.clockDateContent.visibility = View.GONE
         binding.editModeText.visibility = View.VISIBLE
@@ -4090,9 +4239,9 @@ class MainActivity : AppCompatActivity() {
         isSettingsVisible = true
         updateLauncherLayerVisibility()
         showSettingsPage(SettingsPage.Index)
-        binding.settingsRoot.alpha = 0f
-        binding.settingsRoot.visibility = View.VISIBLE
-        binding.settingsRoot.animate()
+        binding.settingsPanel.root.alpha = 0f
+        binding.settingsPanel.root.visibility = View.VISIBLE
+        binding.settingsPanel.root.animate()
             .alpha(1f)
             .setDuration(SETTINGS_FADE_MS)
             .start()
@@ -4101,8 +4250,8 @@ class MainActivity : AppCompatActivity() {
     private fun showNoteTrash() {
         if (!isSettingsVisible || isNoteTrashVisible) return
         isNoteTrashVisible = true
-        binding.settingsRoot.animate().cancel()
-        binding.settingsRoot.visibility = View.GONE
+        binding.settingsPanel.root.animate().cancel()
+        binding.settingsPanel.root.visibility = View.GONE
         binding.noteTrashRoot.alpha = 0f
         binding.noteTrashRoot.visibility = View.VISIBLE
         binding.noteTrashRoot.animate()
@@ -4118,9 +4267,9 @@ class MainActivity : AppCompatActivity() {
         binding.noteTrashRoot.visibility = View.GONE
         binding.noteTrashRoot.alpha = 1f
         if (returnToSettings && isSettingsVisible) {
-            binding.settingsRoot.alpha = 0f
-            binding.settingsRoot.visibility = View.VISIBLE
-            binding.settingsRoot.animate()
+            binding.settingsPanel.root.alpha = 0f
+            binding.settingsPanel.root.visibility = View.VISIBLE
+            binding.settingsPanel.root.animate()
                 .alpha(1f)
                 .setDuration(SETTINGS_FADE_MS)
                 .start()
@@ -4168,16 +4317,18 @@ class MainActivity : AppCompatActivity() {
         settlePageDrag(target, shouldComplete = true)
     }
 
-    private fun showScreenTimePage() {
+    private fun showScreenTimePage(performHaptic: Boolean = true) {
         if (isScreenTimeVisible || isEditMode || currentOpenScreenTimeGesture == LauncherGesture.None) return
         isScreenTimeVisible = true
-        performLightHapticFeedback()
+        if (performHaptic) {
+            performLightHapticFeedback()
+        }
         updateLauncherLayerVisibility()
         refreshScreenTime()
-        binding.screenTimeRoot.animate().cancel()
-        binding.screenTimeRoot.alpha = 0f
-        binding.screenTimeRoot.visibility = View.VISIBLE
-        binding.screenTimeRoot.animate()
+        binding.screenTimePanel.root.animate().cancel()
+        binding.screenTimePanel.root.alpha = 0f
+        binding.screenTimePanel.root.visibility = View.VISIBLE
+        binding.screenTimePanel.root.animate()
             .alpha(1f)
             .setDuration(SCREEN_TIME_FADE_MS)
             .start()
@@ -4186,9 +4337,9 @@ class MainActivity : AppCompatActivity() {
     private fun hideScreenTimePage() {
         if (!isScreenTimeVisible) return
         isScreenTimeVisible = false
-        binding.screenTimeRoot.animate().cancel()
-        binding.screenTimeRoot.visibility = View.GONE
-        binding.screenTimeRoot.alpha = 1f
+        binding.screenTimePanel.root.animate().cancel()
+        binding.screenTimePanel.root.visibility = View.GONE
+        binding.screenTimePanel.root.alpha = 1f
         updateLauncherLayerVisibility()
     }
 
@@ -4578,9 +4729,9 @@ class MainActivity : AppCompatActivity() {
         isSettingsVisible = false
         currentSettingsPage = SettingsPage.Index
         hideGesturePicker()
-        binding.settingsRoot.animate().cancel()
-        binding.settingsRoot.visibility = View.GONE
-        binding.settingsRoot.alpha = 1f
+        binding.settingsPanel.root.animate().cancel()
+        binding.settingsPanel.root.visibility = View.GONE
+        binding.settingsPanel.root.alpha = 1f
         updateLauncherLayerVisibility()
     }
 
@@ -4634,18 +4785,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadCachedLaunchableApps(): List<AppShortcut> {
-        return cachedLaunchableApps.ifEmpty {
-            installedAppsRepository.loadLaunchableApps().also { apps ->
-                cachedLaunchableApps = apps
-            }
+        if (cachedLaunchableApps.isEmpty()) {
+            refreshLaunchableAppCache()
         }
+        return cachedLaunchableApps
     }
 
     private fun refreshLaunchableAppCache() {
-        lifecycleScope.launch {
-            val apps = withContext(Dispatchers.Default) {
-                installedAppsRepository.loadLaunchableApps()
-            }
+        launchableAppsRefreshJob?.cancel()
+        launchableAppsRefreshJob = lifecycleScope.launch {
+            val apps = launcherDataSource.loadLaunchableApps()
             cachedLaunchableApps = apps
             if (isAppPickerVisible) {
                 availableApps = apps
@@ -4708,22 +4857,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun launchShortcutWithAppBlocking(shortcut: AppShortcut) {
-        val budgetOverrun = findBudgetOverrun(shortcut.packageName)
-        if (shortcut.packageName in currentBlockedAppPackageNames || budgetOverrun != null) {
-            showAppBlockPrompt(shortcut, budgetOverrun)
-        } else {
-            forceLaunchShortcut(shortcut)
+        val isBlocked = shortcut.packageName in currentBlockedAppPackageNames
+        val budgetMinutes = currentAppBudgetMinutesByPackage[shortcut.packageName]
+        if (budgetMinutes == null || !hasScreenTimePermission()) {
+            if (isBlocked) {
+                showAppBlockPrompt(shortcut, budgetOverrun = null)
+            } else {
+                forceLaunchShortcut(shortcut)
+            }
+            return
+        }
+        val excludedPackages = currentExcludedScreenTimePackageNames
+        budgetCheckJob?.cancel()
+        budgetCheckJob = lifecycleScope.launch {
+            val usageMillis = launcherDataSource.loadTodayUsageMillis(
+                packageName = shortcut.packageName,
+                excludedPackageNames = excludedPackages,
+            )
+            val currentBudget = currentAppBudgetMinutesByPackage[shortcut.packageName]
+            if (currentBudget != budgetMinutes || excludedPackages != currentExcludedScreenTimePackageNames) {
+                return@launch
+            }
+            val budgetOverrun = findBudgetOverrun(
+                budgetMinutes = budgetMinutes,
+                usageMillis = usageMillis,
+            )
+            if (shortcut.packageName in currentBlockedAppPackageNames || budgetOverrun != null) {
+                showAppBlockPrompt(shortcut, budgetOverrun)
+            } else {
+                forceLaunchShortcut(shortcut)
+            }
         }
     }
 
-    private fun findBudgetOverrun(packageName: String): AppBudgetOverrun? {
-        val budgetMinutes = currentAppBudgetMinutesByPackage[packageName] ?: return null
-        if (!hasScreenTimePermission()) return null
-
-        val usageMillis = screenTimeRepository.loadTodayUsage()
-            .firstOrNull { it.packageName == packageName }
-            ?.usageMillis
-            ?: 0L
+    private fun findBudgetOverrun(budgetMinutes: Int, usageMillis: Long): AppBudgetOverrun? {
         val budgetMillis = budgetMinutes * MILLIS_PER_MINUTE
         return if (usageMillis >= budgetMillis) {
             AppBudgetOverrun(
@@ -4847,6 +5014,7 @@ class MainActivity : AppCompatActivity() {
     )
 
     private companion object {
+        const val KEY_LAUNCHER_SESSION_STATE = "launcherSessionState"
         const val GOOGLE_CALENDAR_PACKAGE = "com.google.android.calendar"
         val CLOCK_APP_PACKAGES = listOf(
             "com.android.deskclock",

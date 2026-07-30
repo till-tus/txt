@@ -66,6 +66,7 @@ class PageArrangementView @JvmOverloads constructor(
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
+    private val emptySlotPathEffect = DashPathEffect(floatArrayOf(7f.dp, 6f.dp), 0f)
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
@@ -126,7 +127,7 @@ class PageArrangementView @JvmOverloads constructor(
                 },
             )
             outlinePaint.pathEffect = if (page == null) {
-                DashPathEffect(floatArrayOf(7f.dp, 6f.dp), 0f)
+                emptySlotPathEffect
             } else {
                 null
             }
