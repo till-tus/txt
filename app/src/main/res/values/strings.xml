@@ -18,7 +18,7 @@
     <!-- Settings -->
     <string name="settings_back">Back to settings</string>
     <string name="settings_category_appearance">Appearance &amp; launcher</string>
-    <string name="settings_category_appearance_summary">Clock, shortcuts, wallpaper, and search</string>
+    <string name="settings_category_appearance_summary">Clock, pages, Quick Access, and wallpaper</string>
     <string name="settings_category_notes">Notes</string>
     <string name="settings_category_notes_summary">Page visibility and deleted notes</string>
     <string name="settings_category_calendar">Calendar &amp; Today</string>
@@ -26,12 +26,36 @@
     <string name="settings_category_gestures">Gestures</string>
     <string name="settings_category_gestures_summary">Launcher actions and lock screen</string>
     <string name="settings_category_screen_time">App blocking &amp; screen time</string>
-    <string name="settings_category_screen_time_summary">Blocked apps, daily budgets, and intentions</string>
+    <string name="settings_category_screen_time_summary">Blocked apps, budgets, exclusions, and intentions</string>
     <string name="home_screen_section">Home screen</string>
     <string name="show_date">Show date</string>
     <string name="default_digital_clock">Digital clock by default</string>
     <string name="clock_app_unavailable">Clock app unavailable</string>
-    <string name="show_quick_access">Show quick access buttons</string>
+    <string name="quick_access_left">Left button</string>
+    <string name="quick_access_right">Right button</string>
+    <string name="quick_access_none">None</string>
+    <string name="quick_access_choose_app">Choose app for %1$s</string>
+    <string name="quick_access_choose_icon">Choose icon for %1$s</string>
+    <string name="quick_access_icon_camera">Camera</string>
+    <string name="quick_access_icon_notes">Notes</string>
+    <string name="quick_access_icon_calendar">Calendar</string>
+    <string name="quick_access_icon_phone">Phone</string>
+    <string name="quick_access_icon_messages">Messages</string>
+    <string name="quick_access_icon_todos">Todos</string>
+    <string name="quick_access_value">%1$s · %2$s</string>
+    <string name="quick_access_position">Button position</string>
+    <string name="quick_access_position_choose">Choose Quick Access position</string>
+    <string name="quick_access_position_both_right">Both right</string>
+    <string name="quick_access_position_both_left">Both left</string>
+    <string name="quick_access_position_both_center">Both center</string>
+    <string name="quick_access_position_split_edges">Left and right edges</string>
+    <string name="page_arrangement_title">Page arrangement</string>
+    <string name="page_arrangement_hint">Drag pages around Home. Tap a page to enable or disable it.</string>
+    <string name="page_arrangement_home">Home</string>
+    <string name="page_arrangement_fixed">Fixed</string>
+    <string name="page_arrangement_enabled">Enabled</string>
+    <string name="page_arrangement_disabled">Disabled</string>
+    <string name="page_arrangement_reset">Reset to default</string>
     <string name="wallpaper_dim">Wallpaper dim</string>
     <string name="integer_value" translatable="false">%1$d</string>
     <string name="percentage_value" translatable="false">%1$d%%</string>
@@ -106,6 +130,12 @@
         <item quantity="other">%1$d app budgets</item>
     </plurals>
     <string name="app_budgets_search_hint">Search apps for budgets&#8230;</string>
+    <string name="screen_time_exclusions_title">Excluded from statistics</string>
+    <plurals name="screen_time_exclusions_count">
+        <item quantity="one">%1$d app excluded</item>
+        <item quantity="other">%1$d apps excluded</item>
+    </plurals>
+    <string name="screen_time_exclusions_search_hint">Search apps to exclude&#8230;</string>
     <string name="app_budget_usage_progress">%1$s / %2$s</string>
     <string name="app_budget_15">15m</string>
     <string name="app_budget_30">30m</string>
@@ -193,7 +223,5 @@
     <string name="cancel_note_edit">Cancel</string>
 
     <!-- Quick access -->
-    <string name="quick_access_camera">Open camera</string>
-    <string name="quick_access_keep">Open Keep notes</string>
     <string name="quick_access_unavailable">Not available</string>
 </resources>

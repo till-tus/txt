@@ -93,8 +93,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
-            android:gravity="center_vertical"
-            android:minHeight="74dp"
+            android:gravity="center"
+            android:minHeight="70dp"
             android:orientation="horizontal"
             android:paddingStart="24dp"
             android:paddingTop="8dp"
@@ -102,26 +102,30 @@
             android:paddingBottom="18dp">
 
             <ImageButton
-                android:id="@+id/cameraQuickAccessButton"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
+                android:id="@+id/leftQuickAccessButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="10dp"
                 android:background="@drawable/quick_access_button_background"
-                android:contentDescription="@string/quick_access_camera"
-                android:padding="12dp"
+                android:contentDescription="@string/quick_access_left"
+                android:padding="13dp"
                 android:src="@drawable/ic_camera_line" />
 
-            <Space
+            <View
+                android:id="@+id/quickAccessSpacer"
                 android:layout_width="0dp"
                 android:layout_height="1dp"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:visibility="gone" />
 
             <ImageButton
-                android:id="@+id/keepQuickAccessButton"
-                android:layout_width="50dp"
-                android:layout_height="50dp"
+                android:id="@+id/rightQuickAccessButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="10dp"
                 android:background="@drawable/quick_access_button_background"
-                android:contentDescription="@string/quick_access_keep"
-                android:padding="12dp"
+                android:contentDescription="@string/quick_access_right"
+                android:padding="13dp"
                 android:src="@drawable/ic_note_line" />
 
         </LinearLayout>
@@ -1144,30 +1148,149 @@
             android:background="@color/settings_option_divider" />
 
         <LinearLayout
-            android:id="@+id/showQuickAccessRow"
+            android:id="@+id/leftQuickAccessRow"
             android:layout_width="match_parent"
-            android:layout_height="64dp"
+            android:layout_height="72dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="24dp"
-            android:paddingEnd="20dp">
+            android:paddingEnd="24dp">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:gravity="center_vertical"
-                android:text="@string/show_quick_access"
+                android:text="@string/quick_access_left"
                 android:textColor="@color/launcher_text"
                 android:textSize="17sp" />
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/showQuickAccessSwitch"
+            <TextView
+                android:id="@+id/leftQuickAccessValue"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:useMaterialThemeColors="true" />
+                android:layout_height="match_parent"
+                android:ellipsize="end"
+                android:gravity="center_vertical|end"
+                android:maxWidth="200dp"
+                android:maxLines="1"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="15sp" />
 
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/rightQuickAccessRow"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/quick_access_right"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/rightQuickAccessValue"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:ellipsize="end"
+                android:gravity="center_vertical|end"
+                android:maxWidth="200dp"
+                android:maxLines="1"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/quickAccessPositionRow"
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/quick_access_position"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/quickAccessPositionValue"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="24dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="24dp"
+            android:text="@string/page_arrangement_title"
+            android:textColor="@color/launcher_text"
+            android:textSize="17sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="24dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="24dp"
+            android:text="@string/page_arrangement_hint"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="13sp" />
+
+        <com.example.textlauncher.ui.PageArrangementView
+            android:id="@+id/pageArrangementView"
+            android:layout_width="match_parent"
+            android:layout_height="280dp"
+            android:layout_marginHorizontal="12dp"
+            android:importantForAccessibility="yes" />
+
+        <TextView
+            android:id="@+id/resetPageArrangementButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="24dp"
+            android:text="@string/page_arrangement_reset"
+            android:textColor="@color/launcher_text"
+            android:textSize="17sp" />
 
         <View
             android:layout_width="match_parent"
@@ -1771,6 +1894,84 @@
 
         <LinearLayout
             android:id="@+id/appBudgetsList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
+            android:id="@+id/screenTimeExclusionsHeaderRow"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="20dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@string/screen_time_exclusions_title"
+                    android:textColor="@color/launcher_text"
+                    android:textSize="17sp" />
+
+                <TextView
+                    android:id="@+id/screenTimeExclusionsCount"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/launcher_text_secondary"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/screenTimeExclusionsExpandIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:contentDescription="@string/screen_time_exclusions_title"
+                android:padding="12dp"
+                android:src="@drawable/ic_expand_more"
+                app:tint="@color/launcher_text" />
+
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/screenTimeExclusionsSearchInput"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@android:color/transparent"
+            android:hint="@string/screen_time_exclusions_search_hint"
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:maxLines="1"
+            android:paddingHorizontal="24dp"
+            android:singleLine="true"
+            android:textColor="@color/launcher_text"
+            android:textColorHint="@color/launcher_text_secondary"
+            android:textSize="17sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/screenTimeExclusionsList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"

@@ -15,7 +15,7 @@
     <!-- Settings -->
     <string name="settings_back">Zurück zu den Einstellungen</string>
     <string name="settings_category_appearance">Darstellung &amp; Launcher</string>
-    <string name="settings_category_appearance_summary">Uhr, Apps, Hintergrund und Suche</string>
+    <string name="settings_category_appearance_summary">Uhr, Seiten, Schnellzugriff und Hintergrund</string>
     <string name="settings_category_notes">Notizen</string>
     <string name="settings_category_notes_summary">Notizseite und gelöschte Notizen</string>
     <string name="settings_category_calendar">Kalender &amp; Heute</string>
@@ -23,12 +23,36 @@
     <string name="settings_category_gestures">Gesten</string>
     <string name="settings_category_gestures_summary">Launcher-Aktionen und Sperrbildschirm</string>
     <string name="settings_category_screen_time">Apps &amp; Bildschirmzeit</string>
-    <string name="settings_category_screen_time_summary">Gesperrte Apps, tägliche Limits und Nutzungsziele</string>
+    <string name="settings_category_screen_time_summary">Gesperrte Apps, Limits, Ausnahmen und Nutzungsziele</string>
     <string name="home_screen_section">Startbildschirm</string>
     <string name="show_date">Datum anzeigen</string>
     <string name="default_digital_clock">Digitaluhr als Standard</string>
     <string name="clock_app_unavailable">Uhr-App nicht verfügbar</string>
-    <string name="show_quick_access">Schnellzugriff anzeigen</string>
+    <string name="quick_access_left">Linke Taste</string>
+    <string name="quick_access_right">Rechte Taste</string>
+    <string name="quick_access_none">Keine</string>
+    <string name="quick_access_choose_app">App für %1$s auswählen</string>
+    <string name="quick_access_choose_icon">Symbol für %1$s auswählen</string>
+    <string name="quick_access_icon_camera">Kamera</string>
+    <string name="quick_access_icon_notes">Notizen</string>
+    <string name="quick_access_icon_calendar">Kalender</string>
+    <string name="quick_access_icon_phone">Telefon</string>
+    <string name="quick_access_icon_messages">Nachrichten</string>
+    <string name="quick_access_icon_todos">Aufgaben</string>
+    <string name="quick_access_value">%1$s · %2$s</string>
+    <string name="quick_access_position">Tastenposition</string>
+    <string name="quick_access_position_choose">Quick-Access-Position auswählen</string>
+    <string name="quick_access_position_both_right">Beide rechts</string>
+    <string name="quick_access_position_both_left">Beide links</string>
+    <string name="quick_access_position_both_center">Beide mittig</string>
+    <string name="quick_access_position_split_edges">Linker und rechter Rand</string>
+    <string name="page_arrangement_title">Seitenanordnung</string>
+    <string name="page_arrangement_hint">Ziehe Seiten um die Startseite. Tippe auf eine Seite, um sie ein- oder auszuschalten.</string>
+    <string name="page_arrangement_home">Start</string>
+    <string name="page_arrangement_fixed">Fest</string>
+    <string name="page_arrangement_enabled">Aktiviert</string>
+    <string name="page_arrangement_disabled">Deaktiviert</string>
+    <string name="page_arrangement_reset">Standard wiederherstellen</string>
     <string name="wallpaper_dim">Hintergrund abdunkeln</string>
     <string name="shortcut_text_alignment">Ausrichtung der App-Namen</string>
     <string name="alignment_left">Links</string>
@@ -101,6 +125,12 @@
         <item quantity="other">%1$d App-Limits</item>
     </plurals>
     <string name="app_budgets_search_hint">Apps für Limits suchen&#8230;</string>
+    <string name="screen_time_exclusions_title">Von Statistiken ausgeschlossen</string>
+    <plurals name="screen_time_exclusions_count">
+        <item quantity="one">%1$d App ausgeschlossen</item>
+        <item quantity="other">%1$d Apps ausgeschlossen</item>
+    </plurals>
+    <string name="screen_time_exclusions_search_hint">Auszuschließende Apps suchen&#8230;</string>
     <string name="app_budget_usage_progress">%1$s / %2$s</string>
     <string name="app_budget_15">15 min</string>
     <string name="app_budget_30">30 min</string>
@@ -187,7 +217,5 @@
     <string name="cancel_note_edit">Abbrechen</string>
 
     <!-- Quick access -->
-    <string name="quick_access_camera">Kamera öffnen</string>
-    <string name="quick_access_keep">Keep-Notizen öffnen</string>
     <string name="quick_access_unavailable">Nicht verfügbar</string>
 </resources>
