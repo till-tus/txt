@@ -33,6 +33,11 @@
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
     <string name="pages_section">Pages</string>
     <string name="show_notes_page">Notes page</string>
+    <string name="notes_trash_title">Notes trash</string>
+    <plurals name="notes_trash_count">
+        <item quantity="one">%1$d deleted note</item>
+        <item quantity="other">%1$d deleted notes</item>
+    </plurals>
     <string name="show_calendar_page">Calendar page</string>
     <string name="show_today_page">Today page</string>
 
@@ -161,6 +166,16 @@
     <string name="pin_note">Pin</string>
     <string name="unpin_note">Unpin</string>
     <string name="delete_note">Delete</string>
+    <string name="note_moved_to_trash">Note moved to Trash</string>
+    <string name="undo_note_delete">Undo</string>
+    <string name="restore_note">Restore</string>
+    <string name="delete_note_permanently">Delete permanently</string>
+    <string name="delete_note_permanently_title">Delete this note permanently?</string>
+    <string name="delete_note_permanently_message">This cannot be undone.</string>
+    <string name="delete_voice_note_permanently_message">This cannot be undone. The voice recording will also be deleted.</string>
+    <string name="notes_trash_empty">Trash is empty</string>
+    <string name="note_deleted_at">Deleted %1$s</string>
+    <string name="trashed_voice_note_summary">Voice note · %1$s</string>
     <string name="notes_empty">No notes</string>
     <string name="note_editor_hint">Write anything&#8230;</string>
     <string name="save_note">Save</string>

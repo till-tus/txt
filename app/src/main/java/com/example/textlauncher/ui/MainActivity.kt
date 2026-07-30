@@ -11,6 +11,7 @@ import android.content.ActivityNotFoundException
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.ComponentName
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.ColorStateList
@@ -65,6 +66,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.core.widget.TextViewCompat
 import androidx.lifecycle.Lifecycle
@@ -101,8 +103,10 @@ import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TodayWidget
 import com.example.textlauncher.domain.TodayWidgetType
 import com.example.textlauncher.domain.TodayNotificationItem
+import com.example.textlauncher.domain.TrashedNote
 import com.example.textlauncher.domain.WeatherSnapshot
 import com.google.android.material.checkbox.MaterialCheckBox
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import java.text.DateFormat
 import java.util.Date
@@ -116,6 +120,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var shortcutAdapter: ShortcutAdapter
     private lateinit var appPickerAdapter: AppPickerAdapter
     private lateinit var noteAdapter: NoteAdapter
+    private lateinit var trashNoteAdapter: TrashNoteAdapter
     private lateinit var calendarEventAdapter: CalendarEventAdapter
     private lateinit var screenTimeAdapter: ScreenTimeAdapter
     private lateinit var actionContextMenu: ActionContextMenu
@@ -126,6 +131,7 @@ class MainActivity : AppCompatActivity() {
     private var isAppPickerVisible = false
     private var isEditMode = false
     private var isSettingsVisible = false
+    private var isNoteTrashVisible = false
     private var isNotesVisible = false
     private var isCalendarVisible = false
     private var isTodayVisible = false
@@ -152,6 +158,7 @@ class MainActivity : AppCompatActivity() {
     private var hasRequestedWeatherLocationPermission = false
     private var todayNotifications = emptyList<TodayNotificationItem>()
     private var currentNotes = emptyList<QuickNote>()
+    private var currentTrashedNotes = emptyList<TrashedNote>()
     private var editingNote: QuickNote? = null
     private var noteInputMode = NoteInputMode.Text
     private var voiceNoteRecorder: MediaRecorder? = null
@@ -214,6 +221,11 @@ class MainActivity : AppCompatActivity() {
             updateVoiceNotePlaybackProgress()
             voiceNotePlaybackProgressHandler.postDelayed(this, VOICE_NOTE_PLAYBACK_PROGRESS_INTERVAL_MS)
         }
+    }
+    private val noteUndoHandler = Handler(Looper.getMainLooper())
+    private var pendingUndoNoteId: Long? = null
+    private val noteUndoDismissRunnable = Runnable {
+        hideNoteUndo()
     }
     private val installedAppsRepository by lazy { InstalledAppsRepository(applicationContext) }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
@@ -320,6 +332,16 @@ class MainActivity : AppCompatActivity() {
         binding.notesList.addItemDecoration(NotesDividerDecoration(this))
         binding.notesList.adapter = noteAdapter
 
+        trashNoteAdapter = TrashNoteAdapter(
+            onRestoreClick = { trashedNote ->
+                restoreTrashedNote(trashedNote.note.id)
+            },
+            onDeletePermanentlyClick = ::confirmPermanentNoteDeletion,
+        )
+        binding.noteTrashList.layoutManager = LinearLayoutManager(this)
+        binding.noteTrashList.addItemDecoration(NotesDividerDecoration(this))
+        binding.noteTrashList.adapter = trashNoteAdapter
+
         calendarEventAdapter = CalendarEventAdapter(::openCalendarEventDay)
         binding.calendarEventList.layoutManager = LinearLayoutManager(this)
         binding.calendarEventList.adapter = calendarEventAdapter
@@ -405,6 +427,7 @@ class MainActivity : AppCompatActivity() {
         stopVoiceNoteRecording(save = false)
         releaseVoiceNotePlayer()
         resetInFlightAppListDrag()
+        noteUndoHandler.removeCallbacks(noteUndoDismissRunnable)
         unregisterReceiver(packageRemovedReceiver)
         appBlockPromptController.cancel()
         super.onDestroy()
@@ -1153,6 +1176,15 @@ class MainActivity : AppCompatActivity() {
         noteAdapter.submitList(currentNotes)
         binding.notesList.visibility = if (currentNotes.isEmpty()) View.GONE else View.VISIBLE
         binding.notesEmpty.visibility = if (currentNotes.isEmpty()) View.VISIBLE else View.GONE
+        currentTrashedNotes = state.trashedNotes
+        trashNoteAdapter.submitList(currentTrashedNotes)
+        binding.noteTrashList.visibility = if (currentTrashedNotes.isEmpty()) View.GONE else View.VISIBLE
+        binding.noteTrashEmpty.visibility = if (currentTrashedNotes.isEmpty()) View.VISIBLE else View.GONE
+        binding.notesTrashCount.text = resources.getQuantityString(
+            R.plurals.notes_trash_count,
+            currentTrashedNotes.size,
+            currentTrashedNotes.size,
+        )
         if (isTodayVisible && todayWidgets.any { it.type == TodayWidgetType.PinnedNote }) {
             renderTodayWidgets()
         }
@@ -1250,11 +1282,14 @@ class MainActivity : AppCompatActivity() {
         val shortcutBaseBottomPadding = binding.shortcutList.paddingBottom
         val quickAccessBaseBottomPadding = binding.quickAccessBar.paddingBottom
         val notesListBaseBottomPadding = binding.notesList.paddingBottom
+        val noteTrashListBaseBottomPadding = binding.noteTrashList.paddingBottom
         val calendarEventListBaseBottomPadding = binding.calendarEventList.paddingBottom
         val screenTimeScrollBaseBottomPadding = binding.screenTimeScroll.paddingBottom
         val settingsScrollBaseBottomPadding = binding.settingsScroll.paddingBottom
         val noteEditorBaseTopPadding = binding.noteEditorRoot.paddingTop
         val noteEditorBaseBottomPadding = binding.noteEditorRoot.paddingBottom
+        val noteUndoBaseBottomMargin =
+            (binding.noteUndoContainer.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.homeRoot) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -1264,6 +1299,7 @@ class MainActivity : AppCompatActivity() {
             binding.homeContent.updatePadding(top = systemBars.top)
             binding.calendarRoot.updatePadding(top = systemBars.top)
             binding.notesRoot.updatePadding(top = systemBars.top)
+            binding.noteTrashRoot.updatePadding(top = systemBars.top)
             binding.todayRoot.updatePadding(top = systemBars.top)
             binding.screenTimeRoot.updatePadding(top = systemBars.top)
             binding.editControls.updatePadding(top = systemBars.top)
@@ -1272,12 +1308,16 @@ class MainActivity : AppCompatActivity() {
                 top = noteEditorBaseTopPadding + systemBars.top,
                 bottom = noteEditorBaseBottomPadding + systemBars.bottom,
             )
+            binding.noteUndoContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = noteUndoBaseBottomMargin + bottomInset
+            }
             binding.shortcutList.updatePadding(
                 bottom = shortcutBaseBottomPadding +
                     if (binding.quickAccessBar.isVisible) 0 else systemBars.bottom,
             )
             binding.quickAccessBar.updatePadding(bottom = quickAccessBaseBottomPadding + systemBars.bottom)
             binding.notesList.updatePadding(bottom = notesListBaseBottomPadding + systemBars.bottom)
+            binding.noteTrashList.updatePadding(bottom = noteTrashListBaseBottomPadding + systemBars.bottom)
             binding.calendarEventList.updatePadding(bottom = calendarEventListBaseBottomPadding + systemBars.bottom)
             binding.screenTimeScroll.updatePadding(bottom = screenTimeScrollBaseBottomPadding + systemBars.bottom)
             binding.settingsScroll.updatePadding(bottom = settingsScrollBaseBottomPadding + bottomInset)
@@ -1398,6 +1438,9 @@ class MainActivity : AppCompatActivity() {
         }
         binding.showNotesPageRow.setOnClickListener {
             viewModel.setShowNotesPage(!binding.showNotesPageSwitch.isChecked)
+        }
+        binding.notesTrashRow.setOnClickListener {
+            showNoteTrash()
         }
         binding.showCalendarPageSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isRenderingSettingsState) {
@@ -3397,6 +3440,8 @@ class MainActivity : AppCompatActivity() {
                         hideGesturePicker()
                     } else if (isNoteEditorVisible) {
                         hideNoteEditor()
+                    } else if (isNoteTrashVisible) {
+                        hideNoteTrash()
                     } else if (isSettingsVisible) {
                         hideSettings()
                     } else if (isTodayEditMode) {
@@ -3432,6 +3477,9 @@ class MainActivity : AppCompatActivity() {
         }
         if (isNoteEditorVisible) {
             hideNoteEditor()
+        }
+        if (isNoteTrashVisible) {
+            hideNoteTrash(returnToSettings = false)
         }
         if (isSettingsVisible) {
             hideSettings()
@@ -3521,8 +3569,7 @@ class MainActivity : AppCompatActivity() {
                     if (note.id == playingVoiceNoteId) {
                         stopVoiceNotePlayback()
                     }
-                    deleteVoiceNoteFile(note)
-                    viewModel.deleteNote(note)
+                    viewModel.deleteNote(note)?.let(::showNoteUndo)
                 },
             ),
         )
@@ -3626,6 +3673,35 @@ class MainActivity : AppCompatActivity() {
             .alpha(1f)
             .setDuration(SETTINGS_FADE_MS)
             .start()
+    }
+
+    private fun showNoteTrash() {
+        if (!isSettingsVisible || isNoteTrashVisible) return
+        isNoteTrashVisible = true
+        binding.settingsRoot.animate().cancel()
+        binding.settingsRoot.visibility = View.GONE
+        binding.noteTrashRoot.alpha = 0f
+        binding.noteTrashRoot.visibility = View.VISIBLE
+        binding.noteTrashRoot.animate()
+            .alpha(1f)
+            .setDuration(SETTINGS_FADE_MS)
+            .start()
+    }
+
+    private fun hideNoteTrash(returnToSettings: Boolean = true) {
+        if (!isNoteTrashVisible) return
+        isNoteTrashVisible = false
+        binding.noteTrashRoot.animate().cancel()
+        binding.noteTrashRoot.visibility = View.GONE
+        binding.noteTrashRoot.alpha = 1f
+        if (returnToSettings && isSettingsVisible) {
+            binding.settingsRoot.alpha = 0f
+            binding.settingsRoot.visibility = View.VISIBLE
+            binding.settingsRoot.animate()
+                .alpha(1f)
+                .setDuration(SETTINGS_FADE_MS)
+                .start()
+        }
     }
 
     private fun updateLauncherLayerVisibility() {
@@ -3866,12 +3942,79 @@ class MainActivity : AppCompatActivity() {
     private fun saveCurrentNote() {
         val note = editingNote
         val text = binding.noteEditorInput.text?.toString().orEmpty()
-        if (note == null) {
+        val trashedNote = if (note == null) {
             viewModel.addNote(text)
+            null
         } else {
             viewModel.updateNote(note, text)
         }
         hideNoteEditor()
+        trashedNote?.let(::showNoteUndo)
+    }
+
+    private fun showNoteUndo(trashedNote: TrashedNote) {
+        pendingUndoNoteId = trashedNote.note.id
+        noteUndoHandler.removeCallbacks(noteUndoDismissRunnable)
+        binding.noteUndoContainer.animate().cancel()
+        binding.noteUndoContainer.alpha = 0f
+        binding.noteUndoContainer.translationY = NOTE_UNDO_ENTER_OFFSET_DP.dp.toFloat()
+        binding.noteUndoContainer.visibility = View.VISIBLE
+        binding.noteUndoButton.setOnClickListener {
+            pendingUndoNoteId?.let(::restoreTrashedNote)
+        }
+        binding.noteUndoContainer.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(NOTE_UNDO_FADE_MS)
+            .start()
+        noteUndoHandler.postDelayed(noteUndoDismissRunnable, NOTE_UNDO_DURATION_MS)
+    }
+
+    private fun hideNoteUndo() {
+        pendingUndoNoteId = null
+        noteUndoHandler.removeCallbacks(noteUndoDismissRunnable)
+        binding.noteUndoContainer.animate().cancel()
+        if (!binding.noteUndoContainer.isVisible) return
+        binding.noteUndoContainer.animate()
+            .alpha(0f)
+            .translationY(NOTE_UNDO_ENTER_OFFSET_DP.dp.toFloat())
+            .setDuration(NOTE_UNDO_FADE_MS)
+            .withEndAction {
+                binding.noteUndoContainer.visibility = View.GONE
+                binding.noteUndoContainer.alpha = 1f
+                binding.noteUndoContainer.translationY = 0f
+            }
+            .start()
+    }
+
+    private fun restoreTrashedNote(noteId: Long) {
+        if (!viewModel.restoreNote(noteId)) return
+        if (pendingUndoNoteId == noteId) {
+            hideNoteUndo()
+        }
+    }
+
+    private fun confirmPermanentNoteDeletion(trashedNote: TrashedNote) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.delete_note_permanently_title)
+            .setMessage(
+                if (trashedNote.note.audioFileName == null) {
+                    R.string.delete_note_permanently_message
+                } else {
+                    R.string.delete_voice_note_permanently_message
+                },
+            )
+            .setNegativeButton(R.string.cancel_note_edit, null)
+            .setPositiveButton(R.string.delete_note_permanently) { _, _ ->
+                val deletedNote = viewModel.permanentlyDeleteNote(trashedNote.note.id) ?: return@setPositiveButton
+                if (pendingUndoNoteId == deletedNote.id) {
+                    hideNoteUndo()
+                }
+                deleteVoiceNoteFile(deletedNote)
+            }
+            .show()
+            .getButton(DialogInterface.BUTTON_POSITIVE)
+            .setTextColor(getColor(R.color.launcher_warning))
     }
 
     private fun copyNote(note: QuickNote) {
@@ -4134,6 +4277,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun hideSettings() {
+        if (isNoteTrashVisible) {
+            hideNoteTrash(returnToSettings = false)
+        }
         isSettingsVisible = false
         hideGesturePicker()
         binding.settingsRoot.animate().cancel()
@@ -4458,6 +4604,9 @@ class MainActivity : AppCompatActivity() {
         const val MIN_VOICE_NOTE_DURATION_MS = 400L
         const val MAX_MEDIA_RECORDER_AMPLITUDE = 32_767
         const val MAX_VOICE_WAVEFORM_SAMPLES = 48
+        const val NOTE_UNDO_DURATION_MS = 6_000L
+        const val NOTE_UNDO_FADE_MS = 160L
+        const val NOTE_UNDO_ENTER_OFFSET_DP = 10
         const val SETTINGS_FADE_MS = 160L
         const val SCREEN_TIME_FADE_MS = 180L
     }
