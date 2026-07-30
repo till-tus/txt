@@ -808,15 +808,18 @@
                     <LinearLayout
                         android:id="@+id/settingsAppearanceCategory"
                         android:layout_width="match_parent"
-                        android:layout_height="76dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
+                        android:minHeight="76dp"
                         android:orientation="horizontal"
+                        android:paddingTop="12dp"
                         android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
                         android:paddingEnd="12dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:gravity="center_vertical"
                             android:orientation="vertical">
@@ -857,15 +860,18 @@
                     <LinearLayout
                         android:id="@+id/settingsNotesCategory"
                         android:layout_width="match_parent"
-                        android:layout_height="76dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
+                        android:minHeight="76dp"
                         android:orientation="horizontal"
+                        android:paddingTop="12dp"
                         android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
                         android:paddingEnd="12dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:gravity="center_vertical"
                             android:orientation="vertical">
@@ -906,15 +912,18 @@
                     <LinearLayout
                         android:id="@+id/settingsCalendarCategory"
                         android:layout_width="match_parent"
-                        android:layout_height="76dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
+                        android:minHeight="76dp"
                         android:orientation="horizontal"
+                        android:paddingTop="12dp"
                         android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
                         android:paddingEnd="12dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:gravity="center_vertical"
                             android:orientation="vertical">
@@ -955,15 +964,18 @@
                     <LinearLayout
                         android:id="@+id/settingsGesturesCategory"
                         android:layout_width="match_parent"
-                        android:layout_height="76dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
+                        android:minHeight="76dp"
                         android:orientation="horizontal"
+                        android:paddingTop="12dp"
                         android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
                         android:paddingEnd="12dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:gravity="center_vertical"
                             android:orientation="vertical">
@@ -1004,15 +1016,18 @@
                     <LinearLayout
                         android:id="@+id/settingsScreenTimeCategory"
                         android:layout_width="match_parent"
-                        android:layout_height="76dp"
+                        android:layout_height="wrap_content"
                         android:gravity="center_vertical"
+                        android:minHeight="76dp"
                         android:orientation="horizontal"
+                        android:paddingTop="12dp"
                         android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
                         android:paddingEnd="12dp">
 
                         <LinearLayout
                             android:layout_width="0dp"
-                            android:layout_height="match_parent"
+                            android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:gravity="center_vertical"
                             android:orientation="vertical">
