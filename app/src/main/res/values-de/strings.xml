@@ -2,7 +2,6 @@
 <resources>
     <!-- Home and app picker -->
     <string name="app_picker_empty">Keine startbaren Apps gefunden</string>
-    <string name="delete_shortcut">Löschen</string>
     <string name="remove_shortcut">Entfernen</string>
     <string name="uninstall_app">Deinstallieren</string>
     <string name="block_app">App sperren</string>
@@ -61,7 +60,6 @@
     <string name="max_shortcuts">App-Kürzel</string>
     <string name="open_app_list_keyboard_automatically">Tastatur automatisch öffnen</string>
     <string name="shortcut_limit_reached">Maximale App-Anzahl erreicht</string>
-    <string name="pages_section">Seiten</string>
     <string name="show_notes_page">Notizen</string>
     <string name="notes_trash_title">Notiz-Papierkorb</string>
     <plurals name="notes_trash_count">
@@ -72,7 +70,6 @@
     <string name="show_today_page">Heute</string>
 
     <!-- Gestures and accessibility -->
-    <string name="gestures_section">Gesten</string>
     <string name="gesture_action_open_screen_time">Bildschirmzeit öffnen</string>
     <string name="gesture_action_lock_screen">Bildschirm sperren</string>
     <string name="gesture_none">Keine</string>
@@ -108,7 +105,6 @@
     <string name="screen_time_empty">Heute noch keine Bildschirmzeit erfasst</string>
     <string name="screen_time_permission_prompt">Zugriff auf Nutzungsdaten ist nötig, um die Bildschirmzeit nach App anzuzeigen.</string>
     <string name="screen_time_permission_button">Nutzungszugriff erlauben</string>
-    <string name="screen_time_settings_section">Bildschirmzeit</string>
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
 
@@ -156,7 +152,6 @@
     <string name="today_page_title">Heute</string>
     <string name="today_edit_mode_label">Heute bearbeiten</string>
     <string name="today_add_widget">Widget hinzufügen</string>
-    <string name="today_add_next_event">Nächsten Termin hinzufügen</string>
     <string name="today_edit_widget">Bearbeiten</string>
     <string name="today_remove_widget">Entfernen</string>
     <string name="today_next_event_title">Nächster Termin</string>

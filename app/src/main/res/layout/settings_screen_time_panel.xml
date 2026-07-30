@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/settingsScreenTimePage"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:id="@+id/appBlockingHeaderRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <LinearLayout
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:orientation="vertical">
+
+<TextView
+    android:id="@+id/appBlockingTitle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:text="@string/app_blocking_title"
+    android:textColor="@color/launcher_text"
+    android:textSize="17sp" />
+
+<TextView
+    android:id="@+id/appBlockingCount"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:textColor="@color/launcher_text_secondary"
+    android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <ImageView
+android:id="@+id/appBlockingExpandIcon"
+android:layout_width="48dp"
+android:layout_height="48dp"
+android:contentDescription="@string/app_blocking_title"
+android:padding="12dp"
+android:src="@drawable/ic_expand_more"
+app:tint="@color/launcher_text" />
+
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/appBlockingSearchInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
+        android:hint="@string/app_blocking_search_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:maxLines="1"
+        android:paddingHorizontal="24dp"
+        android:singleLine="true"
+        android:textColor="@color/launcher_text"
+        android:textColorHint="@color/launcher_text_secondary"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/appBlockingList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/appBudgetsHeaderRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <LinearLayout
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:orientation="vertical">
+
+<TextView
+    android:id="@+id/appBudgetsTitle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:text="@string/app_budgets_title"
+    android:textColor="@color/launcher_text"
+    android:textSize="17sp" />
+
+<TextView
+    android:id="@+id/appBudgetsCount"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:textColor="@color/launcher_text_secondary"
+    android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <ImageView
+android:id="@+id/appBudgetsExpandIcon"
+android:layout_width="48dp"
+android:layout_height="48dp"
+android:contentDescription="@string/app_budgets_title"
+android:padding="12dp"
+android:src="@drawable/ic_expand_more"
+app:tint="@color/launcher_text" />
+
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/appBudgetsSearchInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
+        android:hint="@string/app_budgets_search_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:maxLines="1"
+        android:paddingHorizontal="24dp"
+        android:singleLine="true"
+        android:textColor="@color/launcher_text"
+        android:textColorHint="@color/launcher_text_secondary"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/appBudgetsList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/screenTimeExclusionsHeaderRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <LinearLayout
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:orientation="vertical">
+
+<TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:text="@string/screen_time_exclusions_title"
+    android:textColor="@color/launcher_text"
+    android:textSize="17sp" />
+
+<TextView
+    android:id="@+id/screenTimeExclusionsCount"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="3dp"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:textColor="@color/launcher_text_secondary"
+    android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <ImageView
+android:id="@+id/screenTimeExclusionsExpandIcon"
+android:layout_width="48dp"
+android:layout_height="48dp"
+android:contentDescription="@string/screen_time_exclusions_title"
+android:padding="12dp"
+android:src="@drawable/ic_expand_more"
+app:tint="@color/launcher_text" />
+
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/screenTimeExclusionsSearchInput"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:background="@android:color/transparent"
+        android:hint="@string/screen_time_exclusions_search_hint"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:maxLines="1"
+        android:paddingHorizontal="24dp"
+        android:singleLine="true"
+        android:textColor="@color/launcher_text"
+        android:textColorHint="@color/launcher_text_secondary"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/screenTimeExclusionsList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/resetIntentionsDataRow"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+android:layout_width="0dp"
+android:layout_height="match_parent"
+android:layout_weight="1"
+android:gravity="center_vertical"
+android:text="@string/reset_intentions_data"
+android:textColor="@color/launcher_text"
+android:textSize="17sp" />
+
+    </LinearLayout>
+
+</LinearLayout>

@@ -5,6 +5,7 @@ import android.util.AttributeSet
 import android.view.ViewGroup
 import android.view.View
 import android.widget.FrameLayout
+import androidx.core.view.isGone
 import kotlin.math.roundToInt
 
 class TodayWidgetGridView @JvmOverloads constructor(
@@ -37,7 +38,7 @@ class TodayWidgetGridView @JvmOverloads constructor(
 
         for (index in 0 until childCount) {
             val child = getChildAt(index)
-            if (child.visibility == GONE) continue
+            if (child.isGone) continue
             val layoutParams = child.layoutParams as? LayoutParams ?: continue
             val childWidth = (layoutParams.columnSpan * cellWidth).roundToInt().coerceAtLeast(1)
             val childHeight = (layoutParams.rowSpan * cellHeight).roundToInt().coerceAtLeast(1)
@@ -51,7 +52,7 @@ class TodayWidgetGridView @JvmOverloads constructor(
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         for (index in 0 until childCount) {
             val child = getChildAt(index)
-            if (child.visibility == GONE) continue
+            if (child.isGone) continue
             val layoutParams = child.layoutParams as? LayoutParams ?: continue
             val childLeft = paddingLeft + (layoutParams.column * cellWidth).roundToInt()
             val childTop = paddingTop + (layoutParams.row * cellHeight).roundToInt()
