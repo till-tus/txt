@@ -2,6 +2,7 @@ package com.example.textlauncher.data
 
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.TrashedNote
+import com.example.textlauncher.domain.sortedForNotesPage
 
 data class NoteStoreState(
     val notes: List<QuickNote> = emptyList(),
@@ -40,6 +41,7 @@ data class NoteStoreState(
             .apply {
                 add(trashedNote.originalPosition.coerceIn(0, size), trashedNote.note)
             }
+            .sortedForNotesPage()
         return copy(
             notes = restoredNotes,
             trash = trash.filterNot { it.note.id == noteId },
