@@ -3,6 +3,7 @@ package com.example.textlauncher.ui
 import androidx.lifecycle.ViewModel
 import com.example.textlauncher.data.LauncherSettingsRepository
 import com.example.textlauncher.data.NoteRepository
+import com.example.textlauncher.data.NoteStoreState
 import com.example.textlauncher.data.ShortcutRepository
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.ClockDisplayMode
@@ -11,6 +12,7 @@ import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ShortcutTextAlignment
+import com.example.textlauncher.domain.TrashedNote
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +24,12 @@ class HomeViewModel(
     private val noteRepository: NoteRepository,
 ) : ViewModel() {
     private val initialSettings = settingsRepository.loadSettings()
+    private val initialNoteState = noteRepository.loadState()
     private val _uiState = MutableStateFlow(
         HomeUiState(
             shortcuts = shortcutRepository.loadShortcuts(),
-            notes = noteRepository.loadNotes(),
+            notes = initialNoteState.notes,
+            trashedNotes = initialNoteState.trash,
             showDate = initialSettings.showDate,
             clockDisplayMode = initialSettings.clockDisplayMode,
             showQuickAccess = initialSettings.showQuickAccess,
@@ -253,11 +257,13 @@ class HomeViewModel(
 
         _uiState.update { state ->
             val updatedNotes = state.notes + QuickNote(
-                id = System.currentTimeMillis(),
+                id = state.nextNoteId(),
                 text = trimmedText,
             )
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveNotes(sortedNotes)
+            noteRepository.saveState(
+                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
+            )
             state.copy(notes = sortedNotes)
         }
     }
@@ -267,43 +273,94 @@ class HomeViewModel(
 
         _uiState.update { state ->
             val updatedNotes = state.notes + QuickNote(
-                id = System.currentTimeMillis(),
+                id = state.nextNoteId(),
                 text = "",
                 audioFileName = audioFileName,
                 audioDurationMillis = durationMillis,
                 audioWaveform = waveform,
             )
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveNotes(sortedNotes)
+            noteRepository.saveState(
+                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
+            )
             state.copy(notes = sortedNotes)
         }
     }
 
-    fun updateNote(note: QuickNote, text: String) {
-        if (note.audioFileName != null) return
+    fun updateNote(note: QuickNote, text: String): TrashedNote? {
+        if (note.audioFileName != null) return null
         val trimmedText = text.trim()
+        if (trimmedText.isEmpty()) {
+            return deleteNote(note)
+        }
+
         _uiState.update { state ->
-            val updatedNotes = if (trimmedText.isEmpty()) {
-                state.notes.filterNot { it.id == note.id }
-            } else {
-                state.notes.map { currentNote ->
-                    if (currentNote.id == note.id) currentNote.copy(text = trimmedText) else currentNote
-                }
+            val updatedNotes = state.notes.map { currentNote ->
+                if (currentNote.id == note.id) currentNote.copy(text = trimmedText) else currentNote
             }
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveNotes(sortedNotes)
+            noteRepository.saveState(
+                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
+            )
             state.copy(notes = sortedNotes)
         }
+        return null
     }
 
-    fun deleteNote(note: QuickNote) {
+    fun deleteNote(note: QuickNote, deletedAtMillis: Long = System.currentTimeMillis()): TrashedNote? {
+        var deletedNote: TrashedNote? = null
         _uiState.update { state ->
-            val updatedNotes = state.notes.filterNot { it.id == note.id }
-            if (updatedNotes.size == state.notes.size) return@update state
+            val currentStoreState = NoteStoreState(
+                notes = state.notes,
+                trash = state.trashedNotes,
+            )
+            val updatedStoreState = currentStoreState.moveToTrash(note.id, deletedAtMillis)
+            if (updatedStoreState === currentStoreState) return@update state
 
-            noteRepository.saveNotes(updatedNotes)
-            state.copy(notes = updatedNotes)
+            deletedNote = updatedStoreState.trash.firstOrNull { it.note.id == note.id }
+            noteRepository.saveState(updatedStoreState)
+            state.copy(
+                notes = updatedStoreState.notes,
+                trashedNotes = updatedStoreState.trash,
+            )
         }
+        return deletedNote
+    }
+
+    fun restoreNote(noteId: Long): Boolean {
+        var didRestore = false
+        _uiState.update { state ->
+            val currentStoreState = NoteStoreState(
+                notes = state.notes,
+                trash = state.trashedNotes,
+            )
+            val updatedStoreState = currentStoreState.restoreFromTrash(noteId)
+            if (updatedStoreState === currentStoreState) return@update state
+
+            didRestore = true
+            noteRepository.saveState(updatedStoreState)
+            state.copy(
+                notes = updatedStoreState.notes,
+                trashedNotes = updatedStoreState.trash,
+            )
+        }
+        return didRestore
+    }
+
+    fun permanentlyDeleteNote(noteId: Long): QuickNote? {
+        var deletedNote: QuickNote? = null
+        _uiState.update { state ->
+            val currentStoreState = NoteStoreState(
+                notes = state.notes,
+                trash = state.trashedNotes,
+            )
+            deletedNote = currentStoreState.trash.firstOrNull { it.note.id == noteId }?.note
+                ?: return@update state
+            val updatedStoreState = currentStoreState.permanentlyDeleteFromTrash(noteId)
+            noteRepository.saveState(updatedStoreState)
+            state.copy(trashedNotes = updatedStoreState.trash)
+        }
+        return deletedNote
     }
 
     fun setNotePinned(note: QuickNote, isPinned: Boolean) {
@@ -316,7 +373,9 @@ class HomeViewModel(
                     else -> currentNote
                 }
             }.sortedForNotesPage()
-            noteRepository.saveNotes(updatedNotes)
+            noteRepository.saveState(
+                NoteStoreState(notes = updatedNotes, trash = state.trashedNotes),
+            )
             state.copy(notes = updatedNotes)
         }
     }
@@ -356,5 +415,13 @@ class HomeViewModel(
 
     private fun List<QuickNote>.sortedForNotesPage(): List<QuickNote> {
         return sortedWith(compareByDescending<QuickNote> { it.isPinned }.thenBy { it.id })
+    }
+
+    private fun HomeUiState.nextNoteId(): Long {
+        val greatestStoredId = (notes.asSequence().map { it.id } +
+            trashedNotes.asSequence().map { it.note.id })
+            .maxOrNull()
+            ?: Long.MIN_VALUE
+        return maxOf(System.currentTimeMillis(), greatestStoredId + 1L)
     }
 }

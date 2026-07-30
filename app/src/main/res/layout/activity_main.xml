@@ -1131,6 +1131,40 @@
             android:background="@color/settings_option_divider" />
 
         <LinearLayout
+            android:id="@+id/notesTrashRow"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/notes_trash_title"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/notesTrashCount"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="24dp"
+            android:background="@color/settings_option_divider" />
+
+        <LinearLayout
             android:id="@+id/showTodayPageRow"
             android:layout_width="match_parent"
             android:layout_height="64dp"
@@ -1510,6 +1544,56 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/noteTrashRoot"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="24dp"
+            android:text="@string/notes_trash_title"
+            android:textColor="@color/launcher_text"
+            android:textSize="@dimen/app_page_title_text_size" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/noteTrashList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:clipToPadding="false"
+                android:overScrollMode="ifContentScrolls"
+                android:paddingHorizontal="24dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="24dp" />
+
+            <TextView
+                android:id="@+id/noteTrashEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:paddingHorizontal="24dp"
+                android:text="@string/notes_trash_empty"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="17sp"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/noteEditorRoot"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -1816,5 +1900,47 @@
         </LinearLayout>
 
     </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/noteUndoContainer"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/note_undo_background"
+        android:clickable="true"
+        android:gravity="center_vertical"
+        android:importantForAccessibility="no"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingEnd="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/noteUndoMessage"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:accessibilityLiveRegion="polite"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:text="@string/note_moved_to_trash"
+            android:textColor="@color/launcher_text"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/noteUndoButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:minWidth="72dp"
+            android:paddingHorizontal="10dp"
+            android:text="@string/undo_note_delete"
+            android:textColor="@color/launcher_text"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
 
 </FrameLayout>
