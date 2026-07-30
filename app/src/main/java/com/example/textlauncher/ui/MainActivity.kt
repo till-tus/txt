@@ -35,7 +35,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
-import android.provider.MediaStore
 import android.provider.CalendarContract
 import android.provider.Settings
 import android.text.Editable
@@ -52,6 +51,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
@@ -96,6 +96,12 @@ import com.example.textlauncher.domain.CalendarEvent
 import com.example.textlauncher.domain.DeviceCalendar
 import com.example.textlauncher.domain.GestureAction
 import com.example.textlauncher.domain.LauncherGesture
+import com.example.textlauncher.domain.LauncherPage
+import com.example.textlauncher.domain.PageArrangement
+import com.example.textlauncher.domain.PagePosition
+import com.example.textlauncher.domain.QuickAccessIcon
+import com.example.textlauncher.domain.QuickAccessPosition
+import com.example.textlauncher.domain.QuickAccessTarget
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ScreenTimeAppUsage
 import com.example.textlauncher.domain.ScreenTimeDayUsage
@@ -105,6 +111,7 @@ import com.example.textlauncher.domain.TodayWidgetType
 import com.example.textlauncher.domain.TodayNotificationItem
 import com.example.textlauncher.domain.TrashedNote
 import com.example.textlauncher.domain.WeatherSnapshot
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
@@ -159,6 +166,11 @@ class MainActivity : AppCompatActivity() {
     private var blockableApps = emptyList<AppShortcut>()
     private var currentBlockedAppPackageNames = emptySet<String>()
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
+    private var currentExcludedScreenTimePackageNames = emptySet<String>()
+    private var currentPageArrangement = PageArrangement.Default
+    private var currentLeftQuickAccess: QuickAccessTarget? = null
+    private var currentRightQuickAccess: QuickAccessTarget? = null
+    private var currentQuickAccessPosition = QuickAccessPosition.BothCenter
     private var todayWidgets = emptyList<TodayWidget>()
     private var todayNextEvent: CalendarEvent? = null
     private var todayWeather: WeatherSnapshot? = null
@@ -204,6 +216,7 @@ class MainActivity : AppCompatActivity() {
     private var isCalendarSelectionExpanded = false
     private var isAppBlockingExpanded = false
     private var isAppBudgetsExpanded = false
+    private var isScreenTimeExclusionsExpanded = false
     private val packageRemovedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != Intent.ACTION_PACKAGE_REMOVED) return
@@ -250,7 +263,9 @@ class MainActivity : AppCompatActivity() {
         if (isGranted) {
             refreshCalendars()
             refreshCalendarEvents()
-            refreshTodayWidgets()
+            if (viewModel.uiState.value.showTodayPage) {
+                refreshTodayWidgets()
+            }
         }
     }
     private val requestWeatherLocationPermission = registerForActivityResult(
@@ -386,9 +401,7 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 TodayNotificationCenter.notifications.collect { notifications ->
                     todayNotifications = notifications
-                    if (isTodayVisible) {
-                        renderTodayWidgets()
-                    }
+                    renderTodayWidgets()
                 }
             }
         }
@@ -402,18 +415,14 @@ class MainActivity : AppCompatActivity() {
             if (isCalendarVisible) {
                 refreshCalendarEvents()
             }
-            if (isTodayVisible) {
-                refreshTodayWidgets()
-            }
         } else {
             renderCalendarPermissionState()
-            renderTodayWidgets()
+        }
+        if (viewModel.uiState.value.showTodayPage) {
+            refreshTodayWidgets()
         }
         if (isScreenTimeVisible) {
             refreshScreenTime()
-        }
-        if (isTodayVisible) {
-            renderTodayWidgets()
         }
         refreshLaunchableAppCache()
     }
@@ -457,12 +466,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun handlePackageRemoved(packageName: String) {
         viewModel.deleteShortcutsForPackage(packageName)
+        viewModel.removePackageReferences(packageName)
         if (isAppPickerVisible) {
             availableApps = loadCachedLaunchableApps()
             renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
         }
         refreshLaunchableAppCache()
-        if (isSettingsVisible && (isAppBlockingExpanded || isAppBudgetsExpanded)) {
+        if (
+            isSettingsVisible &&
+            (isAppBlockingExpanded || isAppBudgetsExpanded || isScreenTimeExclusionsExpanded)
+        ) {
             refreshBlockableApps()
         }
     }
@@ -718,7 +731,6 @@ class MainActivity : AppCompatActivity() {
         ) {
             return false
         }
-
         val isTouchInShortcutList = isTouchInsideView(binding.shortcutList, event.rawX, event.rawY)
         return !isTouchInShortcutList || !binding.shortcutList.canScrollVertically(-1)
     }
@@ -869,108 +881,76 @@ class MainActivity : AppCompatActivity() {
             kotlin.math.abs(deltaX) >= kotlin.math.abs(deltaY) * PAGE_SWIPE_AXIS_RATIO
         val isVerticalDrag = kotlin.math.abs(deltaY) >= touchSlop &&
             kotlin.math.abs(deltaY) >= kotlin.math.abs(deltaX) * PAGE_SWIPE_AXIS_RATIO
+        val direction = when {
+            isHorizontalDrag && deltaX < 0 -> PageSwipeDirection.Left
+            isHorizontalDrag && deltaX > 0 -> PageSwipeDirection.Right
+            isVerticalDrag && deltaY < 0 -> PageSwipeDirection.Up
+            isVerticalDrag && deltaY > 0 -> PageSwipeDirection.Down
+            else -> return null
+        }
+        val visiblePage = currentVisiblePage()
+        if (visiblePage != null) {
+            val position = currentPageArrangement.positionOf(visiblePage)
+            return if (direction == position.toSwipeDirection()) {
+                PageSwipeTarget(
+                    page = visiblePage,
+                    position = position,
+                    isReturningHome = true,
+                )
+            } else {
+                null
+            }
+        }
 
-        return when {
-            isHorizontalDrag &&
-                !isNotesVisible &&
-                !isCalendarVisible &&
-                !isTodayVisible &&
-                deltaX < 0 &&
-                binding.showNotesPageSwitch.isChecked -> {
-                    PageSwipeTarget.HomeToNotes
-            }
-            isHorizontalDrag &&
-                !isNotesVisible &&
-                !isCalendarVisible &&
-                !isTodayVisible &&
-                deltaX > 0 &&
-                binding.showCalendarPageSwitch.isChecked -> {
-                    PageSwipeTarget.HomeToCalendar
-            }
-            isHorizontalDrag && isNotesVisible && deltaX > 0 -> PageSwipeTarget.NotesToHome
-            isHorizontalDrag && isCalendarVisible && deltaX < 0 -> PageSwipeTarget.CalendarToHome
-            isVerticalDrag &&
-                !isNotesVisible &&
-                !isCalendarVisible &&
-                !isTodayVisible &&
-                deltaY < 0 &&
-                binding.showTodayPageSwitch.isChecked -> {
-                    PageSwipeTarget.HomeToToday
-            }
-            isVerticalDrag && isTodayVisible && deltaY > 0 -> PageSwipeTarget.TodayToHome
-            else -> null
+        val position = when (direction.opposite()) {
+            PageSwipeDirection.Up -> return null
+            PageSwipeDirection.Left -> PagePosition.Left
+            PageSwipeDirection.Right -> PagePosition.Right
+            PageSwipeDirection.Down -> PagePosition.Down
+        }
+        val page = currentPageArrangement.pageAt(position) ?: return null
+        return page.takeIf(::isPageEnabled)?.let {
+            PageSwipeTarget(
+                page = it,
+                position = position,
+                isReturningHome = false,
+            )
         }
     }
 
     private fun preparePageDrag(target: PageSwipeTarget) {
-        val width = pageWidth()
-        val height = pageHeight()
         binding.homeContent.animate().cancel()
         binding.notesRoot.animate().cancel()
         binding.calendarRoot.animate().cancel()
         binding.todayRoot.animate().cancel()
-        when (target) {
-            PageSwipeTarget.HomeToNotes -> {
-                binding.notesRoot.translationX = width
-                binding.notesRoot.visibility = View.VISIBLE
-            }
-            PageSwipeTarget.HomeToCalendar -> {
-                binding.calendarRoot.translationX = -width
-                binding.calendarRoot.visibility = View.VISIBLE
-            }
-            PageSwipeTarget.NotesToHome -> {
-                binding.homeContent.translationX = -width
-                binding.homeContent.visibility = View.VISIBLE
-            }
-            PageSwipeTarget.CalendarToHome -> {
-                binding.homeContent.translationX = width
-                binding.homeContent.visibility = View.VISIBLE
-            }
-            PageSwipeTarget.HomeToToday -> {
-                binding.todayRoot.translationY = height
-                binding.todayRoot.visibility = View.VISIBLE
-            }
-            PageSwipeTarget.TodayToHome -> {
-                binding.homeContent.translationY = -height
-                binding.homeContent.visibility = View.VISIBLE
-            }
+        val pageRoot = pageRoot(target.page)
+        val pageOffset = pageOffset(target.position)
+        if (target.isReturningHome) {
+            setPageAxisTranslation(binding.homeContent, target.isVertical, -pageOffset)
+            binding.homeContent.visibility = View.VISIBLE
+        } else {
+            setPageAxisTranslation(pageRoot, target.isVertical, pageOffset)
+            pageRoot.visibility = View.VISIBLE
         }
     }
 
     private fun applyPageDrag(target: PageSwipeTarget, deltaX: Float, deltaY: Float) {
-        val width = pageWidth()
-        val height = pageHeight()
-        when (target) {
-            PageSwipeTarget.HomeToNotes -> {
-                val drag = deltaX.coerceIn(-width, 0f)
-                binding.homeContent.translationX = drag
-                binding.notesRoot.translationX = width + drag
-            }
-            PageSwipeTarget.HomeToCalendar -> {
-                val drag = deltaX.coerceIn(0f, width)
-                binding.homeContent.translationX = drag
-                binding.calendarRoot.translationX = -width + drag
-            }
-            PageSwipeTarget.NotesToHome -> {
-                val drag = deltaX.coerceIn(0f, width)
-                binding.notesRoot.translationX = drag
-                binding.homeContent.translationX = -width + drag
-            }
-            PageSwipeTarget.CalendarToHome -> {
-                val drag = deltaX.coerceIn(-width, 0f)
-                binding.calendarRoot.translationX = drag
-                binding.homeContent.translationX = width + drag
-            }
-            PageSwipeTarget.HomeToToday -> {
-                val drag = deltaY.coerceIn(-height, 0f)
-                binding.homeContent.translationY = drag
-                binding.todayRoot.translationY = height + drag
-            }
-            PageSwipeTarget.TodayToHome -> {
-                val drag = deltaY.coerceIn(0f, height)
-                binding.todayRoot.translationY = drag
-                binding.homeContent.translationY = -height + drag
-            }
+        val pageSize = if (target.isVertical) pageHeight() else pageWidth()
+        val rawDrag = if (target.isVertical) deltaY else deltaX
+        val drag = when (target.expectedGestureDirection) {
+            PageSwipeDirection.Left,
+            PageSwipeDirection.Up -> rawDrag.coerceIn(-pageSize, 0f)
+            PageSwipeDirection.Right,
+            PageSwipeDirection.Down -> rawDrag.coerceIn(0f, pageSize)
+        }
+        val pageRoot = pageRoot(target.page)
+        val pageOffset = pageOffset(target.position)
+        if (target.isReturningHome) {
+            setPageAxisTranslation(pageRoot, target.isVertical, drag)
+            setPageAxisTranslation(binding.homeContent, target.isVertical, -pageOffset + drag)
+        } else {
+            setPageAxisTranslation(binding.homeContent, target.isVertical, drag)
+            setPageAxisTranslation(pageRoot, target.isVertical, pageOffset + drag)
         }
     }
 
@@ -981,124 +961,139 @@ class MainActivity : AppCompatActivity() {
         velocityX: Float,
         velocityY: Float,
     ): Boolean {
-        val pageSize = when (target) {
-            PageSwipeTarget.HomeToToday,
-            PageSwipeTarget.TodayToHome -> pageHeight()
-            else -> pageWidth()
-        }
-        val dragDistance = when (target) {
-            PageSwipeTarget.HomeToToday,
-            PageSwipeTarget.TodayToHome -> deltaY
-            else -> deltaX
-        }
+        val pageSize = if (target.isVertical) pageHeight() else pageWidth()
+        val dragDistance = if (target.isVertical) deltaY else deltaX
         val distancePasses = kotlin.math.abs(dragDistance) > pageSize * PAGE_SWIPE_COMPLETE_FRACTION
-        val velocityPasses = when (target) {
-            PageSwipeTarget.HomeToNotes,
-            PageSwipeTarget.CalendarToHome -> velocityX < -PAGE_SWIPE_COMPLETE_VELOCITY
-            PageSwipeTarget.HomeToCalendar,
-            PageSwipeTarget.NotesToHome -> velocityX > PAGE_SWIPE_COMPLETE_VELOCITY
-            PageSwipeTarget.HomeToToday -> velocityY < -PAGE_SWIPE_COMPLETE_VELOCITY
-            PageSwipeTarget.TodayToHome -> velocityY > PAGE_SWIPE_COMPLETE_VELOCITY
+        val velocity = if (target.isVertical) velocityY else velocityX
+        val velocityPasses = when (target.expectedGestureDirection) {
+            PageSwipeDirection.Left,
+            PageSwipeDirection.Up -> velocity < -PAGE_SWIPE_COMPLETE_VELOCITY
+            PageSwipeDirection.Right,
+            PageSwipeDirection.Down -> velocity > PAGE_SWIPE_COMPLETE_VELOCITY
         }
         return distancePasses || velocityPasses
     }
 
     private fun settlePageDrag(target: PageSwipeTarget, shouldComplete: Boolean) {
-        val width = pageWidth()
-        val height = pageHeight()
-        when (target) {
-            PageSwipeTarget.HomeToNotes -> {
-                animatePagePair(
-                    outgoing = binding.homeContent,
-                    incoming = binding.notesRoot,
-                    outgoingEnd = if (shouldComplete) -width else 0f,
-                    incomingEnd = if (shouldComplete) 0f else width,
-                ) {
-                    isNotesVisible = shouldComplete
-                    if (shouldComplete) {
-                        binding.homeContent.visibility = View.GONE
-                    } else {
-                        binding.notesRoot.visibility = View.GONE
-                    }
+        val pageRoot = pageRoot(target.page)
+        val pageOffset = pageOffset(target.position)
+        val outgoing = if (target.isReturningHome) pageRoot else binding.homeContent
+        val incoming = if (target.isReturningHome) binding.homeContent else pageRoot
+        val outgoingEnd = when {
+            !shouldComplete -> 0f
+            target.isReturningHome -> pageOffset
+            else -> -pageOffset
+        }
+        val incomingEnd = when {
+            shouldComplete -> 0f
+            target.isReturningHome -> -pageOffset
+            else -> pageOffset
+        }
+        animateConfiguredPagePair(
+            isVertical = target.isVertical,
+            outgoing = outgoing,
+            incoming = incoming,
+            outgoingEnd = outgoingEnd,
+            incomingEnd = incomingEnd,
+        ) {
+            if (target.isReturningHome) {
+                setPageVisible(target.page, !shouldComplete)
+                if (shouldComplete) {
+                    pageRoot.visibility = View.GONE
+                    resetPageTranslation(pageRoot)
+                } else {
+                    binding.homeContent.visibility = View.GONE
+                    resetPageTranslation(binding.homeContent)
+                }
+            } else {
+                setPageVisible(target.page, shouldComplete)
+                if (shouldComplete) {
+                    binding.homeContent.visibility = View.GONE
+                    onPageBecameVisible(target.page)
+                } else {
+                    pageRoot.visibility = View.GONE
+                    resetPageTranslation(pageRoot)
                 }
             }
-            PageSwipeTarget.HomeToCalendar -> {
-                animatePagePair(
-                    outgoing = binding.homeContent,
-                    incoming = binding.calendarRoot,
-                    outgoingEnd = if (shouldComplete) width else 0f,
-                    incomingEnd = if (shouldComplete) 0f else -width,
-                ) {
-                    isCalendarVisible = shouldComplete
-                    if (shouldComplete) {
-                        binding.homeContent.visibility = View.GONE
-                        onCalendarPageVisible()
-                    } else {
-                        binding.calendarRoot.visibility = View.GONE
-                    }
-                }
-            }
-            PageSwipeTarget.NotesToHome -> {
-                animatePagePair(
-                    outgoing = binding.notesRoot,
-                    incoming = binding.homeContent,
-                    outgoingEnd = if (shouldComplete) width else 0f,
-                    incomingEnd = if (shouldComplete) 0f else -width,
-                ) {
-                    isNotesVisible = !shouldComplete
-                    if (shouldComplete) {
-                        binding.notesRoot.visibility = View.GONE
-                    } else {
-                        binding.homeContent.visibility = View.GONE
-                    }
-                }
-            }
-            PageSwipeTarget.CalendarToHome -> {
-                animatePagePair(
-                    outgoing = binding.calendarRoot,
-                    incoming = binding.homeContent,
-                    outgoingEnd = if (shouldComplete) -width else 0f,
-                    incomingEnd = if (shouldComplete) 0f else width,
-                ) {
-                    isCalendarVisible = !shouldComplete
-                    if (shouldComplete) {
-                        binding.calendarRoot.visibility = View.GONE
-                    } else {
-                        binding.homeContent.visibility = View.GONE
-                    }
-                }
-            }
-            PageSwipeTarget.HomeToToday -> {
-                animateVerticalPagePair(
-                    outgoing = binding.homeContent,
-                    incoming = binding.todayRoot,
-                    outgoingEnd = if (shouldComplete) -height else 0f,
-                    incomingEnd = if (shouldComplete) 0f else height,
-                ) {
-                    isTodayVisible = shouldComplete
-                    if (shouldComplete) {
-                        binding.homeContent.visibility = View.GONE
-                        refreshTodayWidgets()
-                    } else {
-                        binding.todayRoot.visibility = View.GONE
-                    }
-                }
-            }
-            PageSwipeTarget.TodayToHome -> {
-                animateVerticalPagePair(
-                    outgoing = binding.todayRoot,
-                    incoming = binding.homeContent,
-                    outgoingEnd = if (shouldComplete) height else 0f,
-                    incomingEnd = if (shouldComplete) 0f else -height,
-                ) {
-                    isTodayVisible = !shouldComplete
-                    if (shouldComplete) {
-                        binding.todayRoot.visibility = View.GONE
-                    } else {
-                        binding.homeContent.visibility = View.GONE
-                    }
-                }
-            }
+        }
+    }
+
+    private fun animateConfiguredPagePair(
+        isVertical: Boolean,
+        outgoing: View,
+        incoming: View,
+        outgoingEnd: Float,
+        incomingEnd: Float,
+        onEnd: () -> Unit,
+    ) {
+        if (isVertical) {
+            animateVerticalPagePair(outgoing, incoming, outgoingEnd, incomingEnd, onEnd)
+        } else {
+            animatePagePair(outgoing, incoming, outgoingEnd, incomingEnd, onEnd)
+        }
+    }
+
+    private fun pageOffset(position: PagePosition): Float {
+        return when (position) {
+            PagePosition.Left -> -pageWidth()
+            PagePosition.Right -> pageWidth()
+            PagePosition.Down -> pageHeight()
+        }
+    }
+
+    private fun setPageAxisTranslation(view: View, isVertical: Boolean, value: Float) {
+        if (isVertical) {
+            view.translationY = value
+            view.translationX = 0f
+        } else {
+            view.translationX = value
+            view.translationY = 0f
+        }
+    }
+
+    private fun resetPageTranslation(view: View) {
+        view.translationX = 0f
+        view.translationY = 0f
+    }
+
+    private fun currentVisiblePage(): LauncherPage? {
+        return when {
+            isNotesVisible -> LauncherPage.Notes
+            isCalendarVisible -> LauncherPage.Calendar
+            isTodayVisible -> LauncherPage.Today
+            else -> null
+        }
+    }
+
+    private fun isPageEnabled(page: LauncherPage): Boolean {
+        return when (page) {
+            LauncherPage.Notes -> binding.showNotesPageSwitch.isChecked
+            LauncherPage.Today -> binding.showTodayPageSwitch.isChecked
+            LauncherPage.Calendar -> binding.showCalendarPageSwitch.isChecked
+        }
+    }
+
+    private fun pageRoot(page: LauncherPage): View {
+        return when (page) {
+            LauncherPage.Notes -> binding.notesRoot
+            LauncherPage.Today -> binding.todayRoot
+            LauncherPage.Calendar -> binding.calendarRoot
+        }
+    }
+
+    private fun setPageVisible(page: LauncherPage, isVisible: Boolean) {
+        when (page) {
+            LauncherPage.Notes -> isNotesVisible = isVisible
+            LauncherPage.Today -> isTodayVisible = isVisible
+            LauncherPage.Calendar -> isCalendarVisible = isVisible
+        }
+    }
+
+    private fun onPageBecameVisible(page: LauncherPage) {
+        when (page) {
+            LauncherPage.Calendar -> onCalendarPageVisible()
+            LauncherPage.Today,
+            LauncherPage.Notes -> Unit
         }
     }
 
@@ -1195,7 +1190,7 @@ class MainActivity : AppCompatActivity() {
             currentTrashedNotes.size,
             currentTrashedNotes.size,
         )
-        if (isTodayVisible && todayWidgets.any { it.type == TodayWidgetType.PinnedNote }) {
+        if (todayWidgets.any { it.type == TodayWidgetType.PinnedNote }) {
             renderTodayWidgets()
         }
         binding.dateText.visibility = if (state.showDate) View.VISIBLE else View.GONE
@@ -1207,9 +1202,10 @@ class MainActivity : AppCompatActivity() {
         if (binding.defaultDigitalClockSwitch.isChecked != isDigitalClock) {
             binding.defaultDigitalClockSwitch.isChecked = isDigitalClock
         }
-        if (binding.showQuickAccessSwitch.isChecked != state.showQuickAccess) {
-            binding.showQuickAccessSwitch.isChecked = state.showQuickAccess
-        }
+        currentLeftQuickAccess = state.leftQuickAccess
+        currentRightQuickAccess = state.rightQuickAccess
+        currentQuickAccessPosition = state.quickAccessPosition
+        renderQuickAccess()
         val wallpaperDimPercent = state.wallpaperDimPercent.coerceIn(0, 100)
         binding.wallpaperDimOverlay.alpha = wallpaperDimPercent / 100f
         if (binding.wallpaperDimSlider.value.toInt() != wallpaperDimPercent) {
@@ -1243,6 +1239,18 @@ class MainActivity : AppCompatActivity() {
         if (binding.showTodayPageSwitch.isChecked != state.showTodayPage) {
             binding.showTodayPageSwitch.isChecked = state.showTodayPage
         }
+        currentPageArrangement = state.pageArrangement
+        if (binding.pageArrangementView.arrangement != state.pageArrangement) {
+            binding.pageArrangementView.arrangement = state.pageArrangement
+        }
+        val enabledPages = buildSet {
+            if (state.showNotesPage) add(LauncherPage.Notes)
+            if (state.showTodayPage) add(LauncherPage.Today)
+            if (state.showCalendarPage) add(LauncherPage.Calendar)
+        }
+        if (binding.pageArrangementView.enabledPages != enabledPages) {
+            binding.pageArrangementView.enabledPages = enabledPages
+        }
         currentOpenScreenTimeGesture = state.openScreenTimeGesture
         currentLockScreenGesture = state.lockScreenGesture
         binding.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
@@ -1250,6 +1258,7 @@ class MainActivity : AppCompatActivity() {
         currentSelectedCalendarIds = state.selectedCalendarIds
         currentBlockedAppPackageNames = state.blockedAppPackageNames
         currentAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
+        currentExcludedScreenTimePackageNames = state.excludedScreenTimePackageNames
         hasRequestedCalendarPermission = state.hasRequestedCalendarPermission
         if (!state.showScreenTimePage && isScreenTimeVisible) {
             hideScreenTimePage()
@@ -1266,13 +1275,19 @@ class MainActivity : AppCompatActivity() {
         renderCalendarSelection()
         renderAppBlockingSelection()
         renderAppBudgetsSelection()
+        renderScreenTimeExclusionsSelection()
+        if (isScreenTimeVisible) {
+            refreshScreenTime()
+        }
         if (isCalendarVisible && hasCalendarPermission()) {
             refreshCalendarEvents()
         }
-        if (isTodayVisible) {
+        if (state.showTodayPage) {
             refreshTodayWidgets()
         }
-        val quickAccessVisibility = if (state.showQuickAccess) View.VISIBLE else View.GONE
+        val quickAccessVisibility = if (
+            state.leftQuickAccess != null || state.rightQuickAccess != null
+        ) View.VISIBLE else View.GONE
         if (binding.quickAccessBar.visibility != quickAccessVisibility) {
             binding.quickAccessBar.visibility = quickAccessVisibility
             ViewCompat.requestApplyInsets(binding.homeRoot)
@@ -1287,8 +1302,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureSystemInsets() {
-        val appSearchBaseTopPadding = binding.appSearchInput.paddingTop
-        val appPickerBaseBottomPadding = binding.appPickerList.paddingBottom
+        val topInsetRoots = listOf(
+            binding.homeContent,
+            binding.calendarRoot,
+            binding.notesRoot,
+            binding.noteTrashRoot,
+            binding.todayRoot,
+            binding.screenTimeRoot,
+            binding.editControls,
+            binding.settingsRoot,
+        )
+        val topInsetRootBasePaddings = topInsetRoots.associateWith { view ->
+            intArrayOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom)
+        }
+        val safeAreaRoots = listOf(
+            binding.appPickerRoot,
+            binding.appBlockPromptRoot,
+            binding.gesturePickerRoot,
+        )
+        val safeAreaRootBasePaddings = safeAreaRoots.associateWith { view ->
+            intArrayOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom)
+        }
         val shortcutBaseBottomPadding = binding.shortcutList.paddingBottom
         val quickAccessBaseBottomPadding = binding.quickAccessBar.paddingBottom
         val notesListBaseBottomPadding = binding.notesList.paddingBottom
@@ -1296,47 +1330,59 @@ class MainActivity : AppCompatActivity() {
         val calendarEventListBaseBottomPadding = binding.calendarEventList.paddingBottom
         val screenTimeScrollBaseBottomPadding = binding.screenTimeScroll.paddingBottom
         val settingsScrollBaseBottomPadding = binding.settingsScroll.paddingBottom
+        val editControlsBaseHeight = binding.editControls.layoutParams.height
+        val noteEditorBaseLeftPadding = binding.noteEditorRoot.paddingLeft
         val noteEditorBaseTopPadding = binding.noteEditorRoot.paddingTop
+        val noteEditorBaseRightPadding = binding.noteEditorRoot.paddingRight
         val noteEditorBaseBottomPadding = binding.noteEditorRoot.paddingBottom
         val noteUndoBaseBottomMargin =
             (binding.noteUndoContainer.layoutParams as ViewGroup.MarginLayoutParams).bottomMargin
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.homeRoot) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val safeDrawing = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
             val isImeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            val bottomInset = maxOf(systemBars.bottom, ime.bottom)
-            binding.homeContent.updatePadding(top = systemBars.top)
-            binding.calendarRoot.updatePadding(top = systemBars.top)
-            binding.notesRoot.updatePadding(top = systemBars.top)
-            binding.noteTrashRoot.updatePadding(top = systemBars.top)
-            binding.todayRoot.updatePadding(top = systemBars.top)
-            binding.screenTimeRoot.updatePadding(top = systemBars.top)
-            binding.editControls.updatePadding(top = systemBars.top)
-            binding.settingsRoot.updatePadding(top = systemBars.top)
+            val bottomInset = maxOf(safeDrawing.bottom, ime.bottom)
+            topInsetRootBasePaddings.forEach { (view, basePadding) ->
+                view.updatePadding(
+                    left = basePadding[0] + safeDrawing.left,
+                    top = basePadding[1] + safeDrawing.top,
+                    right = basePadding[2] + safeDrawing.right,
+                    bottom = basePadding[3],
+                )
+            }
+            safeAreaRootBasePaddings.forEach { (view, basePadding) ->
+                view.updatePadding(
+                    left = basePadding[0] + safeDrawing.left,
+                    top = basePadding[1] + safeDrawing.top,
+                    right = basePadding[2] + safeDrawing.right,
+                    bottom = basePadding[3] + safeDrawing.bottom,
+                )
+            }
+            binding.editControls.updateLayoutParams<ViewGroup.LayoutParams> {
+                height = editControlsBaseHeight + safeDrawing.top
+            }
             binding.noteEditorRoot.updatePadding(
-                top = noteEditorBaseTopPadding + systemBars.top,
-                bottom = noteEditorBaseBottomPadding + systemBars.bottom,
+                left = noteEditorBaseLeftPadding + safeDrawing.left,
+                top = noteEditorBaseTopPadding + safeDrawing.top,
+                right = noteEditorBaseRightPadding + safeDrawing.right,
+                bottom = noteEditorBaseBottomPadding + safeDrawing.bottom,
             )
             binding.noteUndoContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 bottomMargin = noteUndoBaseBottomMargin + bottomInset
             }
             binding.shortcutList.updatePadding(
                 bottom = shortcutBaseBottomPadding +
-                    if (binding.quickAccessBar.isVisible) 0 else systemBars.bottom,
+                    if (binding.quickAccessBar.isVisible) 0 else safeDrawing.bottom,
             )
-            binding.quickAccessBar.updatePadding(bottom = quickAccessBaseBottomPadding + systemBars.bottom)
-            binding.notesList.updatePadding(bottom = notesListBaseBottomPadding + systemBars.bottom)
-            binding.noteTrashList.updatePadding(bottom = noteTrashListBaseBottomPadding + systemBars.bottom)
-            binding.calendarEventList.updatePadding(bottom = calendarEventListBaseBottomPadding + systemBars.bottom)
-            binding.screenTimeScroll.updatePadding(bottom = screenTimeScrollBaseBottomPadding + systemBars.bottom)
+            binding.quickAccessBar.updatePadding(bottom = quickAccessBaseBottomPadding + safeDrawing.bottom)
+            binding.notesList.updatePadding(bottom = notesListBaseBottomPadding + safeDrawing.bottom)
+            binding.noteTrashList.updatePadding(bottom = noteTrashListBaseBottomPadding + safeDrawing.bottom)
+            binding.calendarEventList.updatePadding(bottom = calendarEventListBaseBottomPadding + safeDrawing.bottom)
+            binding.screenTimeScroll.updatePadding(bottom = screenTimeScrollBaseBottomPadding + safeDrawing.bottom)
             binding.settingsScroll.updatePadding(bottom = settingsScrollBaseBottomPadding + bottomInset)
-            binding.appSearchInput.updatePadding(top = appSearchBaseTopPadding + systemBars.top)
-            binding.appPickerList.updatePadding(bottom = appPickerBaseBottomPadding + systemBars.bottom)
-            binding.appPickerEmpty.updatePadding(
-                top = systemBars.top,
-                bottom = systemBars.bottom,
-            )
             if (isImeVisible && !wasSettingsImeVisible && shouldScrollSettingsForFocusedSearch()) {
                 scrollSettingsToFocusedSearch()
             }
@@ -1351,16 +1397,18 @@ class MainActivity : AppCompatActivity() {
                 isAppBlockingExpanded &&
                     binding.appBlockingSearchInput.hasFocus() ||
                     isAppBudgetsExpanded &&
-                    binding.appBudgetsSearchInput.hasFocus()
+                    binding.appBudgetsSearchInput.hasFocus() ||
+                    isScreenTimeExclusionsExpanded &&
+                    binding.screenTimeExclusionsSearchInput.hasFocus()
                 )
     }
 
     private fun scrollSettingsToFocusedSearch() {
         binding.settingsScroll.post {
-            val focusedSearch = if (binding.appBudgetsSearchInput.hasFocus()) {
-                binding.appBudgetsSearchInput
-            } else {
-                binding.appBlockingSearchInput
+            val focusedSearch = when {
+                binding.appBudgetsSearchInput.hasFocus() -> binding.appBudgetsSearchInput
+                binding.screenTimeExclusionsSearchInput.hasFocus() -> binding.screenTimeExclusionsSearchInput
+                else -> binding.appBlockingSearchInput
             }
             val targetTop = (focusedSearch.top - SETTINGS_KEYBOARD_SCROLL_TOP_OFFSET_DP.dp)
                 .coerceAtLeast(0)
@@ -1407,11 +1455,36 @@ class MainActivity : AppCompatActivity() {
                 },
             )
         }
-        binding.showQuickAccessSwitch.setOnCheckedChangeListener { _, isChecked ->
-            viewModel.setShowQuickAccess(isChecked)
+        binding.leftQuickAccessRow.setOnClickListener {
+            showQuickAccessAppPicker(left = true)
         }
-        binding.showQuickAccessRow.setOnClickListener {
-            viewModel.setShowQuickAccess(!binding.showQuickAccessSwitch.isChecked)
+        binding.rightQuickAccessRow.setOnClickListener {
+            showQuickAccessAppPicker(left = false)
+        }
+        binding.quickAccessPositionRow.setOnClickListener {
+            showQuickAccessPositionPicker()
+        }
+        binding.pageArrangementView.setLabels(
+            pageLabels = mapOf(
+                LauncherPage.Notes to getString(R.string.notes_page_title),
+                LauncherPage.Today to getString(R.string.today_page_title),
+                LauncherPage.Calendar to getString(R.string.calendar_page_title),
+            ),
+            homeLabel = getString(R.string.page_arrangement_home),
+            fixedLabel = getString(R.string.page_arrangement_fixed),
+            enabledLabel = getString(R.string.page_arrangement_enabled),
+            disabledLabel = getString(R.string.page_arrangement_disabled),
+        )
+        binding.pageArrangementView.onArrangementChanged = viewModel::setPageArrangement
+        binding.pageArrangementView.onPageEnabledChanged = { page, isEnabled ->
+            when (page) {
+                LauncherPage.Notes -> viewModel.setShowNotesPage(isEnabled)
+                LauncherPage.Today -> viewModel.setShowTodayPage(isEnabled)
+                LauncherPage.Calendar -> handleCalendarPageSettingChanged(isEnabled)
+            }
+        }
+        binding.resetPageArrangementButton.setOnClickListener {
+            viewModel.setPageArrangement(PageArrangement.Default)
         }
         binding.wallpaperDimSlider.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
@@ -1536,6 +1609,30 @@ class MainActivity : AppCompatActivity() {
                 scrollSettingsToFocusedSearch()
             }
         }
+        binding.screenTimeExclusionsHeaderRow.setOnClickListener {
+            isScreenTimeExclusionsExpanded = !isScreenTimeExclusionsExpanded
+            if (isScreenTimeExclusionsExpanded && blockableApps.isEmpty()) {
+                refreshBlockableApps()
+            } else {
+                renderScreenTimeExclusionsSelection()
+            }
+        }
+        binding.screenTimeExclusionsSearchInput.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(text: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+                override fun onTextChanged(text: CharSequence?, start: Int, before: Int, count: Int) {
+                    renderScreenTimeExclusionsSelection()
+                }
+
+                override fun afterTextChanged(text: Editable?) = Unit
+            },
+        )
+        binding.screenTimeExclusionsSearchInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && shouldScrollSettingsForFocusedSearch()) {
+                scrollSettingsToFocusedSearch()
+            }
+        }
         binding.resetIntentionsDataRow.setOnClickListener {
             appUsageIntentionRepository.resetIntentions()
             renderScreenTimeIntentionSummary()
@@ -1569,6 +1666,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     renderAppBlockingSelection()
                     renderAppBudgetsSelection()
+                    renderScreenTimeExclusionsSelection()
                 }
             }
             else -> Unit
@@ -1579,6 +1677,7 @@ class MainActivity : AppCompatActivity() {
         val focusedSearch = when {
             binding.appBlockingSearchInput.hasFocus() -> binding.appBlockingSearchInput
             binding.appBudgetsSearchInput.hasFocus() -> binding.appBudgetsSearchInput
+            binding.screenTimeExclusionsSearchInput.hasFocus() -> binding.screenTimeExclusionsSearchInput
             else -> null
         } ?: return
         val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -1674,17 +1773,220 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureQuickAccess() {
-        binding.cameraQuickAccessButton.setOnClickListener {
-            launchQuickAccessIntent(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+        binding.leftQuickAccessButton.setOnClickListener {
+            currentLeftQuickAccess?.let(::launchQuickAccessTarget)
         }
-        binding.keepQuickAccessButton.setOnClickListener {
-            val keepIntent = packageManager.getLaunchIntentForPackage(GOOGLE_KEEP_PACKAGE)
-            if (keepIntent == null) {
-                showQuickAccessUnavailable()
-            } else {
-                launchQuickAccessIntent(keepIntent)
+        binding.rightQuickAccessButton.setOnClickListener {
+            currentRightQuickAccess?.let(::launchQuickAccessTarget)
+        }
+    }
+
+    private fun renderQuickAccess() {
+        renderQuickAccessButton(binding.leftQuickAccessButton, currentLeftQuickAccess)
+        renderQuickAccessButton(binding.rightQuickAccessButton, currentRightQuickAccess)
+        binding.leftQuickAccessValue.text = quickAccessSummary(currentLeftQuickAccess)
+        binding.rightQuickAccessValue.text = quickAccessSummary(currentRightQuickAccess)
+        binding.quickAccessPositionValue.text = quickAccessPositionLabel(currentQuickAccessPosition)
+        binding.quickAccessSpacer.visibility = if (currentQuickAccessPosition == QuickAccessPosition.SplitEdges) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+        binding.quickAccessBar.gravity = when (currentQuickAccessPosition) {
+            QuickAccessPosition.BothRight -> android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.END
+            QuickAccessPosition.BothLeft -> android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+            QuickAccessPosition.BothCenter -> android.view.Gravity.CENTER
+            QuickAccessPosition.SplitEdges -> android.view.Gravity.CENTER_VERTICAL
+        }
+    }
+
+    private fun renderQuickAccessButton(
+        button: android.widget.ImageButton,
+        target: QuickAccessTarget?,
+    ) {
+        button.visibility = if (target == null) View.GONE else View.VISIBLE
+        if (target == null) return
+        button.setImageResource(quickAccessIconResource(target.icon))
+        button.contentDescription = target.label
+    }
+
+    private fun quickAccessSummary(target: QuickAccessTarget?): String {
+        return if (target == null) {
+            getString(R.string.quick_access_none)
+        } else {
+            getString(
+                R.string.quick_access_value,
+                target.label,
+                quickAccessIconLabel(target.icon),
+            )
+        }
+    }
+
+    private fun showQuickAccessPositionPicker() {
+        val positions = listOf(
+            QuickAccessPosition.BothRight,
+            QuickAccessPosition.BothLeft,
+            QuickAccessPosition.BothCenter,
+            QuickAccessPosition.SplitEdges,
+        )
+        val labels = positions.map(::quickAccessPositionLabel)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.quick_access_position_choose)
+            .setSingleChoiceItems(
+                labels.toTypedArray(),
+                positions.indexOf(currentQuickAccessPosition),
+            ) { dialog, index ->
+                viewModel.setQuickAccessPosition(positions[index])
+                dialog.dismiss()
             }
+            .show()
+    }
+
+    private fun quickAccessPositionLabel(position: QuickAccessPosition): String {
+        return getString(
+            when (position) {
+                QuickAccessPosition.BothRight -> R.string.quick_access_position_both_right
+                QuickAccessPosition.BothLeft -> R.string.quick_access_position_both_left
+                QuickAccessPosition.BothCenter -> R.string.quick_access_position_both_center
+                QuickAccessPosition.SplitEdges -> R.string.quick_access_position_split_edges
+            },
+        )
+    }
+
+    private fun showQuickAccessAppPicker(left: Boolean) {
+        val slotLabel = getString(if (left) R.string.quick_access_left else R.string.quick_access_right)
+        val apps = installedAppsRepository.loadLaunchableApps()
+            .distinctBy { it.packageName }
+        val labels = listOf(getString(R.string.quick_access_none)) + apps.map { it.label }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.quick_access_choose_app, slotLabel))
+            .setItems(labels.toTypedArray()) { _, index ->
+                if (index == 0) {
+                    viewModel.setQuickAccess(left, null)
+                } else {
+                    showQuickAccessIconPicker(left, apps[index - 1])
+                }
+            }
+            .show()
+    }
+
+    private fun showQuickAccessIconPicker(left: Boolean, shortcut: AppShortcut) {
+        val slotLabel = getString(if (left) R.string.quick_access_left else R.string.quick_access_right)
+        val icons = QuickAccessIcon.entries
+        lateinit var dialog: androidx.appcompat.app.AlertDialog
+        val grid = GridLayout(this).apply {
+            columnCount = QUICK_ACCESS_ICON_GRID_COLUMNS
+            rowCount = (icons.size + columnCount - 1) / columnCount
+            setPadding(18.dp, 6.dp, 18.dp, 12.dp)
         }
+        icons.forEachIndexed { index, icon ->
+            val label = quickAccessIconLabel(icon)
+            val button = MaterialButton(
+                this,
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            ).apply {
+                layoutParams = GridLayout.LayoutParams(
+                    GridLayout.spec(index / QUICK_ACCESS_ICON_GRID_COLUMNS),
+                    GridLayout.spec(index % QUICK_ACCESS_ICON_GRID_COLUMNS, 1f),
+                ).apply {
+                    width = 0
+                    height = QUICK_ACCESS_ICON_BUTTON_SIZE_DP.dp
+                    setMargins(6.dp, 6.dp, 6.dp, 6.dp)
+                }
+                minWidth = 0
+                minHeight = 0
+                backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+                strokeColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.launcher_text_secondary),
+                )
+                strokeWidth = 1.dp
+                this.icon = ContextCompat.getDrawable(this@MainActivity, quickAccessIconResource(icon))
+                iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.launcher_text),
+                )
+                iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+                iconPadding = 0
+                iconSize = QUICK_ACCESS_ICON_SIZE_DP.dp
+                rippleColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.settings_option_divider),
+                )
+                text = null
+                contentDescription = label
+                ViewCompat.setTooltipText(this, label)
+                setOnClickListener {
+                    viewModel.setQuickAccess(
+                        left = left,
+                        target = QuickAccessTarget(
+                            label = shortcut.label,
+                            packageName = shortcut.packageName,
+                            activityName = shortcut.activityName,
+                            icon = icon,
+                        ),
+                    )
+                    dialog.dismiss()
+                }
+            }
+            grid.addView(button)
+        }
+        dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.quick_access_choose_icon, slotLabel))
+            .setView(grid)
+            .setBackground(
+                GradientDrawable().apply {
+                    setColor(ContextCompat.getColor(this@MainActivity, R.color.launcher_background))
+                    cornerRadius = QUICK_ACCESS_ICON_DIALOG_CORNER_RADIUS_DP.dp.toFloat()
+                },
+            )
+            .create()
+        dialog.show()
+    }
+
+    private fun quickAccessIconLabel(icon: QuickAccessIcon): String {
+        return getString(
+            when (icon) {
+                QuickAccessIcon.Camera -> R.string.quick_access_icon_camera
+                QuickAccessIcon.Notes -> R.string.quick_access_icon_notes
+                QuickAccessIcon.Calendar -> R.string.quick_access_icon_calendar
+                QuickAccessIcon.Phone -> R.string.quick_access_icon_phone
+                QuickAccessIcon.Messages -> R.string.quick_access_icon_messages
+                QuickAccessIcon.Todos -> R.string.quick_access_icon_todos
+            },
+        )
+    }
+
+    private fun quickAccessIconResource(icon: QuickAccessIcon): Int {
+        return when (icon) {
+            QuickAccessIcon.Camera -> R.drawable.ic_camera_line
+            QuickAccessIcon.Notes -> R.drawable.ic_note_line
+            QuickAccessIcon.Calendar -> R.drawable.ic_calendar_line
+            QuickAccessIcon.Phone -> R.drawable.ic_phone_line
+            QuickAccessIcon.Messages -> R.drawable.ic_messages_line
+            QuickAccessIcon.Todos -> R.drawable.ic_todos_line
+        }
+    }
+
+    private fun launchQuickAccessTarget(target: QuickAccessTarget) {
+        val component = ComponentName(target.packageName, target.activityName)
+        val isAvailable = runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getActivityInfo(component, PackageManager.ComponentInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getActivityInfo(component, 0)
+            }
+        }.isSuccess
+        if (!isAvailable) {
+            showQuickAccessUnavailable()
+            return
+        }
+        launchShortcutWithAppBlocking(
+            AppShortcut(
+                label = target.label,
+                packageName = target.packageName,
+                activityName = target.activityName,
+            ),
+        )
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -1873,6 +2175,7 @@ class MainActivity : AppCompatActivity() {
             .distinctBy { it.packageName }
         renderAppBlockingSelection()
         renderAppBudgetsSelection()
+        renderScreenTimeExclusionsSelection()
     }
 
     private fun renderAppBlockingSelection() {
@@ -1957,6 +2260,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderScreenTimeExclusionsSelection() {
+        binding.screenTimeExclusionsCount.text = resources.getQuantityString(
+            R.plurals.screen_time_exclusions_count,
+            currentExcludedScreenTimePackageNames.size,
+            currentExcludedScreenTimePackageNames.size,
+        )
+        binding.screenTimeExclusionsExpandIcon.setImageResource(
+            if (isScreenTimeExclusionsExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+        )
+        binding.screenTimeExclusionsSearchInput.visibility =
+            if (isScreenTimeExclusionsExpanded) View.VISIBLE else View.GONE
+        binding.screenTimeExclusionsList.visibility =
+            if (isScreenTimeExclusionsExpanded) View.VISIBLE else View.GONE
+        if (!isScreenTimeExclusionsExpanded) return
+
+        binding.screenTimeExclusionsList.removeAllViews()
+        if (blockableApps.isEmpty()) {
+            blockableApps = installedAppsRepository.loadLaunchableApps()
+                .distinctBy { it.packageName }
+        }
+        val query = binding.screenTimeExclusionsSearchInput.text?.toString().orEmpty().trim()
+        val displayedApps = if (query.isEmpty()) {
+            blockableApps.filter { it.packageName in currentExcludedScreenTimePackageNames }
+        } else {
+            FuzzyAppSearch.filter(blockableApps, query)
+        }
+        displayedApps.forEach { shortcut ->
+            val row = ItemAppBlockSelectionBinding.inflate(
+                layoutInflater,
+                binding.screenTimeExclusionsList,
+                false,
+            )
+            row.blockedAppName.text = shortcut.label
+            row.blockedAppCheckbox.setOnCheckedChangeListener(null)
+            row.blockedAppCheckbox.isChecked =
+                shortcut.packageName in currentExcludedScreenTimePackageNames
+            row.root.setOnClickListener {
+                viewModel.setScreenTimeAppExcluded(
+                    shortcut.packageName,
+                    !row.blockedAppCheckbox.isChecked,
+                )
+            }
+            row.blockedAppCheckbox.setOnCheckedChangeListener { _, isChecked ->
+                viewModel.setScreenTimeAppExcluded(shortcut.packageName, isChecked)
+            }
+            binding.screenTimeExclusionsList.addView(row.root)
+        }
+    }
+
     private fun renderBudgetOption(view: TextView, selectedMinutes: Int?, minutes: Int, packageName: String) {
         val isSelected = selectedMinutes == minutes
         view.alpha = if (isSelected) 1f else 0.68f
@@ -2029,8 +2381,12 @@ class MainActivity : AppCompatActivity() {
             renderScreenTimePermissionState()
             return
         }
-        screenTimeWeekUsages = screenTimeRepository.loadCurrentWeekUsage()
-        screenTimeUsages = screenTimeRepository.loadTodayUsage()
+        screenTimeWeekUsages = screenTimeRepository.loadCurrentWeekUsage(
+            currentExcludedScreenTimePackageNames,
+        )
+        screenTimeUsages = screenTimeRepository.loadTodayUsage(
+            currentExcludedScreenTimePackageNames,
+        )
         renderScreenTimeRecap()
         renderScreenTimeWeekSummary()
         renderScreenTimeIntentionSummary()
@@ -2936,9 +3292,7 @@ class MainActivity : AppCompatActivity() {
             }.onFailure {
                 todayWeatherError = getString(R.string.today_weather_unavailable)
             }
-            if (isTodayVisible) {
-                renderTodayWidgets()
-            }
+            renderTodayWidgets()
         }
     }
 
@@ -3790,157 +4144,28 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showNotesPage() {
-        if (isNotesVisible || isCalendarVisible || isTodayVisible || !binding.showNotesPageSwitch.isChecked || isEditMode) return
-        isNotesVisible = true
-        val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        binding.notesRoot.translationX = width.toFloat()
-        binding.notesRoot.visibility = View.VISIBLE
-        binding.homeContent.animate().cancel()
-        binding.notesRoot.animate().cancel()
-        binding.homeContent.animate()
-            .translationX(-width.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.notesRoot.animate()
-            .translationX(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (isNotesVisible) {
-                    binding.homeContent.visibility = View.GONE
-                }
-            }
-            .start()
-    }
-
     private fun hideNotesPage() {
-        if (!isNotesVisible) return
-        isNotesVisible = false
-        val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        binding.homeContent.animate().cancel()
-        binding.notesRoot.animate().cancel()
-        binding.homeContent.visibility = View.VISIBLE
-        binding.homeContent.animate()
-            .translationX(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.notesRoot.animate()
-            .translationX(width.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (!isNotesVisible) {
-                    binding.notesRoot.visibility = View.GONE
-                    binding.notesRoot.translationX = 0f
-                }
-            }
-            .start()
-    }
-
-    private fun showCalendarPage() {
-        if (isCalendarVisible || isNotesVisible || isTodayVisible || !binding.showCalendarPageSwitch.isChecked || isEditMode) return
-        isCalendarVisible = true
-        val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        binding.calendarRoot.translationX = -width.toFloat()
-        binding.calendarRoot.visibility = View.VISIBLE
-        binding.homeContent.animate().cancel()
-        binding.calendarRoot.animate().cancel()
-        binding.homeContent.animate()
-            .translationX(width.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.calendarRoot.animate()
-            .translationX(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (isCalendarVisible) {
-                    binding.homeContent.visibility = View.GONE
-                }
-            }
-            .start()
-        onCalendarPageVisible()
+        hideConfiguredPage(LauncherPage.Notes)
     }
 
     private fun hideCalendarPage() {
-        if (!isCalendarVisible) return
-        isCalendarVisible = false
-        val width = binding.homeRoot.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        binding.homeContent.animate().cancel()
-        binding.calendarRoot.animate().cancel()
-        binding.homeContent.visibility = View.VISIBLE
-        binding.homeContent.animate()
-            .translationX(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.calendarRoot.animate()
-            .translationX(-width.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (!isCalendarVisible) {
-                    binding.calendarRoot.visibility = View.GONE
-                    binding.calendarRoot.translationX = 0f
-                }
-            }
-            .start()
-    }
-
-    private fun showTodayPage() {
-        if (isTodayVisible || isNotesVisible || isCalendarVisible || !binding.showTodayPageSwitch.isChecked || isEditMode) return
-        isTodayVisible = true
-        refreshTodayWidgets()
-        val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
-        binding.todayRoot.translationY = height.toFloat()
-        binding.todayRoot.visibility = View.VISIBLE
-        binding.homeContent.animate().cancel()
-        binding.todayRoot.animate().cancel()
-        binding.homeContent.animate()
-            .translationY(-height.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.todayRoot.animate()
-            .translationY(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (isTodayVisible) {
-                    binding.homeContent.visibility = View.GONE
-                }
-            }
-            .start()
+        hideConfiguredPage(LauncherPage.Calendar)
     }
 
     private fun hideTodayPage() {
-        if (!isTodayVisible) return
         exitTodayEditMode()
-        isTodayVisible = false
-        val height = binding.homeRoot.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
-        binding.homeContent.animate().cancel()
-        binding.todayRoot.animate().cancel()
-        binding.homeContent.visibility = View.VISIBLE
-        binding.homeContent.animate()
-            .translationY(0f)
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .start()
-        binding.todayRoot.animate()
-            .translationY(height.toFloat())
-            .setDuration(PAGE_SLIDE_MS)
-            .setInterpolator(DecelerateInterpolator())
-            .withEndAction {
-                if (!isTodayVisible) {
-                    binding.todayRoot.visibility = View.GONE
-                    binding.todayRoot.translationY = 0f
-                }
-            }
-            .start()
+        hideConfiguredPage(LauncherPage.Today)
+    }
+
+    private fun hideConfiguredPage(page: LauncherPage) {
+        if (currentVisiblePage() != page) return
+        val target = PageSwipeTarget(
+            page = page,
+            position = currentPageArrangement.positionOf(page),
+            isReturningHome = true,
+        )
+        preparePageDrag(target)
+        settlePageDrag(target, shouldComplete = true)
     }
 
     private fun showScreenTimePage() {
@@ -4571,14 +4796,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun launchQuickAccessIntent(intent: Intent) {
-        try {
-            startActivity(intent)
-        } catch (_: ActivityNotFoundException) {
-            showQuickAccessUnavailable()
-        }
-    }
-
     private fun lockScreen() {
         if (LockScreenAccessibilityService.lockScreen()) {
             return
@@ -4630,7 +4847,6 @@ class MainActivity : AppCompatActivity() {
     )
 
     private companion object {
-        const val GOOGLE_KEEP_PACKAGE = "com.google.android.keep"
         const val GOOGLE_CALENDAR_PACKAGE = "com.google.android.calendar"
         val CLOCK_APP_PACKAGES = listOf(
             "com.android.deskclock",
@@ -4647,6 +4863,10 @@ class MainActivity : AppCompatActivity() {
         const val TWO_FINGER_SWIPE_DOWN_DISTANCE_DP = 96
         const val COLLAPSED_SCREEN_TIME_APP_COUNT = 3
         const val SCREEN_TIME_APP_ROW_HEIGHT_DP = 58
+        const val QUICK_ACCESS_ICON_GRID_COLUMNS = 3
+        const val QUICK_ACCESS_ICON_BUTTON_SIZE_DP = 72
+        const val QUICK_ACCESS_ICON_SIZE_DP = 30
+        const val QUICK_ACCESS_ICON_DIALOG_CORNER_RADIUS_DP = 28
         const val PAGE_SWIPE_AXIS_RATIO = 1.15f
         const val PAGE_SWIPE_COMPLETE_FRACTION = 0.28f
         const val PAGE_SWIPE_COMPLETE_VELOCITY = 700f
