@@ -10,7 +10,10 @@ import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.GestureAction
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
+import com.example.textlauncher.domain.PageArrangement
 import com.example.textlauncher.domain.QuickNote
+import com.example.textlauncher.domain.QuickAccessPosition
+import com.example.textlauncher.domain.QuickAccessTarget
 import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TrashedNote
 import com.example.textlauncher.domain.sortedForNotesPage
@@ -33,7 +36,9 @@ class HomeViewModel(
             trashedNotes = initialNoteState.trash,
             showDate = initialSettings.showDate,
             clockDisplayMode = initialSettings.clockDisplayMode,
-            showQuickAccess = initialSettings.showQuickAccess,
+            leftQuickAccess = initialSettings.leftQuickAccess,
+            rightQuickAccess = initialSettings.rightQuickAccess,
+            quickAccessPosition = initialSettings.quickAccessPosition,
             wallpaperDimPercent = initialSettings.wallpaperDimPercent,
             shortcutTextAlignment = initialSettings.shortcutTextAlignment,
             maxShortcuts = initialSettings.maxShortcuts,
@@ -43,9 +48,11 @@ class HomeViewModel(
             showNotesPage = initialSettings.showNotesPage,
             showCalendarPage = initialSettings.showCalendarPage,
             showTodayPage = initialSettings.showTodayPage,
+            pageArrangement = initialSettings.pageArrangement,
             selectedCalendarIds = initialSettings.selectedCalendarIds,
             blockedAppPackageNames = initialSettings.blockedAppPackageNames,
             appBudgetMinutesByPackage = initialSettings.appBudgetMinutesByPackage,
+            excludedScreenTimePackageNames = initialSettings.excludedScreenTimePackageNames,
             hasRequestedCalendarPermission = initialSettings.hasRequestedCalendarPermission,
         ),
     )
@@ -113,9 +120,42 @@ class HomeViewModel(
         }
     }
 
-    fun setShowQuickAccess(showQuickAccess: Boolean) {
+    fun setQuickAccess(left: Boolean, target: QuickAccessTarget?) {
         _uiState.update { state ->
-            val updated = state.copy(showQuickAccess = showQuickAccess)
+            val updated = if (left) {
+                state.copy(leftQuickAccess = target)
+            } else {
+                state.copy(rightQuickAccess = target)
+            }
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setQuickAccessPosition(position: QuickAccessPosition) {
+        _uiState.update { state ->
+            val updated = state.copy(quickAccessPosition = position)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun clearQuickAccessForPackage(packageName: String) {
+        _uiState.update { state ->
+            val updated = state.copy(
+                leftQuickAccess = state.leftQuickAccess?.takeUnless { it.packageName == packageName },
+                rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
+            )
+            if (updated == state) return@update state
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setPageArrangement(pageArrangement: PageArrangement) {
+        if (!pageArrangement.isValid()) return
+        _uiState.update { state ->
+            val updated = state.copy(pageArrangement = pageArrangement)
             settingsRepository.saveSettings(updated.toSettings())
             updated
         }
@@ -237,6 +277,34 @@ class HomeViewModel(
                 updatedBudgets[packageName] = minutes
             }
             val updated = state.copy(appBudgetMinutesByPackage = updatedBudgets)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun setScreenTimeAppExcluded(packageName: String, isExcluded: Boolean) {
+        _uiState.update { state ->
+            val updatedPackageNames = if (isExcluded) {
+                state.excludedScreenTimePackageNames + packageName
+            } else {
+                state.excludedScreenTimePackageNames - packageName
+            }
+            val updated = state.copy(excludedScreenTimePackageNames = updatedPackageNames)
+            settingsRepository.saveSettings(updated.toSettings())
+            updated
+        }
+    }
+
+    fun removePackageReferences(packageName: String) {
+        _uiState.update { state ->
+            val updated = state.copy(
+                blockedAppPackageNames = state.blockedAppPackageNames - packageName,
+                appBudgetMinutesByPackage = state.appBudgetMinutesByPackage - packageName,
+                excludedScreenTimePackageNames = state.excludedScreenTimePackageNames - packageName,
+                leftQuickAccess = state.leftQuickAccess?.takeUnless { it.packageName == packageName },
+                rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
+            )
+            if (updated == state) return@update state
             settingsRepository.saveSettings(updated.toSettings())
             updated
         }
@@ -397,7 +465,9 @@ class HomeViewModel(
         return LauncherSettings(
             showDate = showDate,
             clockDisplayMode = clockDisplayMode,
-            showQuickAccess = showQuickAccess,
+            leftQuickAccess = leftQuickAccess,
+            rightQuickAccess = rightQuickAccess,
+            quickAccessPosition = quickAccessPosition,
             wallpaperDimPercent = wallpaperDimPercent,
             shortcutTextAlignment = shortcutTextAlignment,
             maxShortcuts = maxShortcuts,
@@ -407,9 +477,11 @@ class HomeViewModel(
             showNotesPage = showNotesPage,
             showCalendarPage = showCalendarPage,
             showTodayPage = showTodayPage,
+            pageArrangement = pageArrangement,
             selectedCalendarIds = selectedCalendarIds,
             blockedAppPackageNames = blockedAppPackageNames,
             appBudgetMinutesByPackage = appBudgetMinutesByPackage,
+            excludedScreenTimePackageNames = excludedScreenTimePackageNames,
             hasRequestedCalendarPermission = hasRequestedCalendarPermission,
         )
     }

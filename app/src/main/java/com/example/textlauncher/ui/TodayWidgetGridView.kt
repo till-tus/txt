@@ -125,10 +125,10 @@ class TodayWidgetGridView @JvmOverloads constructor(
         get() = contentHeight.toFloat() / ROW_COUNT
 
     private val contentWidth: Int
-        get() = width - paddingLeft - paddingRight
+        get() = (measuredWidth.takeIf { it > 0 } ?: width) - paddingLeft - paddingRight
 
     private val contentHeight: Int
-        get() = height - paddingTop - paddingBottom
+        get() = (measuredHeight.takeIf { it > 0 } ?: height) - paddingTop - paddingBottom
 
     companion object {
         const val COLUMN_COUNT = 4
