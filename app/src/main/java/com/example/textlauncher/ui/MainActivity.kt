@@ -547,6 +547,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        viewModel.flushPendingSettings()
         stopVoiceNoteRecording(save = true)
         stopVoiceNotePlayback()
         resetInFlightAppListDrag()
