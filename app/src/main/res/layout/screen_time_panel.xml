@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/screenTimeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:clickable="true"
+    android:focusable="true"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+        android:id="@+id/screenTimeTitle"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:text="@string/screen_time_page_title"
+        android:textColor="@color/launcher_text"
+        android:textSize="@dimen/app_page_title_text_size" />
+
+    <ScrollView
+        android:id="@+id/screenTimeScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls">
+
+        <LinearLayout
+            android:id="@+id/screenTimeContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:orientation="vertical">
+
+    <LinearLayout
+        android:id="@+id/screenTimeRecap"
+        android:layout_width="match_parent"
+        android:layout_height="104dp"
+        android:background="@android:color/transparent"
+        android:baselineAligned="false"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="0dp"
+            android:paddingEnd="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
+                android:gravity="bottom|start"
+                android:text="@string/screen_time_recap_top_app"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/screenTimeTopApp"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:ellipsize="end"
+                android:gravity="center_vertical|start"
+                android:maxLines="1"
+                android:textColor="@color/launcher_text"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/screenTimeTopAppUsage"
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
+                android:gravity="top|start"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingHorizontal="8dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
+                android:gravity="bottom|center_horizontal"
+                android:text="@string/screen_time_recap_today"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/screenTimeTodayTotal"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:gravity="center"
+                android:textColor="@color/launcher_text"
+                android:textSize="24sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="0dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="28dp"
+                android:gravity="bottom|end"
+                android:text="@string/screen_time_recap_vs_average"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/screenTimeVsAverage"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:gravity="center_vertical|end"
+                android:textColor="@color/launcher_text"
+                android:textSize="30sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <View
+        android:id="@+id/screenTimeRecapDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginVertical="8dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/screenTimeWeekSummary"
+        android:layout_width="match_parent"
+        android:layout_height="176dp"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/screenTimeAverage"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="16sp" />
+
+        <com.example.textlauncher.ui.ScreenTimeWeekGraphView
+            android:id="@+id/screenTimeWeekGraph"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingTop="8dp"
+            android:paddingBottom="6dp" />
+
+    </LinearLayout>
+
+    <View
+        android:id="@+id/screenTimeGraphDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginVertical="8dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
+        android:id="@+id/screenTimeIntentionsSummary"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="10dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/screenTimeIntentionsHeaderRow"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:drawablePadding="12dp"
+            android:gravity="center_vertical"
+            android:text="@string/screen_time_intentions_title"
+            android:textColor="@color/launcher_text"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            app:drawableEndCompat="@drawable/ic_expand_more"
+            app:drawableTint="@color/launcher_text" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/screen_time_intended_today"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/screenTimeIntendedToday"
+                android:layout_width="110dp"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:textColor="@color/launcher_text"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/screen_time_actual_today"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/screenTimeActualToday"
+                android:layout_width="110dp"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:textColor="@color/launcher_text"
+                android:textSize="15sp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/screenTimeIntentionsList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <View
+        android:id="@+id/screenTimeIntentionsDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginVertical="8dp"
+        android:background="@color/settings_option_divider" />
+
+    <TextView
+        android:id="@+id/screenTimeHeaderRow"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:drawablePadding="12dp"
+        android:gravity="center_vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="@string/screen_time_today"
+        android:textColor="@color/launcher_text"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        app:drawableEndCompat="@drawable/ic_expand_more"
+        app:drawableTint="@color/launcher_text"
+        tools:ignore="TooManyViews" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="220dp"
+        android:background="@android:color/transparent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/screenTimeList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:clipToPadding="false"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="24dp" />
+
+        <TextView
+            android:id="@+id/screenTimeEmpty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:paddingHorizontal="24dp"
+            android:text="@string/screen_time_empty"
+            android:textColor="@color/launcher_text_secondary"
+            android:textSize="17sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/screenTimePermissionPrompt"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="32dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/screen_time_permission_prompt"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/screenTimePermissionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="52dp"
+                android:layout_marginTop="18dp"
+                android:gravity="center"
+                android:paddingHorizontal="20dp"
+                android:text="@string/screen_time_permission_button"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+        </LinearLayout>
+
+    </ScrollView>
+
+</LinearLayout>

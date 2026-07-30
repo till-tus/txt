@@ -1,10 +1,11 @@
 package com.example.textlauncher.ui
 
 import androidx.lifecycle.ViewModel
-import com.example.textlauncher.data.LauncherSettingsRepository
-import com.example.textlauncher.data.NoteRepository
+import androidx.lifecycle.viewModelScope
+import com.example.textlauncher.data.LauncherSettingsStore
+import com.example.textlauncher.data.NoteStore
 import com.example.textlauncher.data.NoteStoreState
-import com.example.textlauncher.data.ShortcutRepository
+import com.example.textlauncher.data.ShortcutStore
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.GestureAction
@@ -17,15 +18,26 @@ import com.example.textlauncher.domain.QuickAccessTarget
 import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TrashedNote
 import com.example.textlauncher.domain.sortedForNotesPage
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 
+@OptIn(FlowPreview::class)
 class HomeViewModel(
-    private val shortcutRepository: ShortcutRepository,
-    private val settingsRepository: LauncherSettingsRepository,
-    private val noteRepository: NoteRepository,
+    private val shortcutRepository: ShortcutStore,
+    private val settingsRepository: LauncherSettingsStore,
+    private val noteRepository: NoteStore,
+    persistenceDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val initialSettings = settingsRepository.loadSettings()
     private val initialNoteState = noteRepository.loadState()
@@ -58,12 +70,33 @@ class HomeViewModel(
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    init {
+        uiState
+            .map { it.shortcuts }
+            .distinctUntilChanged()
+            .onEach(shortcutRepository::saveShortcuts)
+            .flowOn(persistenceDispatcher)
+            .launchIn(viewModelScope)
+        uiState
+            .map { it.toSettings() }
+            .distinctUntilChanged()
+            .debounce(SETTINGS_PERSISTENCE_DEBOUNCE_MS)
+            .onEach(settingsRepository::saveSettings)
+            .flowOn(persistenceDispatcher)
+            .launchIn(viewModelScope)
+        uiState
+            .map { it.toNoteStoreState() }
+            .distinctUntilChanged()
+            .onEach(noteRepository::saveState)
+            .flowOn(persistenceDispatcher)
+            .launchIn(viewModelScope)
+    }
+
     fun addShortcut(shortcut: AppShortcut) {
         _uiState.update { state ->
             if (state.shortcuts.size >= state.maxShortcuts) return@update state
 
             val updated = state.shortcuts + shortcut
-            shortcutRepository.saveShortcuts(updated)
             state.copy(shortcuts = updated)
         }
     }
@@ -77,7 +110,6 @@ class HomeViewModel(
             val updated = state.shortcuts.toMutableList()
             if (!updated.remove(shortcut)) return@update state
 
-            shortcutRepository.saveShortcuts(updated)
             state.copy(shortcuts = updated)
         }
     }
@@ -87,7 +119,6 @@ class HomeViewModel(
             val updated = state.shortcuts.filterNot { it.packageName == packageName }
             if (updated.size == state.shortcuts.size) return@update state
 
-            shortcutRepository.saveShortcuts(updated)
             state.copy(shortcuts = updated)
         }
     }
@@ -99,7 +130,6 @@ class HomeViewModel(
 
             val moved = updated.removeAt(fromPosition)
             updated.add(toPosition, moved)
-            shortcutRepository.saveShortcuts(updated)
             state.copy(shortcuts = updated)
         }
     }
@@ -107,7 +137,6 @@ class HomeViewModel(
     fun setShowDate(showDate: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(showDate = showDate)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -115,7 +144,6 @@ class HomeViewModel(
     fun setClockDisplayMode(clockDisplayMode: ClockDisplayMode) {
         _uiState.update { state ->
             val updated = state.copy(clockDisplayMode = clockDisplayMode)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -127,7 +155,6 @@ class HomeViewModel(
             } else {
                 state.copy(rightQuickAccess = target)
             }
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -135,7 +162,6 @@ class HomeViewModel(
     fun setQuickAccessPosition(position: QuickAccessPosition) {
         _uiState.update { state ->
             val updated = state.copy(quickAccessPosition = position)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -147,7 +173,6 @@ class HomeViewModel(
                 rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
             )
             if (updated == state) return@update state
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -156,7 +181,6 @@ class HomeViewModel(
         if (!pageArrangement.isValid()) return
         _uiState.update { state ->
             val updated = state.copy(pageArrangement = pageArrangement)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -164,7 +188,6 @@ class HomeViewModel(
     fun setWallpaperDimPercent(wallpaperDimPercent: Int) {
         _uiState.update { state ->
             val updated = state.copy(wallpaperDimPercent = wallpaperDimPercent.coerceIn(0, 100))
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -172,7 +195,6 @@ class HomeViewModel(
     fun setShortcutTextAlignment(shortcutTextAlignment: ShortcutTextAlignment) {
         _uiState.update { state ->
             val updated = state.copy(shortcutTextAlignment = shortcutTextAlignment)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -180,7 +202,6 @@ class HomeViewModel(
     fun setMaxShortcuts(maxShortcuts: Int) {
         _uiState.update { state ->
             val updated = state.copy(maxShortcuts = maxShortcuts.coerceIn(3, 7))
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -188,7 +209,6 @@ class HomeViewModel(
     fun setOpenAppListKeyboardAutomatically(openAutomatically: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(openAppListKeyboardAutomatically = openAutomatically)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -196,7 +216,6 @@ class HomeViewModel(
     fun setShowNotesPage(showNotesPage: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(showNotesPage = showNotesPage)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -213,7 +232,6 @@ class HomeViewModel(
                     lockScreenGesture = gesture,
                 )
             }
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -229,7 +247,6 @@ class HomeViewModel(
     fun setShowCalendarPage(showCalendarPage: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(showCalendarPage = showCalendarPage)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -237,7 +254,6 @@ class HomeViewModel(
     fun setShowTodayPage(showTodayPage: Boolean) {
         _uiState.update { state ->
             val updated = state.copy(showTodayPage = showTodayPage)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -250,7 +266,6 @@ class HomeViewModel(
                 state.selectedCalendarIds - calendarId
             }
             val updated = state.copy(selectedCalendarIds = updatedIds)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -263,7 +278,6 @@ class HomeViewModel(
                 state.blockedAppPackageNames - packageName
             }
             val updated = state.copy(blockedAppPackageNames = updatedPackageNames)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -277,7 +291,6 @@ class HomeViewModel(
                 updatedBudgets[packageName] = minutes
             }
             val updated = state.copy(appBudgetMinutesByPackage = updatedBudgets)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -290,7 +303,6 @@ class HomeViewModel(
                 state.excludedScreenTimePackageNames - packageName
             }
             val updated = state.copy(excludedScreenTimePackageNames = updatedPackageNames)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -305,7 +317,6 @@ class HomeViewModel(
                 rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
             )
             if (updated == state) return@update state
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -315,7 +326,6 @@ class HomeViewModel(
             if (state.hasRequestedCalendarPermission) return@update state
 
             val updated = state.copy(hasRequestedCalendarPermission = true)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -330,9 +340,6 @@ class HomeViewModel(
                 text = trimmedText,
             )
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveState(
-                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
-            )
             state.copy(notes = sortedNotes)
         }
     }
@@ -349,9 +356,6 @@ class HomeViewModel(
                 audioWaveform = waveform,
             )
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveState(
-                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
-            )
             state.copy(notes = sortedNotes)
         }
     }
@@ -368,9 +372,6 @@ class HomeViewModel(
                 if (currentNote.id == note.id) currentNote.copy(text = trimmedText) else currentNote
             }
             val sortedNotes = updatedNotes.sortedForNotesPage()
-            noteRepository.saveState(
-                NoteStoreState(notes = sortedNotes, trash = state.trashedNotes),
-            )
             state.copy(notes = sortedNotes)
         }
         return null
@@ -387,7 +388,6 @@ class HomeViewModel(
             if (updatedStoreState === currentStoreState) return@update state
 
             deletedNote = updatedStoreState.trash.firstOrNull { it.note.id == note.id }
-            noteRepository.saveState(updatedStoreState)
             state.copy(
                 notes = updatedStoreState.notes,
                 trashedNotes = updatedStoreState.trash,
@@ -407,7 +407,6 @@ class HomeViewModel(
             if (updatedStoreState === currentStoreState) return@update state
 
             didRestore = true
-            noteRepository.saveState(updatedStoreState)
             state.copy(
                 notes = updatedStoreState.notes,
                 trashedNotes = updatedStoreState.trash,
@@ -426,7 +425,6 @@ class HomeViewModel(
             deletedNote = currentStoreState.trash.firstOrNull { it.note.id == noteId }?.note
                 ?: return@update state
             val updatedStoreState = currentStoreState.permanentlyDeleteFromTrash(noteId)
-            noteRepository.saveState(updatedStoreState)
             state.copy(trashedNotes = updatedStoreState.trash)
         }
         return deletedNote
@@ -442,9 +440,6 @@ class HomeViewModel(
                     else -> currentNote
                 }
             }.sortedForNotesPage()
-            noteRepository.saveState(
-                NoteStoreState(notes = updatedNotes, trash = state.trashedNotes),
-            )
             state.copy(notes = updatedNotes)
         }
     }
@@ -456,7 +451,6 @@ class HomeViewModel(
                 ClockDisplayMode.Digital -> ClockDisplayMode.Analog
             }
             val updated = state.copy(clockDisplayMode = updatedMode)
-            settingsRepository.saveSettings(updated.toSettings())
             updated
         }
     }
@@ -486,11 +480,19 @@ class HomeViewModel(
         )
     }
 
+    private fun HomeUiState.toNoteStoreState(): NoteStoreState {
+        return NoteStoreState(notes = notes, trash = trashedNotes)
+    }
+
     private fun HomeUiState.nextNoteId(): Long {
         val greatestStoredId = (notes.asSequence().map { it.id } +
             trashedNotes.asSequence().map { it.note.id })
             .maxOrNull()
             ?: Long.MIN_VALUE
         return maxOf(System.currentTimeMillis(), greatestStoredId + 1L)
+    }
+
+    private companion object {
+        const val SETTINGS_PERSISTENCE_DEBOUNCE_MS = 200L
     }
 }

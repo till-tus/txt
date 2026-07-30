@@ -8,10 +8,10 @@ import com.example.textlauncher.domain.sortedForNotesPage
 import org.json.JSONArray
 import org.json.JSONObject
 
-class NoteRepository(context: Context) {
+class NoteRepository(context: Context) : NoteStore {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
-    fun loadState(): NoteStoreState {
+    override fun loadState(): NoteStoreState {
         return NoteStoreState(
             notes = loadNotes(),
             trash = loadTrash(),
@@ -49,7 +49,7 @@ class NoteRepository(context: Context) {
         saveState(NoteStoreState(notes = notes, trash = loadTrash()))
     }
 
-    fun saveState(state: NoteStoreState) {
+    override fun saveState(state: NoteStoreState) {
         val serializedNotes = JSONArray().apply {
             state.notes.withSinglePinnedNote().forEach { note ->
                 put(note.toJson())
