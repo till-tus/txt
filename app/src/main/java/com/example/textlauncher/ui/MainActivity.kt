@@ -263,7 +263,9 @@ class MainActivity : AppCompatActivity() {
         if (isGranted) {
             refreshCalendars()
             refreshCalendarEvents()
-            refreshTodayWidgets()
+            if (viewModel.uiState.value.showTodayPage) {
+                refreshTodayWidgets()
+            }
         }
     }
     private val requestWeatherLocationPermission = registerForActivityResult(
@@ -416,7 +418,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             renderCalendarPermissionState()
         }
-        refreshTodayWidgets()
+        if (viewModel.uiState.value.showTodayPage) {
+            refreshTodayWidgets()
+        }
         if (isScreenTimeVisible) {
             refreshScreenTime()
         }
@@ -727,11 +731,6 @@ class MainActivity : AppCompatActivity() {
         ) {
             return false
         }
-        val pageAboveHome = currentPageArrangement.pageAt(PagePosition.Up)
-        if (pageAboveHome != null && isPageEnabled(pageAboveHome)) {
-            return false
-        }
-
         val isTouchInShortcutList = isTouchInsideView(binding.shortcutList, event.rawX, event.rawY)
         return !isTouchInShortcutList || !binding.shortcutList.canScrollVertically(-1)
     }
@@ -904,7 +903,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val position = when (direction.opposite()) {
-            PageSwipeDirection.Up -> PagePosition.Up
+            PageSwipeDirection.Up -> return null
             PageSwipeDirection.Left -> PagePosition.Left
             PageSwipeDirection.Right -> PagePosition.Right
             PageSwipeDirection.Down -> PagePosition.Down
@@ -1036,7 +1035,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun pageOffset(position: PagePosition): Float {
         return when (position) {
-            PagePosition.Up -> -pageHeight()
             PagePosition.Left -> -pageWidth()
             PagePosition.Right -> pageWidth()
             PagePosition.Down -> pageHeight()
@@ -1284,7 +1282,9 @@ class MainActivity : AppCompatActivity() {
         if (isCalendarVisible && hasCalendarPermission()) {
             refreshCalendarEvents()
         }
-        refreshTodayWidgets()
+        if (state.showTodayPage) {
+            refreshTodayWidgets()
+        }
         val quickAccessVisibility = if (
             state.leftQuickAccess != null || state.rightQuickAccess != null
         ) View.VISIBLE else View.GONE

@@ -102,10 +102,10 @@ class PageArrangementView @JvmOverloads constructor(
         val horizontalOffset = min(width * 0.31f, cellSize * 1.22f)
         val verticalOffset = min(height * 0.31f, cellSize * 1.22f)
         val centerX = width / 2f
-        val centerY = height / 2f
+        val centerY = height * ARRANGEMENT_CENTER_Y_FRACTION
         val cornerRadius = 12f.dp
 
-        PagePosition.entries.forEach { position ->
+        PageArrangement.AllowedPositions.forEach { position ->
             val (x, y) = centerFor(position, centerX, centerY, horizontalOffset, verticalOffset)
             val rect = cellRect(x, y, cellSize)
             val page = arrangement.pageAt(position)
@@ -165,7 +165,7 @@ class PageArrangementView @JvmOverloads constructor(
         val horizontalOffset = min(width * 0.31f, cellSize * 1.22f)
         val verticalOffset = min(height * 0.31f, cellSize * 1.22f)
         val centerX = width / 2f
-        val centerY = height / 2f
+        val centerY = height * ARRANGEMENT_CENTER_Y_FRACTION
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -291,7 +291,7 @@ class PageArrangementView @JvmOverloads constructor(
         verticalOffset: Float,
         cellSize: Float,
     ): PagePosition? {
-        return PagePosition.entries.firstOrNull { position ->
+        return PageArrangement.AllowedPositions.firstOrNull { position ->
             val (slotX, slotY) = centerFor(position, centerX, centerY, horizontalOffset, verticalOffset)
             cellRect(slotX, slotY, cellSize).contains(x, y)
         }
@@ -305,7 +305,6 @@ class PageArrangementView @JvmOverloads constructor(
         verticalOffset: Float,
     ): Pair<Float, Float> {
         return when (position) {
-            PagePosition.Up -> centerX to centerY - verticalOffset
             PagePosition.Left -> centerX - horizontalOffset to centerY
             PagePosition.Right -> centerX + horizontalOffset to centerY
             PagePosition.Down -> centerX to centerY + verticalOffset
@@ -332,4 +331,8 @@ class PageArrangementView @JvmOverloads constructor(
 
     private val Float.sp: Float
         get() = this * resources.displayMetrics.scaledDensity
+
+    private companion object {
+        const val ARRANGEMENT_CENTER_Y_FRACTION = 0.38f
+    }
 }

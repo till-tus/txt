@@ -16,7 +16,7 @@ internal data class PageSwipeTarget(
     val isReturningHome: Boolean,
 ) {
     val isVertical: Boolean
-        get() = position == PagePosition.Up || position == PagePosition.Down
+        get() = position == PagePosition.Down
 
     val expectedGestureDirection: PageSwipeDirection
         get() = if (isReturningHome) {
@@ -28,7 +28,6 @@ internal data class PageSwipeTarget(
 
 internal fun PagePosition.toSwipeDirection(): PageSwipeDirection {
     return when (this) {
-        PagePosition.Up -> PageSwipeDirection.Up
         PagePosition.Left -> PageSwipeDirection.Left
         PagePosition.Right -> PageSwipeDirection.Right
         PagePosition.Down -> PageSwipeDirection.Down

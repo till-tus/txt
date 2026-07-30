@@ -17,6 +17,7 @@ class LauncherSettingsRepository(context: Context) {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     fun loadSettings(): LauncherSettings {
+        val pageArrangement = loadPageArrangement()
         return LauncherSettings(
             showDate = preferences.getBoolean(KEY_SHOW_DATE, true),
             clockDisplayMode = preferences.getString(KEY_CLOCK_DISPLAY_MODE, ClockDisplayMode.Analog.name)
@@ -51,11 +52,7 @@ class LauncherSettingsRepository(context: Context) {
             showNotesPage = preferences.getBoolean(KEY_SHOW_NOTES_PAGE, true),
             showCalendarPage = preferences.getBoolean(KEY_SHOW_CALENDAR_PAGE, true),
             showTodayPage = preferences.getBoolean(KEY_SHOW_TODAY_PAGE, true),
-            pageArrangement = PageArrangement.validatedOrDefault(
-                notesPosition = loadPagePosition(KEY_NOTES_PAGE_POSITION),
-                todayPosition = loadPagePosition(KEY_TODAY_PAGE_POSITION),
-                calendarPosition = loadPagePosition(KEY_CALENDAR_PAGE_POSITION),
-            ),
+            pageArrangement = pageArrangement,
             selectedCalendarIds = preferences.getStringSet(KEY_SELECTED_CALENDAR_IDS, emptySet())
                 .orEmpty()
                 .mapNotNull { it.toLongOrNull() }
@@ -138,6 +135,33 @@ class LauncherSettingsRepository(context: Context) {
     private fun loadPagePosition(key: String): PagePosition? {
         return preferences.getString(key, null)
             ?.let { value -> runCatching { PagePosition.valueOf(value) }.getOrNull() }
+    }
+
+    private fun loadPageArrangement(): PageArrangement {
+        val notesPosition = loadPagePosition(KEY_NOTES_PAGE_POSITION)
+        val todayPosition = loadPagePosition(KEY_TODAY_PAGE_POSITION)
+        val calendarPosition = loadPagePosition(KEY_CALENDAR_PAGE_POSITION)
+        val arrangement = PageArrangement.validatedOrDefault(
+            notesPosition = notesPosition,
+            todayPosition = todayPosition,
+            calendarPosition = calendarPosition,
+        )
+        val hasStoredArrangement = listOf(
+            KEY_NOTES_PAGE_POSITION,
+            KEY_TODAY_PAGE_POSITION,
+            KEY_CALENDAR_PAGE_POSITION,
+        ).any(preferences::contains)
+        val needsMigration = notesPosition != arrangement.notesPosition ||
+            todayPosition != arrangement.todayPosition ||
+            calendarPosition != arrangement.calendarPosition
+        if (hasStoredArrangement && needsMigration) {
+            preferences.edit {
+                putString(KEY_NOTES_PAGE_POSITION, arrangement.notesPosition.name)
+                putString(KEY_TODAY_PAGE_POSITION, arrangement.todayPosition.name)
+                putString(KEY_CALENDAR_PAGE_POSITION, arrangement.calendarPosition.name)
+            }
+        }
+        return arrangement
     }
 
     private fun loadQuickAccessTarget(prefix: String): QuickAccessTarget? {
