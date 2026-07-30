@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.core.content.edit
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.TrashedNote
+import com.example.textlauncher.domain.sortedForNotesPage
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -105,7 +106,7 @@ class NoteRepository(context: Context) {
             } else {
                 note.copy(isPinned = false)
             }
-        }.sortedWith(compareByDescending<QuickNote> { it.isPinned }.thenBy { it.id })
+        }.sortedForNotesPage()
     }
 
     private fun JSONArray.toIntList(): List<Int> {

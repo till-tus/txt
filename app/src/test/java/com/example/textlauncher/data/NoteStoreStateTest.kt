@@ -53,6 +53,23 @@ class NoteStoreStateTest {
     }
 
     @Test
+    fun restoringMultipleNotesReappliesCanonicalOrder() {
+        val first = QuickNote(id = 1L, text = "First")
+        val second = QuickNote(id = 2L, text = "Second")
+        val third = QuickNote(id = 3L, text = "Third")
+        val afterDeletes = NoteStoreState(notes = listOf(first, second, third))
+            .moveToTrash(noteId = second.id, deletedAtMillis = 10L)
+            .moveToTrash(noteId = third.id, deletedAtMillis = 20L)
+
+        val afterRestores = afterDeletes
+            .restoreFromTrash(second.id)
+            .restoreFromTrash(third.id)
+
+        assertEquals(listOf(first, second, third), afterRestores.notes)
+        assertTrue(afterRestores.trash.isEmpty())
+    }
+
+    @Test
     fun restoringPinnedNoteReplacesCurrentPin() {
         val currentPin = QuickNote(id = 1L, text = "Current", isPinned = true)
         val restoredPin = QuickNote(id = 2L, text = "Restored", isPinned = true)

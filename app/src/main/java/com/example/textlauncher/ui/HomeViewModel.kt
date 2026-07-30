@@ -13,6 +13,7 @@ import com.example.textlauncher.domain.LauncherSettings
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ShortcutTextAlignment
 import com.example.textlauncher.domain.TrashedNote
+import com.example.textlauncher.domain.sortedForNotesPage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -411,10 +412,6 @@ class HomeViewModel(
             appBudgetMinutesByPackage = appBudgetMinutesByPackage,
             hasRequestedCalendarPermission = hasRequestedCalendarPermission,
         )
-    }
-
-    private fun List<QuickNote>.sortedForNotesPage(): List<QuickNote> {
-        return sortedWith(compareByDescending<QuickNote> { it.isPinned }.thenBy { it.id })
     }
 
     private fun HomeUiState.nextNoteId(): Long {
