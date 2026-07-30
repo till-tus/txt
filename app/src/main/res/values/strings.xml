@@ -50,7 +50,7 @@
     <string name="quick_access_position_both_center">Both center</string>
     <string name="quick_access_position_split_edges">Left and right edges</string>
     <string name="page_arrangement_title">Page arrangement</string>
-    <string name="page_arrangement_hint">Drag pages around Home. Tap a page to enable or disable it.</string>
+    <string name="page_arrangement_hint">Drag pages left, right, or below Home. Tap a page to enable or disable it. Swipe down on Home always opens the app list.</string>
     <string name="page_arrangement_home">Home</string>
     <string name="page_arrangement_fixed">Fixed</string>
     <string name="page_arrangement_enabled">Enabled</string>

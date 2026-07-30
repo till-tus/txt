@@ -16,12 +16,11 @@ class PageArrangementTest {
     }
 
     @Test
-    fun moveToEmptyPosition_leavesPreviousPositionEmpty() {
-        val updated = PageArrangement.Default.move(LauncherPage.Calendar, PagePosition.Up)
-
-        assertEquals(PagePosition.Up, updated.calendarPosition)
-        assertEquals(null, updated.pageAt(PagePosition.Left))
-        assertTrue(updated.isValid())
+    fun allowedPositions_excludeTheAppListDirection() {
+        assertEquals(
+            listOf(PagePosition.Left, PagePosition.Right, PagePosition.Down),
+            PageArrangement.AllowedPositions,
+        )
     }
 
     @Test
@@ -30,6 +29,17 @@ class PageArrangementTest {
             notesPosition = PagePosition.Left,
             todayPosition = PagePosition.Left,
             calendarPosition = PagePosition.Down,
+        )
+
+        assertEquals(PageArrangement.Default, updated)
+    }
+
+    @Test
+    fun incompleteStoredPositions_fallBackToDefault() {
+        val updated = PageArrangement.validatedOrDefault(
+            notesPosition = null,
+            todayPosition = PagePosition.Down,
+            calendarPosition = PagePosition.Left,
         )
 
         assertEquals(PageArrangement.Default, updated)

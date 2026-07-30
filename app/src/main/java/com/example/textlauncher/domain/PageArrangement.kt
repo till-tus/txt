@@ -7,7 +7,6 @@ enum class LauncherPage {
 }
 
 enum class PagePosition {
-    Up,
     Left,
     Right,
     Down,
@@ -31,6 +30,7 @@ data class PageArrangement(
     }
 
     fun move(page: LauncherPage, target: PagePosition): PageArrangement {
+        if (target !in AllowedPositions) return this
         val current = positionOf(page)
         if (current == target) return this
         val displaced = pageAt(target)
@@ -40,7 +40,9 @@ data class PageArrangement(
     }
 
     fun isValid(): Boolean {
-        return LauncherPage.entries.map(::positionOf).distinct().size == LauncherPage.entries.size
+        val positions = LauncherPage.entries.map(::positionOf)
+        return positions.all { it in AllowedPositions } &&
+            positions.distinct().size == LauncherPage.entries.size
     }
 
     private fun withPosition(page: LauncherPage, position: PagePosition): PageArrangement {
@@ -52,6 +54,11 @@ data class PageArrangement(
     }
 
     companion object {
+        val AllowedPositions = listOf(
+            PagePosition.Left,
+            PagePosition.Right,
+            PagePosition.Down,
+        )
         val Default = PageArrangement()
 
         fun validatedOrDefault(

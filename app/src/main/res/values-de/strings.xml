@@ -47,7 +47,7 @@
     <string name="quick_access_position_both_center">Beide mittig</string>
     <string name="quick_access_position_split_edges">Linker und rechter Rand</string>
     <string name="page_arrangement_title">Seitenanordnung</string>
-    <string name="page_arrangement_hint">Ziehe Seiten um die Startseite. Tippe auf eine Seite, um sie ein- oder auszuschalten.</string>
+    <string name="page_arrangement_hint">Ziehe Seiten links, rechts oder unter die Startseite. Tippe auf eine Seite, um sie ein- oder auszuschalten. Nach unten wischen öffnet immer die App-Liste.</string>
     <string name="page_arrangement_home">Start</string>
     <string name="page_arrangement_fixed">Fest</string>
     <string name="page_arrangement_enabled">Aktiviert</string>
