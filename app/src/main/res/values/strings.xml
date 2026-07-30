@@ -5,7 +5,6 @@
 
     <!-- Home and app picker -->
     <string name="app_picker_empty">No launchable apps found</string>
-    <string name="delete_shortcut">Delete</string>
     <string name="remove_shortcut">Remove</string>
     <string name="uninstall_app">Uninstall</string>
     <string name="block_app">Block app</string>
@@ -66,7 +65,6 @@
     <string name="max_shortcuts">App shortcuts</string>
     <string name="open_app_list_keyboard_automatically">Open keyboard automatically</string>
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
-    <string name="pages_section">Pages</string>
     <string name="show_notes_page">Notes page</string>
     <string name="notes_trash_title">Notes trash</string>
     <plurals name="notes_trash_count">
@@ -77,7 +75,6 @@
     <string name="show_today_page">Today page</string>
 
     <!-- Gestures and accessibility -->
-    <string name="gestures_section">Gestures</string>
     <string name="gesture_action_open_screen_time">Open Screen time</string>
     <string name="gesture_action_lock_screen">Lock screen</string>
     <string name="gesture_none">None</string>
@@ -113,7 +110,6 @@
     <string name="screen_time_empty">No screen time recorded today</string>
     <string name="screen_time_permission_prompt">Usage access is needed to show screen time by app.</string>
     <string name="screen_time_permission_button">Enable usage access</string>
-    <string name="screen_time_settings_section">Screen time</string>
     <string name="duration_hours_minutes">%1$d h %2$d min</string>
     <string name="duration_minutes">%1$d min</string>
 
@@ -162,7 +158,6 @@
     <string name="today_page_title">Today</string>
     <string name="today_edit_mode_label">Edit Today</string>
     <string name="today_add_widget">Add widget</string>
-    <string name="today_add_next_event">Add next event</string>
     <string name="today_edit_widget">Edit</string>
     <string name="today_remove_widget">Remove</string>
     <string name="today_next_event_title">Next event</string>

@@ -13,10 +13,10 @@ import com.example.textlauncher.domain.QuickAccessPosition
 import com.example.textlauncher.domain.QuickAccessTarget
 import com.example.textlauncher.domain.ShortcutTextAlignment
 
-class LauncherSettingsRepository(context: Context) {
+class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
-    fun loadSettings(): LauncherSettings {
+    override fun loadSettings(): LauncherSettings {
         val pageArrangement = loadPageArrangement()
         return LauncherSettings(
             showDate = preferences.getBoolean(KEY_SHOW_DATE, true),
@@ -70,7 +70,7 @@ class LauncherSettingsRepository(context: Context) {
         )
     }
 
-    fun saveSettings(settings: LauncherSettings) {
+    override fun saveSettings(settings: LauncherSettings) {
         preferences.edit {
             putBoolean(KEY_SHOW_DATE, settings.showDate)
             putString(KEY_CLOCK_DISPLAY_MODE, settings.clockDisplayMode.name)
