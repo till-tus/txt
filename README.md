@@ -7,13 +7,19 @@ The goal is simple: make the phone useful without making it irresistible.
 ## Screenshots
 
 <p>
-  <img src="docs/screenshots/home.png" alt="Text Launcher home screen" width="240">
-  <img src="docs/screenshots/notes.png" alt="Text Launcher notes screen" width="240">
+  <img src="docs/screenshots/home.png" alt="Text Launcher home screen with analog clock, text shortcuts, and Quick Access buttons" width="220">
+  <img src="docs/screenshots/app-search.png" alt="Text Launcher app search ranking Calendar, Camera, Contacts, and Voice Search for the query ca" width="220">
+  <img src="docs/screenshots/notes.png" alt="Text Launcher notes screen with a pinned focus note and fictional reminders" width="220">
+</p>
+<p>
+  <img src="docs/screenshots/calendar.png" alt="Text Launcher calendar screen with fictional events across two days" width="220">
+  <img src="docs/screenshots/today.png" alt="Text Launcher Today screen with next event, weather, and pinned-note widgets" width="220">
+  <img src="docs/screenshots/screen-time.png" alt="Text Launcher Screen Time screen with a top-app recap and weekly graph" width="220">
 </p>
 
 ## Screen Layout
 
-The launcher is organized around a central Home screen. Calendar and Notes sit to the left and right, while Today sits below Home for glanceable widgets.
+The launcher is organized around a central Home screen. The diagram shows the default arrangement: Calendar and Notes sit to the left and right, while Today sits below Home for glanceable widgets. These three page positions can be rearranged in settings; downward swipes on Home always open the app list.
 
 <p>
   <img src="docs/screenshots/page-layout-diagram.png" alt="2D page layout diagram showing Calendar left of Home, Notes right of Home, and Today below Home" width="640">
@@ -23,7 +29,7 @@ The launcher is organized around a central Home screen. Calendar and Notes sit t
 
 - Text-first home screen with configurable app shortcuts, text alignment, and wallpaper dimming.
 - Fuzzy app search for quickly opening the app you meant to find, including Enter/Go to launch the top result.
-- Optional date, analog/digital clock behavior, clock-app long press, and quick access actions.
+- Optional date, analog/digital clock behavior, clock-app long press, and two configurable Quick Access actions with selectable icons and placement.
 - Screen-time page with today usage, weekly usage, top-app recap, and daily average.
 - App blocking prompts that slow down impulsive launches.
 - Daily app budgets for selected apps.
@@ -35,7 +41,7 @@ The launcher is organized around a central Home screen. Calendar and Notes sit t
 - Pinned notes that stay at the top of the notes page and can appear on the Today page.
 - Configurable gestures for opening Screen Time or locking the screen.
 - Context menus for removing shortcuts, blocking apps, and starting Android's app uninstall flow.
-- Settings for hiding or showing launcher pages and adjusting shortcut limits.
+- A draggable page arranger for moving, enabling, or disabling Notes, Calendar, and Today, plus settings for shortcut limits.
 - Local-first storage using Android shared preferences.
 
 ## Core Screens

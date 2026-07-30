@@ -24,6 +24,7 @@ The app intentionally has no analytics. Features that read or capture personal d
 - `app/src/main/res/values`: colors, dimensions, styles, and strings.
 - `app/src/test`: local JVM tests.
 - `docs/screenshots`: screenshots referenced by the README.
+- `docs/play-store`: clean captures, upload-ready presentation exports, and editable SVG templates.
 
 ## Local Setup
 
