@@ -753,15 +753,36 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/settingsTitle"
+        <LinearLayout
+            android:id="@+id/settingsHeader"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:gravity="center_vertical"
-            android:paddingHorizontal="24dp"
-            android:text="@string/launcher_settings"
-            android:textColor="@color/launcher_text"
-            android:textSize="@dimen/app_page_title_text_size" />
+            android:orientation="horizontal"
+            android:paddingEnd="24dp">
+
+            <ImageButton
+                android:id="@+id/settingsBackButton"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/settings_back"
+                android:padding="20dp"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="invisible"
+                app:tint="@color/launcher_text" />
+
+            <TextView
+                android:id="@+id/settingsTitle"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/launcher_settings"
+                android:textColor="@color/launcher_text"
+                android:textSize="@dimen/app_page_title_text_size" />
+
+        </LinearLayout>
 
         <ScrollView
             android:id="@+id/settingsScroll"
@@ -777,6 +798,275 @@
                 android:layout_height="wrap_content"
                 android:background="@android:color/transparent"
                 android:orientation="vertical">
+
+                <LinearLayout
+                    android:id="@+id/settingsIndex"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/settingsAppearanceCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="76dp"
+                        android:orientation="horizontal"
+                        android:paddingTop="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
+                        android:paddingEnd="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_category_appearance"
+                                android:textColor="@color/launcher_text"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_category_appearance_summary"
+                                android:textColor="@color/launcher_text_secondary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@null"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/launcher_text_secondary" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginHorizontal="24dp"
+                        android:background="@color/settings_option_divider" />
+
+                    <LinearLayout
+                        android:id="@+id/settingsNotesCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="76dp"
+                        android:orientation="horizontal"
+                        android:paddingTop="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
+                        android:paddingEnd="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_category_notes"
+                                android:textColor="@color/launcher_text"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_category_notes_summary"
+                                android:textColor="@color/launcher_text_secondary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@null"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/launcher_text_secondary" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginHorizontal="24dp"
+                        android:background="@color/settings_option_divider" />
+
+                    <LinearLayout
+                        android:id="@+id/settingsCalendarCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="76dp"
+                        android:orientation="horizontal"
+                        android:paddingTop="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
+                        android:paddingEnd="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_category_calendar"
+                                android:textColor="@color/launcher_text"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_category_calendar_summary"
+                                android:textColor="@color/launcher_text_secondary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@null"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/launcher_text_secondary" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginHorizontal="24dp"
+                        android:background="@color/settings_option_divider" />
+
+                    <LinearLayout
+                        android:id="@+id/settingsGesturesCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="76dp"
+                        android:orientation="horizontal"
+                        android:paddingTop="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
+                        android:paddingEnd="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_category_gestures"
+                                android:textColor="@color/launcher_text"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_category_gestures_summary"
+                                android:textColor="@color/launcher_text_secondary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@null"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/launcher_text_secondary" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginHorizontal="24dp"
+                        android:background="@color/settings_option_divider" />
+
+                    <LinearLayout
+                        android:id="@+id/settingsScreenTimeCategory"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:minHeight="76dp"
+                        android:orientation="horizontal"
+                        android:paddingTop="12dp"
+                        android:paddingStart="24dp"
+                        android:paddingBottom="12dp"
+                        android:paddingEnd="12dp">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_category_screen_time"
+                                android:textColor="@color/launcher_text"
+                                android:textSize="17sp" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="3dp"
+                                android:text="@string/settings_category_screen_time_summary"
+                                android:textColor="@color/launcher_text_secondary"
+                                android:textSize="13sp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:contentDescription="@null"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/launcher_text_secondary" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/settingsAppearancePage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
         <TextView
             android:layout_width="match_parent"
@@ -1080,23 +1370,14 @@
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="12dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:background="@color/settings_section_divider" />
+                </LinearLayout>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="24dp"
-            android:text="@string/pages_section"
-            android:textColor="@color/launcher_text"
-            android:textSize="21sp"
-            android:textStyle="bold" />
+                <LinearLayout
+                    android:id="@+id/settingsNotesPage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/showNotesPageRow"
@@ -1158,11 +1439,14 @@
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="24dp"
-            android:background="@color/settings_option_divider" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/settingsCalendarPage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/showTodayPageRow"
@@ -1261,23 +1545,14 @@
             android:orientation="vertical"
             android:visibility="gone" />
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="12dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:background="@color/settings_section_divider" />
+                </LinearLayout>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="24dp"
-            android:text="@string/gestures_section"
-            android:textColor="@color/launcher_text"
-            android:textSize="21sp"
-            android:textStyle="bold" />
+                <LinearLayout
+                    android:id="@+id/settingsGesturesPage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/openScreenTimeGestureRow"
@@ -1341,23 +1616,14 @@
 
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="12dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="12dp"
-            android:background="@color/settings_section_divider" />
+                </LinearLayout>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="24dp"
-            android:text="@string/screen_time_settings_section"
-            android:textColor="@color/launcher_text"
-            android:textSize="21sp"
-            android:textStyle="bold" />
+                <LinearLayout
+                    android:id="@+id/settingsScreenTimePage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
 
         <LinearLayout
             android:id="@+id/appBlockingHeaderRow"
@@ -1536,6 +1802,8 @@
                 android:textSize="17sp" />
 
         </LinearLayout>
+
+                </LinearLayout>
 
             </LinearLayout>
 

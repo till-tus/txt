@@ -115,6 +115,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private enum class SettingsPage(val titleRes: Int) {
+    Index(R.string.launcher_settings),
+    Appearance(R.string.settings_category_appearance),
+    Notes(R.string.settings_category_notes),
+    Calendar(R.string.settings_category_calendar),
+    Gestures(R.string.settings_category_gestures),
+    ScreenTime(R.string.settings_category_screen_time),
+}
+
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var shortcutAdapter: ShortcutAdapter
@@ -131,6 +140,7 @@ class MainActivity : AppCompatActivity() {
     private var isAppPickerVisible = false
     private var isEditMode = false
     private var isSettingsVisible = false
+    private var currentSettingsPage = SettingsPage.Index
     private var isNoteTrashVisible = false
     private var isNotesVisible = false
     private var isCalendarVisible = false
@@ -1359,6 +1369,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureSettings() {
+        binding.settingsBackButton.setOnClickListener {
+            showSettingsPage(SettingsPage.Index)
+        }
+        binding.settingsAppearanceCategory.setOnClickListener {
+            showSettingsPage(SettingsPage.Appearance)
+        }
+        binding.settingsNotesCategory.setOnClickListener {
+            showSettingsPage(SettingsPage.Notes)
+        }
+        binding.settingsCalendarCategory.setOnClickListener {
+            showSettingsPage(SettingsPage.Calendar)
+        }
+        binding.settingsGesturesCategory.setOnClickListener {
+            showSettingsPage(SettingsPage.Gestures)
+        }
+        binding.settingsScreenTimeCategory.setOnClickListener {
+            showSettingsPage(SettingsPage.ScreenTime)
+        }
         binding.showDateSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowDate(isChecked)
         }
@@ -1513,6 +1541,49 @@ class MainActivity : AppCompatActivity() {
             renderScreenTimeIntentionSummary()
             Toast.makeText(this, R.string.intentions_data_reset, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showSettingsPage(page: SettingsPage) {
+        if (currentSettingsPage == SettingsPage.ScreenTime && page != SettingsPage.ScreenTime) {
+            hideSettingsSearchKeyboard()
+        }
+        currentSettingsPage = page
+
+        val isIndex = page == SettingsPage.Index
+        binding.settingsTitle.setText(page.titleRes)
+        binding.settingsBackButton.visibility = if (isIndex) View.INVISIBLE else View.VISIBLE
+        binding.settingsBackButton.isClickable = !isIndex
+        binding.settingsIndex.isVisible = isIndex
+        binding.settingsAppearancePage.isVisible = page == SettingsPage.Appearance
+        binding.settingsNotesPage.isVisible = page == SettingsPage.Notes
+        binding.settingsCalendarPage.isVisible = page == SettingsPage.Calendar
+        binding.settingsGesturesPage.isVisible = page == SettingsPage.Gestures
+        binding.settingsScreenTimePage.isVisible = page == SettingsPage.ScreenTime
+        binding.settingsScroll.scrollTo(0, 0)
+
+        when (page) {
+            SettingsPage.Calendar -> refreshCalendars()
+            SettingsPage.ScreenTime -> {
+                if (blockableApps.isEmpty()) {
+                    refreshBlockableApps()
+                } else {
+                    renderAppBlockingSelection()
+                    renderAppBudgetsSelection()
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun hideSettingsSearchKeyboard() {
+        val focusedSearch = when {
+            binding.appBlockingSearchInput.hasFocus() -> binding.appBlockingSearchInput
+            binding.appBudgetsSearchInput.hasFocus() -> binding.appBudgetsSearchInput
+            else -> null
+        } ?: return
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(focusedSearch.windowToken, 0)
+        focusedSearch.clearFocus()
     }
 
     private fun handleCalendarPageSettingChanged(isEnabled: Boolean) {
@@ -3443,7 +3514,11 @@ class MainActivity : AppCompatActivity() {
                     } else if (isNoteTrashVisible) {
                         hideNoteTrash()
                     } else if (isSettingsVisible) {
-                        hideSettings()
+                        if (currentSettingsPage == SettingsPage.Index) {
+                            hideSettings()
+                        } else {
+                            showSettingsPage(SettingsPage.Index)
+                        }
                     } else if (isTodayEditMode) {
                         exitTodayEditMode()
                     } else if (isNotesVisible) {
@@ -3660,13 +3735,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSettings() {
         isSettingsVisible = true
         updateLauncherLayerVisibility()
-        refreshCalendars()
-        if (blockableApps.isEmpty()) {
-            refreshBlockableApps()
-        } else {
-            renderAppBlockingSelection()
-            renderAppBudgetsSelection()
-        }
+        showSettingsPage(SettingsPage.Index)
         binding.settingsRoot.alpha = 0f
         binding.settingsRoot.visibility = View.VISIBLE
         binding.settingsRoot.animate()
@@ -4280,7 +4349,9 @@ class MainActivity : AppCompatActivity() {
         if (isNoteTrashVisible) {
             hideNoteTrash(returnToSettings = false)
         }
+        hideSettingsSearchKeyboard()
         isSettingsVisible = false
+        currentSettingsPage = SettingsPage.Index
         hideGesturePicker()
         binding.settingsRoot.animate().cancel()
         binding.settingsRoot.visibility = View.GONE
