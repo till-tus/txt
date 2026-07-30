@@ -5,10 +5,12 @@ import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.QuickNote
 import com.example.textlauncher.domain.ShortcutTextAlignment
+import com.example.textlauncher.domain.TrashedNote
 
 data class HomeUiState(
     val shortcuts: List<AppShortcut> = emptyList(),
     val notes: List<QuickNote> = emptyList(),
+    val trashedNotes: List<TrashedNote> = emptyList(),
     val showDate: Boolean = true,
     val clockDisplayMode: ClockDisplayMode = ClockDisplayMode.Analog,
     val showQuickAccess: Boolean = false,

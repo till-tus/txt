@@ -28,6 +28,11 @@
     <string name="shortcut_limit_reached">Maximale App-Anzahl erreicht</string>
     <string name="pages_section">Seiten</string>
     <string name="show_notes_page">Notizen</string>
+    <string name="notes_trash_title">Notiz-Papierkorb</string>
+    <plurals name="notes_trash_count">
+        <item quantity="one">%1$d gelöschte Notiz</item>
+        <item quantity="other">%1$d gelöschte Notizen</item>
+    </plurals>
     <string name="show_calendar_page">Kalender</string>
     <string name="show_today_page">Heute</string>
 
@@ -155,6 +160,16 @@
     <string name="pin_note">Anpinnen</string>
     <string name="unpin_note">Lösen</string>
     <string name="delete_note">Löschen</string>
+    <string name="note_moved_to_trash">Notiz in den Papierkorb verschoben</string>
+    <string name="undo_note_delete">Rückgängig</string>
+    <string name="restore_note">Wiederherstellen</string>
+    <string name="delete_note_permanently">Endgültig löschen</string>
+    <string name="delete_note_permanently_title">Diese Notiz endgültig löschen?</string>
+    <string name="delete_note_permanently_message">Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="delete_voice_note_permanently_message">Dies kann nicht rückgängig gemacht werden. Die Sprachaufnahme wird ebenfalls gelöscht.</string>
+    <string name="notes_trash_empty">Der Papierkorb ist leer</string>
+    <string name="note_deleted_at">Gelöscht am %1$s</string>
+    <string name="trashed_voice_note_summary">Sprachnotiz · %1$s</string>
     <string name="notes_empty">Keine Notizen</string>
     <string name="note_editor_hint">Schreib etwas&#8230;</string>
     <string name="save_note">Speichern</string>
