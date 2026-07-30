@@ -51,6 +51,7 @@ import android.view.animation.DecelerateInterpolator
 import android.view.animation.LinearInterpolator
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
@@ -110,6 +111,7 @@ import com.example.textlauncher.domain.TodayWidgetType
 import com.example.textlauncher.domain.TodayNotificationItem
 import com.example.textlauncher.domain.TrashedNote
 import com.example.textlauncher.domain.WeatherSnapshot
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
@@ -1871,21 +1873,73 @@ class MainActivity : AppCompatActivity() {
     private fun showQuickAccessIconPicker(left: Boolean, shortcut: AppShortcut) {
         val slotLabel = getString(if (left) R.string.quick_access_left else R.string.quick_access_right)
         val icons = QuickAccessIcon.entries
-        val labels = icons.map(::quickAccessIconLabel)
-        MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.quick_access_choose_icon, slotLabel))
-            .setItems(labels.toTypedArray()) { _, index ->
-                viewModel.setQuickAccess(
-                    left = left,
-                    target = QuickAccessTarget(
-                        label = shortcut.label,
-                        packageName = shortcut.packageName,
-                        activityName = shortcut.activityName,
-                        icon = icons[index],
-                    ),
+        lateinit var dialog: androidx.appcompat.app.AlertDialog
+        val grid = GridLayout(this).apply {
+            columnCount = QUICK_ACCESS_ICON_GRID_COLUMNS
+            rowCount = (icons.size + columnCount - 1) / columnCount
+            setPadding(18.dp, 6.dp, 18.dp, 12.dp)
+        }
+        icons.forEachIndexed { index, icon ->
+            val label = quickAccessIconLabel(icon)
+            val button = MaterialButton(
+                this,
+                null,
+                com.google.android.material.R.attr.materialButtonOutlinedStyle,
+            ).apply {
+                layoutParams = GridLayout.LayoutParams(
+                    GridLayout.spec(index / QUICK_ACCESS_ICON_GRID_COLUMNS),
+                    GridLayout.spec(index % QUICK_ACCESS_ICON_GRID_COLUMNS, 1f),
+                ).apply {
+                    width = 0
+                    height = QUICK_ACCESS_ICON_BUTTON_SIZE_DP.dp
+                    setMargins(6.dp, 6.dp, 6.dp, 6.dp)
+                }
+                minWidth = 0
+                minHeight = 0
+                backgroundTintList = ColorStateList.valueOf(Color.TRANSPARENT)
+                strokeColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.launcher_text_secondary),
                 )
+                strokeWidth = 1.dp
+                this.icon = ContextCompat.getDrawable(this@MainActivity, quickAccessIconResource(icon))
+                iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.launcher_text),
+                )
+                iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+                iconPadding = 0
+                iconSize = QUICK_ACCESS_ICON_SIZE_DP.dp
+                rippleColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.settings_option_divider),
+                )
+                text = null
+                contentDescription = label
+                ViewCompat.setTooltipText(this, label)
+                setOnClickListener {
+                    viewModel.setQuickAccess(
+                        left = left,
+                        target = QuickAccessTarget(
+                            label = shortcut.label,
+                            packageName = shortcut.packageName,
+                            activityName = shortcut.activityName,
+                            icon = icon,
+                        ),
+                    )
+                    dialog.dismiss()
+                }
             }
-            .show()
+            grid.addView(button)
+        }
+        dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.quick_access_choose_icon, slotLabel))
+            .setView(grid)
+            .setBackground(
+                GradientDrawable().apply {
+                    setColor(ContextCompat.getColor(this@MainActivity, R.color.launcher_background))
+                    cornerRadius = QUICK_ACCESS_ICON_DIALOG_CORNER_RADIUS_DP.dp.toFloat()
+                },
+            )
+            .create()
+        dialog.show()
     }
 
     private fun quickAccessIconLabel(icon: QuickAccessIcon): String {
@@ -4809,6 +4863,10 @@ class MainActivity : AppCompatActivity() {
         const val TWO_FINGER_SWIPE_DOWN_DISTANCE_DP = 96
         const val COLLAPSED_SCREEN_TIME_APP_COUNT = 3
         const val SCREEN_TIME_APP_ROW_HEIGHT_DP = 58
+        const val QUICK_ACCESS_ICON_GRID_COLUMNS = 3
+        const val QUICK_ACCESS_ICON_BUTTON_SIZE_DP = 72
+        const val QUICK_ACCESS_ICON_SIZE_DP = 30
+        const val QUICK_ACCESS_ICON_DIALOG_CORNER_RADIUS_DP = 28
         const val PAGE_SWIPE_AXIS_RATIO = 1.15f
         const val PAGE_SWIPE_COMPLETE_FRACTION = 0.28f
         const val PAGE_SWIPE_COMPLETE_VELOCITY = 700f
