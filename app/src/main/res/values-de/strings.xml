@@ -7,6 +7,16 @@
     <string name="block_app">App sperren</string>
     <string name="blocked_app">Gesperrt</string>
     <string name="search_hint">Suchen&#8230;</string>
+    <string name="command_palette_search_hint">Apps, Notizen, Termine und Aktionen suchen&#8230;</string>
+    <string name="command_palette_empty">Keine passenden Apps, Notizen, Termine oder Aktionen</string>
+    <string name="command_palette_type_app">App</string>
+    <string name="command_palette_type_note">Notiz</string>
+    <string name="command_palette_type_pinned_note">Angepinnte Notiz</string>
+    <string name="command_palette_type_voice_note">Sprachnotiz</string>
+    <string name="command_palette_type_page">Seite</string>
+    <string name="command_palette_type_settings">Einstellungen</string>
+    <string name="command_palette_type_action">Aktion</string>
+    <string name="command_palette_add_note">Notiz hinzufügen</string>
     <string name="add_shortcut">App hinzufügen</string>
     <string name="launcher_settings">Launcher-Einstellungen</string>
     <string name="edit_mode_label">Bearbeiten</string>
@@ -59,6 +69,8 @@
     <string name="alignment_right">Rechts</string>
     <string name="max_shortcuts">App-Kürzel</string>
     <string name="open_app_list_keyboard_automatically">Tastatur automatisch öffnen</string>
+    <string name="universal_command_palette">Universelle Befehlspalette</string>
+    <string name="universal_command_palette_summary">Notizen, Termine, Seiten, Einstellungen und Aktionen in der App-Suche anzeigen</string>
     <string name="shortcut_limit_reached">Maximale App-Anzahl erreicht</string>
     <string name="show_notes_page">Notizen</string>
     <string name="notes_trash_title">Notiz-Papierkorb</string>

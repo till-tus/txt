@@ -10,6 +10,16 @@
     <string name="block_app">Block app</string>
     <string name="blocked_app">Blocked</string>
     <string name="search_hint">Search&#8230;</string>
+    <string name="command_palette_search_hint">Search apps, notes, events, and actions&#8230;</string>
+    <string name="command_palette_empty">No matching apps, notes, events, or actions</string>
+    <string name="command_palette_type_app">App</string>
+    <string name="command_palette_type_note">Note</string>
+    <string name="command_palette_type_pinned_note">Pinned note</string>
+    <string name="command_palette_type_voice_note">Voice note</string>
+    <string name="command_palette_type_page">Page</string>
+    <string name="command_palette_type_settings">Settings</string>
+    <string name="command_palette_type_action">Action</string>
+    <string name="command_palette_add_note">Add note</string>
     <string name="add_shortcut">Add shortcut</string>
     <string name="launcher_settings">Launcher settings</string>
     <string name="edit_mode_label">Edit</string>
@@ -64,6 +74,8 @@
     <string name="alignment_right">Right</string>
     <string name="max_shortcuts">App shortcuts</string>
     <string name="open_app_list_keyboard_automatically">Open keyboard automatically</string>
+    <string name="universal_command_palette">Universal command palette</string>
+    <string name="universal_command_palette_summary">Include notes, events, pages, settings, and actions in app search</string>
     <string name="shortcut_limit_reached">Shortcut limit reached</string>
     <string name="show_notes_page">Notes page</string>
     <string name="notes_trash_title">Notes trash</string>

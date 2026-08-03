@@ -128,6 +128,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var shortcutAdapter: ShortcutAdapter
     private lateinit var appPickerAdapter: AppPickerAdapter
+    private lateinit var commandPaletteAdapter: CommandPaletteAdapter
     private lateinit var noteAdapter: NoteAdapter
     private lateinit var trashNoteAdapter: TrashNoteAdapter
     private lateinit var calendarEventAdapter: CalendarEventAdapter
@@ -154,6 +155,8 @@ class MainActivity : AppCompatActivity() {
     private var isScreenTimeIntentionsExpanded = false
     private var appListMode = AppListMode.AddShortcut
     private var availableApps = emptyList<AppShortcut>()
+    private var commandPaletteEvents = emptyList<CalendarEvent>()
+    private var visibleCommandPaletteItems = emptyList<CommandPaletteItem>()
     private var cachedLaunchableApps = emptyList<AppShortcut>()
     private var screenTimeUsages = emptyList<ScreenTimeAppUsage>()
     private var screenTimeWeekUsages = emptyList<ScreenTimeDayUsage>()
@@ -223,6 +226,7 @@ class MainActivity : AppCompatActivity() {
     private var isRenderingSettingsState = false
     private var wasSettingsImeVisible = false
     private var openAppListKeyboardAutomatically = true
+    private var universalCommandPaletteEnabled = false
     private var editModePulseAnimator: ValueAnimator? = null
     private var renderedShortcutCount = 0
     private val voiceNoteSampleHandler = Handler(Looper.getMainLooper())
@@ -259,6 +263,7 @@ class MainActivity : AppCompatActivity() {
     private var todayCalendarRefreshJob: Job? = null
     private var appsRefreshJob: Job? = null
     private var launchableAppsRefreshJob: Job? = null
+    private var commandPaletteEventsRefreshJob: Job? = null
     private var quickAccessPickerJob: Job? = null
     private var screenTimeRefreshJob: Job? = null
     private var budgetCheckJob: Job? = null
@@ -346,6 +351,14 @@ class MainActivity : AppCompatActivity() {
             onAppLongClick = { anchor, shortcut ->
                 if (appListMode == AppListMode.LaunchApp) {
                     showLauncherAppContextMenu(anchor, shortcut)
+                }
+            },
+        )
+        commandPaletteAdapter = CommandPaletteAdapter(
+            onItemClick = ::handleCommandPaletteItem,
+            onItemLongClick = { anchor, item ->
+                (item as? CommandPaletteItem.App)?.let { app ->
+                    showLauncherAppContextMenu(anchor, app.shortcut)
                 }
             },
         )
@@ -438,6 +451,9 @@ class MainActivity : AppCompatActivity() {
         }
         if (isScreenTimeVisible) {
             refreshScreenTime()
+        }
+        if (isAppPickerVisible && isUniversalCommandPaletteActive()) {
+            refreshCommandPaletteEvents()
         }
         refreshLaunchableAppCache()
     }
@@ -866,6 +882,7 @@ class MainActivity : AppCompatActivity() {
         availableApps = loadCachedLaunchableApps()
         binding.appSearchInput.text?.clear()
         renderFilteredApps(query = "")
+        refreshCommandPaletteEvents()
         binding.appPickerRoot.animate().cancel()
         binding.homeContent.animate().cancel()
         binding.homeTransitionDimOverlay.animate().cancel()
@@ -1345,6 +1362,19 @@ class MainActivity : AppCompatActivity() {
             binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.isChecked =
                 state.openAppListKeyboardAutomatically
         }
+        val commandPaletteSettingChanged = universalCommandPaletteEnabled != state.universalCommandPaletteEnabled
+        universalCommandPaletteEnabled = state.universalCommandPaletteEnabled
+        if (
+            binding.settingsPanel.settingsAppearancePanel.universalCommandPaletteSwitch.isChecked !=
+            state.universalCommandPaletteEnabled
+        ) {
+            binding.settingsPanel.settingsAppearancePanel.universalCommandPaletteSwitch.isChecked =
+                state.universalCommandPaletteEnabled
+        }
+        if (commandPaletteSettingChanged && isAppPickerVisible && appListMode == AppListMode.LaunchApp) {
+            renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
+            refreshCommandPaletteEvents()
+        }
         val canAddShortcut = state.shortcuts.size < state.maxShortcuts
         binding.addShortcutButton.isEnabled = canAddShortcut
         binding.addShortcutButton.alpha = if (canAddShortcut) 1f else DISABLED_ACTION_ALPHA
@@ -1380,6 +1410,9 @@ class MainActivity : AppCompatActivity() {
         currentAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
         currentExcludedScreenTimePackageNames = state.excludedScreenTimePackageNames
         hasRequestedCalendarPermission = state.hasRequestedCalendarPermission
+        if (isAppPickerVisible && isUniversalCommandPaletteActive()) {
+            renderCommandPalette(binding.appSearchInput.text?.toString().orEmpty())
+        }
         if (!state.showScreenTimePage && isScreenTimeVisible) {
             hideScreenTimePage()
         }
@@ -1624,6 +1657,14 @@ class MainActivity : AppCompatActivity() {
         binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallyRow.setOnClickListener {
             viewModel.setOpenAppListKeyboardAutomatically(
                 !binding.settingsPanel.settingsAppearancePanel.openAppListKeyboardAutomaticallySwitch.isChecked,
+            )
+        }
+        binding.settingsPanel.settingsAppearancePanel.universalCommandPaletteSwitch.setOnCheckedChangeListener { _, isChecked ->
+            viewModel.setUniversalCommandPaletteEnabled(isChecked)
+        }
+        binding.settingsPanel.settingsAppearancePanel.universalCommandPaletteRow.setOnClickListener {
+            viewModel.setUniversalCommandPaletteEnabled(
+                !binding.settingsPanel.settingsAppearancePanel.universalCommandPaletteSwitch.isChecked,
             )
         }
         binding.settingsPanel.openScreenTimeGestureRow.setOnClickListener {
@@ -4348,6 +4389,7 @@ class MainActivity : AppCompatActivity() {
         if (note?.audioFileName != null) return
         editingNote = note
         isNoteEditorVisible = true
+        updateLauncherLayerVisibility()
         if (isNotesVisible) {
             binding.notesRoot.visibility = View.GONE
         }
@@ -4383,6 +4425,7 @@ class MainActivity : AppCompatActivity() {
             binding.todayRoot.visibility = View.VISIBLE
         }
         didOpenNoteEditorFromToday = false
+        updateLauncherLayerVisibility()
     }
 
     private fun saveCurrentNote() {
@@ -4747,6 +4790,7 @@ class MainActivity : AppCompatActivity() {
         availableApps = loadCachedLaunchableApps()
         binding.appSearchInput.text?.clear()
         renderFilteredApps(query = "")
+        refreshCommandPaletteEvents()
         isAppPickerVisible = true
         updateLauncherLayerVisibility()
         binding.appPickerRoot.visibility = View.VISIBLE
@@ -4768,6 +4812,10 @@ class MainActivity : AppCompatActivity() {
         resetAppListHomeTreatment()
         binding.appSearchInput.text?.clear()
         appPickerAdapter.submitList(emptyList())
+        commandPaletteAdapter.submitList(emptyList())
+        visibleCommandPaletteItems = emptyList()
+        commandPaletteEventsRefreshJob?.cancel()
+        commandPaletteEvents = emptyList()
         availableApps = emptyList()
         isAppPickerVisible = false
         updateLauncherLayerVisibility()
@@ -4805,6 +4853,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderFilteredApps(query: String) {
+        if (isUniversalCommandPaletteActive()) {
+            renderCommandPalette(query)
+            return
+        }
+
+        binding.appSearchInput.setHint(R.string.search_hint)
+        binding.appPickerEmpty.setText(R.string.app_picker_empty)
+        if (binding.appPickerList.adapter !== appPickerAdapter) {
+            binding.appPickerList.adapter = appPickerAdapter
+        }
         val filteredApps = FuzzyAppSearch.filter(availableApps, query)
         appPickerAdapter.submitList(filteredApps)
         binding.appPickerList.visibility = if (filteredApps.isEmpty()) View.GONE else View.VISIBLE
@@ -4817,9 +4875,182 @@ class MainActivity : AppCompatActivity() {
         val query = binding.appSearchInput.text?.toString().orEmpty()
         if (query.isBlank()) return
 
+        if (isUniversalCommandPaletteActive()) {
+            visibleCommandPaletteItems.firstOrNull()?.let(::handleCommandPaletteItem)
+            return
+        }
+
         val shortcut = FuzzyAppSearch.filter(availableApps, query).firstOrNull() ?: return
         hideAppPicker()
         launchShortcutWithAppBlocking(shortcut)
+    }
+
+    private fun isUniversalCommandPaletteActive(): Boolean {
+        return appListMode == AppListMode.LaunchApp && universalCommandPaletteEnabled
+    }
+
+    private fun renderCommandPalette(query: String) {
+        binding.appSearchInput.setHint(R.string.command_palette_search_hint)
+        binding.appPickerEmpty.setText(R.string.command_palette_empty)
+        if (binding.appPickerList.adapter !== commandPaletteAdapter) {
+            binding.appPickerList.adapter = commandPaletteAdapter
+        }
+        visibleCommandPaletteItems = CommandPaletteSearch.search(commandPaletteItems(), query)
+        commandPaletteAdapter.submitList(visibleCommandPaletteItems)
+        binding.appPickerList.visibility = if (visibleCommandPaletteItems.isEmpty()) View.GONE else View.VISIBLE
+        binding.appPickerEmpty.visibility = if (visibleCommandPaletteItems.isEmpty()) View.VISIBLE else View.GONE
+    }
+
+    private fun commandPaletteItems(): List<CommandPaletteItem> {
+        val state = viewModel.uiState.value
+        return buildList {
+            availableApps.forEach { app ->
+                add(CommandPaletteItem.App(app, getString(R.string.command_palette_type_app)))
+            }
+            currentNotes.forEach { note ->
+                val summary = when {
+                    note.audioFileName != null -> getString(R.string.command_palette_type_voice_note)
+                    note.isPinned -> getString(R.string.command_palette_type_pinned_note)
+                    else -> getString(R.string.command_palette_type_note)
+                }
+                add(CommandPaletteItem.Note(note, summary))
+            }
+            commandPaletteEvents.forEach { event ->
+                add(
+                    CommandPaletteItem.Event(
+                        event = event,
+                        title = event.title.ifBlank { getString(R.string.calendar_event_untitled) },
+                        summary = formatCommandPaletteEventSummary(event),
+                    ),
+                )
+            }
+            if (state.showNotesPage) add(pageDestination(PaletteDestination.NotesPage, R.string.notes_page_title))
+            if (state.showTodayPage) add(pageDestination(PaletteDestination.TodayPage, R.string.today_page_title))
+            if (state.showCalendarPage) add(pageDestination(PaletteDestination.CalendarPage, R.string.calendar_page_title))
+            add(settingsDestination(PaletteDestination.Settings, R.string.launcher_settings))
+            add(settingsDestination(PaletteDestination.AppearanceSettings, R.string.settings_category_appearance))
+            add(settingsDestination(PaletteDestination.NotesSettings, R.string.settings_category_notes))
+            add(settingsDestination(PaletteDestination.CalendarSettings, R.string.settings_category_calendar))
+            add(settingsDestination(PaletteDestination.GesturesSettings, R.string.settings_category_gestures))
+            add(settingsDestination(PaletteDestination.ScreenTimeSettings, R.string.settings_category_screen_time))
+            add(
+                CommandPaletteItem.Destination(
+                    destination = PaletteDestination.AddNote,
+                    title = getString(R.string.command_palette_add_note),
+                    summary = getString(R.string.command_palette_type_action),
+                    searchText = "${getString(R.string.command_palette_add_note)} create new note",
+                    category = CommandPaletteItem.Category.Action,
+                ),
+            )
+            if (state.showScreenTimePage) {
+                add(
+                    CommandPaletteItem.Destination(
+                        destination = PaletteDestination.ScreenTime,
+                        title = getString(R.string.gesture_action_open_screen_time),
+                        summary = getString(R.string.command_palette_type_action),
+                        category = CommandPaletteItem.Category.Action,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun pageDestination(destination: PaletteDestination, titleRes: Int): CommandPaletteItem.Destination {
+        return CommandPaletteItem.Destination(
+            destination = destination,
+            title = getString(titleRes),
+            summary = getString(R.string.command_palette_type_page),
+            searchText = "${getString(titleRes)} page",
+            category = CommandPaletteItem.Category.Page,
+        )
+    }
+
+    private fun settingsDestination(destination: PaletteDestination, titleRes: Int): CommandPaletteItem.Destination {
+        return CommandPaletteItem.Destination(
+            destination = destination,
+            title = getString(titleRes),
+            summary = getString(R.string.command_palette_type_settings),
+            searchText = "${getString(titleRes)} settings",
+            category = CommandPaletteItem.Category.Settings,
+        )
+    }
+
+    private fun formatCommandPaletteEventSummary(event: CalendarEvent): String {
+        val locale = resources.configuration.locales[0]
+        val date = DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(event.startMillis))
+        val time = if (event.isAllDay) {
+            getString(R.string.calendar_event_all_day)
+        } else {
+            DateFormat.getTimeInstance(DateFormat.SHORT, locale).format(Date(event.startMillis))
+        }
+        return listOf(date, time, event.calendarName).filter(String::isNotBlank).joinToString(" · ")
+    }
+
+    private fun refreshCommandPaletteEvents() {
+        commandPaletteEventsRefreshJob?.cancel()
+        if (!isUniversalCommandPaletteActive() || !hasCalendarPermission()) {
+            commandPaletteEvents = emptyList()
+            if (isUniversalCommandPaletteActive()) {
+                renderCommandPalette(binding.appSearchInput.text?.toString().orEmpty())
+            }
+            return
+        }
+
+        val selectedCalendarIds = currentSelectedCalendarIds
+        commandPaletteEventsRefreshJob = lifecycleScope.launch {
+            val events = launcherDataSource.loadUpcomingEvents(selectedCalendarIds)
+            if (!isUniversalCommandPaletteActive() || selectedCalendarIds != currentSelectedCalendarIds) return@launch
+            commandPaletteEvents = events
+            renderCommandPalette(binding.appSearchInput.text?.toString().orEmpty())
+        }
+    }
+
+    private fun handleCommandPaletteItem(item: CommandPaletteItem) {
+        hideAppPicker()
+        when (item) {
+            is CommandPaletteItem.App -> launchShortcutWithAppBlocking(item.shortcut)
+            is CommandPaletteItem.Event -> openCalendarEventDay(item.event)
+            is CommandPaletteItem.Note -> {
+                if (item.note.audioFileName == null) {
+                    showNoteEditor(item.note)
+                } else {
+                    showConfiguredPage(LauncherPage.Notes)
+                }
+            }
+            is CommandPaletteItem.Destination -> openPaletteDestination(item.destination)
+        }
+    }
+
+    private fun openPaletteDestination(destination: PaletteDestination) {
+        when (destination) {
+            PaletteDestination.NotesPage -> showConfiguredPage(LauncherPage.Notes)
+            PaletteDestination.TodayPage -> showConfiguredPage(LauncherPage.Today)
+            PaletteDestination.CalendarPage -> showConfiguredPage(LauncherPage.Calendar)
+            PaletteDestination.Settings -> showSettings()
+            PaletteDestination.AppearanceSettings -> showSettingsDestination(SettingsPage.Appearance)
+            PaletteDestination.NotesSettings -> showSettingsDestination(SettingsPage.Notes)
+            PaletteDestination.CalendarSettings -> showSettingsDestination(SettingsPage.Calendar)
+            PaletteDestination.GesturesSettings -> showSettingsDestination(SettingsPage.Gestures)
+            PaletteDestination.ScreenTimeSettings -> showSettingsDestination(SettingsPage.ScreenTime)
+            PaletteDestination.AddNote -> showNoteEditor(null)
+            PaletteDestination.ScreenTime -> showScreenTimePage(performHaptic = false)
+        }
+    }
+
+    private fun showSettingsDestination(page: SettingsPage) {
+        showSettings()
+        showSettingsPage(page)
+    }
+
+    private fun showConfiguredPage(page: LauncherPage) {
+        if (!isPageEnabled(page) || currentVisiblePage() == page) return
+        val target = PageSwipeTarget(
+            page = page,
+            position = currentPageArrangement.positionOf(page),
+            isReturningHome = false,
+        )
+        preparePageDrag(target)
+        settlePageDrag(target, shouldComplete = true)
     }
 
     private fun showKeyboard() {
