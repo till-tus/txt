@@ -267,4 +267,82 @@
 
     <!-- Quick access -->
     <string name="quick_access_unavailable">Nicht verfügbar</string>
+    <!-- Kontextbezogene Einführung -->
+    <string name="onboarding_welcome_eyebrow">WILLKOMMEN BEI TXT</string>
+    <string name="onboarding_welcome_title">Ein ruhigerer Weg ins Smartphone</string>
+    <string name="onboarding_welcome_body">txt hält Apps, Notizen, deinen Tag und Bildschirmzeit nur eine Geste entfernt. Jeder Bereich erklärt sich beim ersten Öffnen direkt auf der echten Seite. Jede Hilfe kann übersprungen werden.</string>
+    <string name="onboarding_explore">Erkunden</string>
+    <string name="onboarding_skip_all">Hilfe überspringen</string>
+    <string name="onboarding_skip">Überspringen</string>
+    <string name="onboarding_next">Weiter</string>
+    <string name="onboarding_done">Verstanden</string>
+    <string name="onboarding_step_count">%1$d VON %2$d</string>
+    <string name="onboarding_reset_title">Funktionshilfen erneut zeigen</string>
+    <string name="onboarding_reset_summary">Alle Einführungstipps zurücksetzen und auf der Startseite neu beginnen</string>
+    <string name="onboarding_reset_done">Funktionshilfen zurückgesetzt</string>
+
+    <string name="onboarding_home_layout_title">Seiten umgeben die Startseite</string>
+    <string name="onboarding_home_layout_body">Deine aktuelle Anordnung: %1$s. Wische nach links für die rechte Seite, nach rechts für die linke oder nach oben für die untere. Die Gegenrichtung führt zurück; nach unten öffnet immer deine Apps.</string>
+    <string name="onboarding_home_shortcuts_title">Deine bewusste App-Auswahl</string>
+    <string name="onboarding_home_shortcuts_body">Tippe zum Öffnen. Halte einen App-Namen für Entfernen, Sperren und Deinstallieren. Halte eine freie Stelle, um die Startseite zu bearbeiten.</string>
+    <string name="onboarding_home_quick_title">Schnellzugriff</string>
+    <string name="onboarding_home_quick_body">Diese zwei Tasten öffnen deine gewählten Werkzeuge. Tippe auf die Uhr, um analog oder digital zu wechseln; halte sie für die Uhr-App.</string>
+    <string name="onboarding_home_gestures_title">Gesten bleiben unsichtbar</string>
+    <string name="onboarding_home_gestures_body">%1$s öffnet die Bildschirmzeit. %2$s sperrt den Bildschirm. Beides lässt sich unter Einstellungen → Gesten ändern.</string>
+    <string name="onboarding_page_layout_item">%1$s %2$s</string>
+    <string name="onboarding_direction_left">links</string>
+    <string name="onboarding_direction_right">rechts</string>
+    <string name="onboarding_direction_down">unten</string>
+    <string name="onboarding_no_extra_pages">keine zusätzlichen Seiten sind aktiviert</string>
+
+    <string name="onboarding_app_search_title">Weniger tippen, schneller finden</string>
+    <string name="onboarding_app_search_body">Die Suche ordnet ähnliche Treffer während der Eingabe. Mit „Los“ auf der Tastatur startet der erste Treffer. Die optionale universelle Palette findet auch Notizen, Termine, Seiten und Einstellungen.</string>
+    <string name="onboarding_app_list_title">Die vollständige App-Liste</string>
+    <string name="onboarding_app_list_body">Tippe zum Öffnen. Halte eine App für Sperren oder Deinstallieren. Mit Zurück kommst du zur Startseite.</string>
+
+    <string name="onboarding_home_edit_title">Gestalte deine Startseite</string>
+    <string name="onboarding_home_edit_body">Füge hier eine App hinzu oder öffne die Launcher-Einstellungen. Tippe auf eine vorhandene App, um sie zu entfernen oder eine Sperre einzurichten.</string>
+    <string name="onboarding_home_reorder_title">Wichtiges nach oben</string>
+    <string name="onboarding_home_reorder_body">Solange „Bearbeiten“ sichtbar ist, kannst du Apps halten und verschieben. Drücke Zurück oder tippe auf eine freie Stelle, wenn du fertig bist.</string>
+
+    <string name="onboarding_notes_add_title">Text und Sprache mit einer Taste</string>
+    <string name="onboarding_notes_add_body">Tippe für eine Textnotiz. Halte diese Taste, um zu Sprachnotizen zu wechseln; tippe einmal zum Aufnehmen und erneut zum Stoppen.</string>
+    <string name="onboarding_notes_list_title">Notizen bieten weitere Aktionen</string>
+    <string name="onboarding_notes_list_body">Tippe zum Bearbeiten. Halte eine Notiz zum Anpinnen oder Löschen; die Kopiertaste übernimmt Text. Angepinnte Notizen können auch unter Heute erscheinen.</string>
+    <string name="onboarding_note_editor_title">Ein schlanker Editor</string>
+    <string name="onboarding_note_editor_body">Schreibe frei; Zeilen mit einem Bindestrich werden als Aufzählung formatiert. Speichern legt die Notiz lokal ab, Abbrechen verwirft Änderungen.</string>
+
+    <string name="onboarding_calendar_title">Deine nächsten zwei Tage</string>
+    <string name="onboarding_calendar_body">Erlaube bei Bedarf den Kalenderzugriff. Termine sind nach Tag gruppiert; ein Tippen öffnet das Datum in der Kalender-App. Sichtbare Kalender wählst du in den Einstellungen.</string>
+
+    <string name="onboarding_today_title">Baue deinen Tagesüberblick</string>
+    <string name="onboarding_today_body">Heute kann Wetter, den nächsten Termin, Benachrichtigungen und eine angepinnte Notiz zeigen. Berechtigungen werden erst bei Nutzung eines Widgets erfragt.</string>
+    <string name="onboarding_today_edit_hint_title">Dein eigenes Layout</string>
+    <string name="onboarding_today_edit_hint_body">Halte eine freie Stelle für „Heute bearbeiten“. Dann kannst du Widgets verschieben, unten rechts vergrößern, antippen oder ergänzen.</string>
+    <string name="onboarding_today_edit_title">Heute direkt bearbeiten</string>
+    <string name="onboarding_today_edit_body">Mit + fügst du ein verfügbares Widget hinzu. Verschiebe Karten zwischen Zellen, ändere ihre Größe am Eckgriff und tippe zum Bearbeiten oder Entfernen.</string>
+
+    <string name="onboarding_screen_time_recap_title">Kontext ohne Wertung</string>
+    <string name="onboarding_screen_time_recap_body">Sieh die heutige Gesamtzeit, deine meistgenutzte App und den Vergleich zum bisherigen Durchschnitt. Nutzungszugriff wird nur für diese Statistik benötigt.</string>
+    <string name="onboarding_screen_time_details_title">Wichtige Details ausklappen</string>
+    <string name="onboarding_screen_time_details_body">Tippe auf Nutzungsziele für Plan und tatsächliche Nutzung. Tippe auf Heute für die App-Liste. Sperren und Limits findest du in den Einstellungen.</string>
+
+    <string name="onboarding_settings_title">Alles bleibt anpassbar</string>
+    <string name="onboarding_settings_body">Hier findest du Darstellung, Seiten, Gesten, App-Sperren, Limits, Fokusmodi und Ausnahmen der Bildschirmzeit.</string>
+    <string name="onboarding_settings_reset_title">Die Hilfe bleibt verfügbar</string>
+    <string name="onboarding_settings_reset_body">„Funktionshilfen erneut zeigen“ setzt alle erledigten oder übersprungenen Tipps zurück und öffnet die Begrüßung auf der Startseite.</string>
+    <string name="onboarding_appearance_title">Dein persönlicher Launcher</string>
+    <string name="onboarding_appearance_body">Konfiguriere hier Uhr, Schnellzugriff, Hintergrundabdunklung, Ausrichtung und Anzahl der Apps, Tastaturverhalten und universelle Suche.</string>
+    <string name="onboarding_pages_title">Ganze Seiten verschieben</string>
+    <string name="onboarding_pages_body">Ziehe Notizen, Kalender und Heute um die Startseite. Tippe im Diagramm zum Ein- oder Ausschalten; die App-Liste bleibt immer unten.</string>
+    <string name="onboarding_notes_settings_title">Notiz-Einstellungen</string>
+    <string name="onboarding_notes_settings_body">Schalte die Notizseite ein oder aus und stelle kürzlich gelöschte Notizen aus dem Papierkorb wieder her.</string>
+    <string name="onboarding_calendar_settings_title">Kalender- und Heute-Einstellungen</string>
+    <string name="onboarding_calendar_settings_body">Aktiviere die gewünschten Seiten und klappe Kalender auf, um die angezeigten Konten auszuwählen.</string>
+    <string name="onboarding_gestures_settings_title">Unsichtbare Aktionen zuweisen</string>
+    <string name="onboarding_gestures_settings_body">Wähle eine Geste für Bildschirmzeit und eine zum Sperren. Doppelte Zuweisungen werden automatisch aufgelöst.</string>
+    <string name="onboarding_focus_settings_title">Fokusmodi verändern den Launcher</string>
+    <string name="onboarding_focus_settings_body">Ein Fokusmodus kann manuell oder nach Zeitplan laufen und eigene Startseiten-Apps, Sperren und tägliche Limits nutzen.</string>
+    <string name="onboarding_blocking_settings_title">Bewusste Reibung einbauen</string>
+    <string name="onboarding_blocking_settings_body">Klappe diese Bereiche für App-Sperren, tägliche Limits oder Statistik-Ausnahmen auf. Vor dem Öffnen fragt eine Sperre nach deiner Absicht.</string>
 </resources>

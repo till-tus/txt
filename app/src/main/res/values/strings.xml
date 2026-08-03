@@ -273,4 +273,82 @@
 
     <!-- Quick access -->
     <string name="quick_access_unavailable">Not available</string>
+    <!-- Contextual onboarding -->
+    <string name="onboarding_welcome_eyebrow">WELCOME TO TXT</string>
+    <string name="onboarding_welcome_title">A calmer way into your phone</string>
+    <string name="onboarding_welcome_body">txt keeps apps, notes, your day, and screen-time context one gesture away. Each area explains itself the first time you open it, right on the real page. You can skip any guide.</string>
+    <string name="onboarding_explore">Start exploring</string>
+    <string name="onboarding_skip_all">Skip guidance</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_done">Got it</string>
+    <string name="onboarding_step_count">%1$d OF %2$d</string>
+    <string name="onboarding_reset_title">Replay feature guidance</string>
+    <string name="onboarding_reset_summary">Reset every onboarding tip and start again from Home</string>
+    <string name="onboarding_reset_done">Feature guidance reset</string>
+
+    <string name="onboarding_home_layout_title">Pages surround Home</string>
+    <string name="onboarding_home_layout_body">Your current layout is %1$s. Swipe left for the right page, right for the left page, or up for the page below. Reverse the gesture to return Home; swipe down always opens your apps.</string>
+    <string name="onboarding_home_shortcuts_title">Your intentional shortcuts</string>
+    <string name="onboarding_home_shortcuts_body">Tap an app to open it. Long-press its name for remove, block, and uninstall actions. Long-press empty space to edit and reorder Home.</string>
+    <string name="onboarding_home_quick_title">Quick Access</string>
+    <string name="onboarding_home_quick_body">These two buttons open the tools you choose. Tap the clock to switch analog or digital; hold it to open the Clock app.</string>
+    <string name="onboarding_home_gestures_title">Gestures stay out of sight</string>
+    <string name="onboarding_home_gestures_body">%1$s opens Screen time. %2$s locks the screen. You can change both under Settings → Gestures.</string>
+    <string name="onboarding_page_layout_item">%1$s %2$s</string>
+    <string name="onboarding_direction_left">to the left</string>
+    <string name="onboarding_direction_right">to the right</string>
+    <string name="onboarding_direction_down">below</string>
+    <string name="onboarding_no_extra_pages">no extra pages are enabled</string>
+
+    <string name="onboarding_app_search_title">Type less, find faster</string>
+    <string name="onboarding_app_search_body">Search ranks close matches as you type. Press your keyboard’s Go key to launch the first result. The optional universal palette also finds notes, events, pages, and settings.</string>
+    <string name="onboarding_app_list_title">The complete app list</string>
+    <string name="onboarding_app_list_body">Tap to launch. Long-press an app for blocking or uninstall actions. Press Back to return Home.</string>
+
+    <string name="onboarding_home_edit_title">Shape your Home</string>
+    <string name="onboarding_home_edit_body">Add a shortcut or open Launcher settings here. Tap an existing shortcut to remove it or configure blocking.</string>
+    <string name="onboarding_home_reorder_title">Put essentials first</string>
+    <string name="onboarding_home_reorder_body">While Edit is visible, hold and drag shortcuts to reorder them. Press Back or tap empty space when you’re done.</string>
+
+    <string name="onboarding_notes_add_title">Text or voice in one button</string>
+    <string name="onboarding_notes_add_body">Tap to write a note. Long-press this button to switch to voice-note mode, then tap once to record and again to stop.</string>
+    <string name="onboarding_notes_list_title">Notes have more actions</string>
+    <string name="onboarding_notes_list_body">Tap a text note to edit it. Long-press for pin and delete; use the copy button for quick reuse. Pinned notes can also appear on Today.</string>
+    <string name="onboarding_note_editor_title">A lightweight editor</string>
+    <string name="onboarding_note_editor_body">Write freely; lines beginning with a dash are formatted as bullets. Save keeps the note locally, and Cancel leaves it unchanged.</string>
+
+    <string name="onboarding_calendar_title">Your next two days</string>
+    <string name="onboarding_calendar_body">Grant calendar access when asked. Events are grouped by day; tap one to open that date in your calendar app. Choose visible calendars in Settings.</string>
+
+    <string name="onboarding_today_title">Build a glanceable day</string>
+    <string name="onboarding_today_body">Today can show weather, your next event, notifications, and a pinned note. Some widgets ask for permission only when you use them.</string>
+    <string name="onboarding_today_edit_hint_title">The layout is yours</string>
+    <string name="onboarding_today_edit_hint_body">Long-press empty space to enter Edit Today. Then drag widgets, resize from their lower-right corner, tap a widget for options, or add another.</string>
+    <string name="onboarding_today_edit_title">Edit Today in place</string>
+    <string name="onboarding_today_edit_body">Use + to add an available widget. Drag cards between cells, use the corner handle to resize, and tap a card to edit or remove it.</string>
+
+    <string name="onboarding_screen_time_recap_title">Context, not judgment</string>
+    <string name="onboarding_screen_time_recap_body">See today’s total, your most-used app, and how today compares with your recent average. Usage access is requested only for these statistics.</string>
+    <string name="onboarding_screen_time_details_title">Expand what matters</string>
+    <string name="onboarding_screen_time_details_body">Tap Intentions to compare planned and actual use. Tap Today to expand the app-by-app list. App blocking and budgets live in Settings.</string>
+
+    <string name="onboarding_settings_title">Everything stays adjustable</string>
+    <string name="onboarding_settings_body">Use these categories for appearance, page visibility, gestures, app blocking, budgets, focus modes, and screen-time exclusions.</string>
+    <string name="onboarding_settings_reset_title">Guidance is never gone</string>
+    <string name="onboarding_settings_reset_body">Replay feature guidance resets every completed or skipped tip. It returns you to the welcome card on Home.</string>
+    <string name="onboarding_appearance_title">Make the launcher yours</string>
+    <string name="onboarding_appearance_body">Configure the clock, Quick Access, wallpaper dimming, shortcut alignment and count, keyboard behavior, and universal search here.</string>
+    <string name="onboarding_pages_title">Move whole pages</string>
+    <string name="onboarding_pages_body">Drag Notes, Calendar, and Today around Home. Tap a page in the diagram to enable or disable it; app-list swipe-down stays fixed.</string>
+    <string name="onboarding_notes_settings_title">Notes controls</string>
+    <string name="onboarding_notes_settings_body">Turn the Notes page on or off and restore recently deleted notes from Trash.</string>
+    <string name="onboarding_calendar_settings_title">Calendar and Today controls</string>
+    <string name="onboarding_calendar_settings_body">Choose which pages are enabled and expand Calendars to select the accounts shown in the launcher.</string>
+    <string name="onboarding_gestures_settings_title">Assign hidden actions</string>
+    <string name="onboarding_gestures_settings_body">Choose which gesture opens Screen time and which locks the device. Conflicting assignments are resolved automatically.</string>
+    <string name="onboarding_focus_settings_title">Focus modes change the launcher</string>
+    <string name="onboarding_focus_settings_body">A focus mode can run manually or on a schedule, with its own Home shortcuts, blocked apps, and daily budgets.</string>
+    <string name="onboarding_blocking_settings_title">Add purposeful friction</string>
+    <string name="onboarding_blocking_settings_body">Expand these sections to block apps, set daily budgets, or exclude apps from statistics. Block prompts ask your intention before proceeding.</string>
 </resources>

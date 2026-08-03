@@ -136,6 +136,7 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
+    private lateinit var onboardingController: OnboardingController
     private lateinit var shortcutAdapter: ShortcutAdapter
     private lateinit var appPickerAdapter: AppPickerAdapter
     private lateinit var commandPaletteAdapter: CommandPaletteAdapter
@@ -331,6 +332,7 @@ class MainActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        onboardingController = OnboardingController(this, binding.homeRoot)
         actionContextMenu = ActionContextMenu(this)
         noteBulletFormatter = NoteBulletFormatter()
         appBlockPromptController = AppBlockPromptController(
@@ -449,6 +451,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
         refreshLaunchableAppCache()
+        binding.root.post {
+            val showedWelcome = onboardingController.maybeShowWelcome {
+                maybeShowOnboarding(OnboardingSurface.Home)
+            }
+            if (!showedWelcome && currentVisiblePage() == null && !isSettingsVisible &&
+                !isScreenTimeVisible && !isAppPickerVisible && !isNoteEditorVisible
+            ) {
+                maybeShowOnboarding(OnboardingSurface.Home)
+            }
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -573,6 +585,7 @@ class MainActivity : AppCompatActivity() {
             LauncherPage.Calendar -> onCalendarPageVisible()
             LauncherPage.Today -> refreshTodayWidgets()
         }
+        schedulePageOnboarding(page)
     }
 
     @Suppress("DEPRECATION")
@@ -641,6 +654,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::onboardingController.isInitialized && onboardingController.isShowing) {
+            return super.dispatchTouchEvent(event)
+        }
         if (handleTwoFingerSwipeDownGesture(event)) {
             return true
         }
@@ -942,6 +958,7 @@ class MainActivity : AppCompatActivity() {
                 .setInterpolator(DecelerateInterpolator())
                 .start()
             applyAppListKeyboardPreference()
+            binding.appPickerRoot.post { maybeShowOnboarding(OnboardingSurface.AppList) }
         } else {
             resetAppListHomeTreatment()
             binding.appPickerRoot.animate()
@@ -1255,6 +1272,19 @@ class MainActivity : AppCompatActivity() {
             LauncherPage.Calendar -> onCalendarPageVisible()
             LauncherPage.Today,
             LauncherPage.Notes -> Unit
+        }
+        schedulePageOnboarding(page)
+    }
+
+    private fun schedulePageOnboarding(page: LauncherPage) {
+        binding.root.post {
+            maybeShowOnboarding(
+                when (page) {
+                    LauncherPage.Notes -> OnboardingSurface.Notes
+                    LauncherPage.Today -> OnboardingSurface.Today
+                    LauncherPage.Calendar -> OnboardingSurface.Calendar
+                },
+            )
         }
     }
 
@@ -1617,6 +1647,16 @@ class MainActivity : AppCompatActivity() {
         binding.settingsPanel.settingsScreenTimeCategory.setOnClickListener {
             showSettingsPage(SettingsPage.ScreenTime)
         }
+        binding.settingsPanel.onboardingResetRow.setOnClickListener {
+            onboardingController.reset()
+            Toast.makeText(this, R.string.onboarding_reset_done, Toast.LENGTH_SHORT).show()
+            routeToHomeScreen()
+            binding.root.post {
+                onboardingController.maybeShowWelcome {
+                    maybeShowOnboarding(OnboardingSurface.Home)
+                }
+            }
+        }
         binding.settingsPanel.settingsScreenTimePanel.focusModesEnabledSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (!isRenderingFocusModeState) {
                 viewModel.setFocusModesEnabled(isChecked)
@@ -1871,6 +1911,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             else -> Unit
+        }
+        binding.settingsPanel.root.post {
+            maybeShowOnboarding(
+                when (page) {
+                    SettingsPage.Index -> OnboardingSurface.Settings
+                    SettingsPage.Appearance -> OnboardingSurface.AppearanceSettings
+                    SettingsPage.Notes -> OnboardingSurface.NotesSettings
+                    SettingsPage.Calendar -> OnboardingSurface.CalendarSettings
+                    SettingsPage.Gestures -> OnboardingSurface.GesturesSettings
+                    SettingsPage.ScreenTime -> OnboardingSurface.ScreenTimeSettings
+                },
+            )
         }
     }
 
@@ -3119,11 +3171,16 @@ class MainActivity : AppCompatActivity() {
             refreshCalendarEvents()
         } else {
             renderCalendarPermissionState()
-            if (!hasRequestedCalendarPermission) {
-                viewModel.markCalendarPermissionRequested()
-                requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
+            if (!onboardingController.needsGuidance(OnboardingSurface.Calendar)) {
+                requestCalendarPermissionIfNeeded()
             }
         }
+    }
+
+    private fun requestCalendarPermissionIfNeeded() {
+        if (hasCalendarPermission() || hasRequestedCalendarPermission) return
+        viewModel.markCalendarPermissionRequested()
+        requestCalendarPermission.launch(Manifest.permission.READ_CALENDAR)
     }
 
     private fun refreshTodayWidgets() {
@@ -3879,6 +3936,7 @@ class MainActivity : AppCompatActivity() {
             performLightHapticFeedback()
         }
         renderTodayWidgets()
+        binding.todayRoot.post { maybeShowOnboarding(OnboardingSurface.TodayEdit) }
     }
 
     private fun exitTodayEditMode() {
@@ -4396,7 +4454,9 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (appBlockPromptController.isVisible) {
+                    if (onboardingController.skipCurrent()) {
+                        return
+                    } else if (appBlockPromptController.isVisible) {
                         hideAppBlockPrompt()
                     } else if (binding.gesturePickerRoot.isVisible) {
                         hideGesturePicker()
@@ -4597,6 +4657,7 @@ class MainActivity : AppCompatActivity() {
             .alpha(1f)
             .setDuration(EDIT_CONTROLS_FADE_MS)
             .start()
+        binding.editControls.post { maybeShowOnboarding(OnboardingSurface.HomeEdit) }
     }
 
     private fun exitEditMode() {
@@ -4722,6 +4783,7 @@ class MainActivity : AppCompatActivity() {
             .alpha(1f)
             .setDuration(SCREEN_TIME_FADE_MS)
             .start()
+        binding.screenTimePanel.root.post { maybeShowOnboarding(OnboardingSurface.ScreenTime) }
     }
 
     private fun hideScreenTimePage() {
@@ -4756,6 +4818,7 @@ class MainActivity : AppCompatActivity() {
             .start()
         binding.noteEditorInput.requestFocus()
         showNoteKeyboard()
+        binding.noteEditorRoot.post { maybeShowOnboarding(OnboardingSurface.NoteEditor) }
     }
 
     private fun hideNoteEditor() {
@@ -5149,6 +5212,7 @@ class MainActivity : AppCompatActivity() {
             binding.appPickerRoot.translationY = 0f
         }
         applyAppListKeyboardPreference()
+        binding.appPickerRoot.post { maybeShowOnboarding(OnboardingSurface.AppList) }
     }
 
     private fun hideAppPicker() {
@@ -5558,6 +5622,257 @@ class MainActivity : AppCompatActivity() {
 
     private fun showQuickAccessUnavailable() {
         Toast.makeText(this, R.string.quick_access_unavailable, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun maybeShowOnboarding(surface: OnboardingSurface) {
+        val usesKeyboard = surface == OnboardingSurface.AppList || surface == OnboardingSurface.NoteEditor
+        onboardingController.show(
+            surface = surface,
+            steps = onboardingSteps(surface),
+            onWillShow = {
+                if (usesKeyboard) {
+                    hideKeyboardForOnboarding(surface)
+                }
+            },
+            onClosed = {
+                when {
+                    surface == OnboardingSurface.AppList && isAppPickerVisible -> applyAppListKeyboardPreference()
+                    surface == OnboardingSurface.NoteEditor && isNoteEditorVisible -> {
+                        binding.noteEditorInput.requestFocus()
+                        showNoteKeyboard()
+                    }
+                    surface == OnboardingSurface.Calendar && isCalendarVisible -> {
+                        requestCalendarPermissionIfNeeded()
+                    }
+                }
+            },
+        )
+    }
+
+    private fun hideKeyboardForOnboarding(surface: OnboardingSurface) {
+        val view = when (surface) {
+            OnboardingSurface.NoteEditor -> binding.noteEditorInput
+            else -> binding.appSearchInput
+        }
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.hideSoftInputFromWindow(view.windowToken, 0)
+        view.clearFocus()
+    }
+
+    private fun onboardingSteps(surface: OnboardingSurface): List<OnboardingStep> {
+        return when (surface) {
+            OnboardingSurface.Home -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_layout_title),
+                    body = getString(R.string.onboarding_home_layout_body, onboardingPageLayoutSummary()),
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_shortcuts_title),
+                    body = getString(R.string.onboarding_home_shortcuts_body),
+                    target = { binding.shortcutList },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_quick_title),
+                    body = getString(R.string.onboarding_home_quick_body),
+                    target = {
+                        binding.quickAccessBar.takeIf { it.isVisible } ?: binding.clockView
+                    },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_gestures_title),
+                    body = getString(
+                        R.string.onboarding_home_gestures_body,
+                        gestureLabel(currentOpenScreenTimeGesture),
+                        gestureLabel(currentLockScreenGesture),
+                    ),
+                    target = { binding.clockDateContent },
+                ),
+            )
+
+            OnboardingSurface.AppList -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_app_search_title),
+                    body = getString(R.string.onboarding_app_search_body),
+                    target = { binding.appSearchInput },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_app_list_title),
+                    body = getString(R.string.onboarding_app_list_body),
+                    target = { binding.appPickerList },
+                ),
+            )
+
+            OnboardingSurface.HomeEdit -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_edit_title),
+                    body = getString(R.string.onboarding_home_edit_body),
+                    target = { binding.editControls },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_home_reorder_title),
+                    body = getString(R.string.onboarding_home_reorder_body),
+                    target = { binding.shortcutList },
+                ),
+            )
+
+            OnboardingSurface.Notes -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_notes_add_title),
+                    body = getString(R.string.onboarding_notes_add_body),
+                    target = { binding.addNoteButton },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_notes_list_title),
+                    body = getString(R.string.onboarding_notes_list_body),
+                    target = {
+                        binding.notesList.takeIf { it.isVisible } ?: binding.notesRoot
+                    },
+                ),
+            )
+
+            OnboardingSurface.NoteEditor -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_note_editor_title),
+                    body = getString(R.string.onboarding_note_editor_body),
+                    target = { binding.noteEditorInput },
+                ),
+            )
+
+            OnboardingSurface.Calendar -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_calendar_title),
+                    body = getString(R.string.onboarding_calendar_body),
+                    target = {
+                        binding.calendarPermissionPrompt.takeIf { it.isVisible }
+                            ?: binding.calendarEventList
+                    },
+                ),
+            )
+
+            OnboardingSurface.Today -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_today_title),
+                    body = getString(R.string.onboarding_today_body),
+                    target = { binding.todayWidgetGrid },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_today_edit_hint_title),
+                    body = getString(R.string.onboarding_today_edit_hint_body),
+                    target = { binding.todayHeader },
+                ),
+            )
+
+            OnboardingSurface.TodayEdit -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_today_edit_title),
+                    body = getString(R.string.onboarding_today_edit_body),
+                    target = { binding.todayWidgetGrid },
+                ),
+            )
+
+            OnboardingSurface.ScreenTime -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_screen_time_recap_title),
+                    body = getString(R.string.onboarding_screen_time_recap_body),
+                    target = { binding.screenTimePanel.screenTimeRecap },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_screen_time_details_title),
+                    body = getString(R.string.onboarding_screen_time_details_body),
+                    target = { binding.screenTimePanel.screenTimeHeaderRow },
+                ),
+            )
+
+            OnboardingSurface.Settings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_settings_title),
+                    body = getString(R.string.onboarding_settings_body),
+                    target = { binding.settingsPanel.settingsIndex },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_settings_reset_title),
+                    body = getString(R.string.onboarding_settings_reset_body),
+                    target = { binding.settingsPanel.onboardingResetRow },
+                ),
+            )
+
+            OnboardingSurface.AppearanceSettings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_appearance_title),
+                    body = getString(R.string.onboarding_appearance_body),
+                    target = { binding.settingsPanel.settingsAppearancePanel.root },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_pages_title),
+                    body = getString(R.string.onboarding_pages_body),
+                    target = { binding.settingsPanel.settingsAppearancePanel.pageArrangementView },
+                ),
+            )
+
+            OnboardingSurface.NotesSettings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_notes_settings_title),
+                    body = getString(R.string.onboarding_notes_settings_body),
+                    target = { binding.settingsPanel.settingsNotesPage },
+                ),
+            )
+
+            OnboardingSurface.CalendarSettings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_calendar_settings_title),
+                    body = getString(R.string.onboarding_calendar_settings_body),
+                    target = { binding.settingsPanel.settingsCalendarPage },
+                ),
+            )
+
+            OnboardingSurface.GesturesSettings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_gestures_settings_title),
+                    body = getString(R.string.onboarding_gestures_settings_body),
+                    target = { binding.settingsPanel.settingsGesturesPage },
+                ),
+            )
+
+            OnboardingSurface.ScreenTimeSettings -> listOf(
+                OnboardingStep(
+                    title = getString(R.string.onboarding_focus_settings_title),
+                    body = getString(R.string.onboarding_focus_settings_body),
+                    target = { binding.settingsPanel.settingsScreenTimePanel.focusModesEnabledRow },
+                ),
+                OnboardingStep(
+                    title = getString(R.string.onboarding_blocking_settings_title),
+                    body = getString(R.string.onboarding_blocking_settings_body),
+                    target = { binding.settingsPanel.settingsScreenTimePanel.appBlockingHeaderRow },
+                ),
+            )
+        }
+    }
+
+    private fun onboardingPageLayoutSummary(): String {
+        val state = viewModel.uiState.value
+        val pages = buildList {
+            if (state.showNotesPage) add(LauncherPage.Notes)
+            if (state.showCalendarPage) add(LauncherPage.Calendar)
+            if (state.showTodayPage) add(LauncherPage.Today)
+        }
+        if (pages.isEmpty()) return getString(R.string.onboarding_no_extra_pages)
+        return pages.joinToString(separator = ", ") { page ->
+            val pageLabel = getString(
+                when (page) {
+                    LauncherPage.Notes -> R.string.notes_page_title
+                    LauncherPage.Today -> R.string.today_page_title
+                    LauncherPage.Calendar -> R.string.calendar_page_title
+                },
+            )
+            val direction = getString(
+                when (currentPageArrangement.positionOf(page)) {
+                    PagePosition.Left -> R.string.onboarding_direction_left
+                    PagePosition.Right -> R.string.onboarding_direction_right
+                    PagePosition.Down -> R.string.onboarding_direction_down
+                },
+            )
+            getString(R.string.onboarding_page_layout_item, pageLabel, direction)
+        }
     }
 
     private fun showShortcutLimitReached() {
