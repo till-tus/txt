@@ -4907,7 +4907,7 @@ class MainActivity : AppCompatActivity() {
             availableApps.forEach { app ->
                 add(CommandPaletteItem.App(app, getString(R.string.command_palette_type_app)))
             }
-            currentNotes.forEach { note ->
+            currentNotes.filter { note -> note.isAvailableInCommandPalette(state.showNotesPage) }.forEach { note ->
                 val summary = when {
                     note.audioFileName != null -> getString(R.string.command_palette_type_voice_note)
                     note.isPinned -> getString(R.string.command_palette_type_pinned_note)

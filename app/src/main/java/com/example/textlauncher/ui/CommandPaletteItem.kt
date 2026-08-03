@@ -4,6 +4,10 @@ import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.CalendarEvent
 import com.example.textlauncher.domain.QuickNote
 
+internal fun QuickNote.isAvailableInCommandPalette(notesPageEnabled: Boolean): Boolean {
+    return audioFileName == null || notesPageEnabled
+}
+
 internal sealed interface CommandPaletteItem {
     val stableKey: String
     val title: String

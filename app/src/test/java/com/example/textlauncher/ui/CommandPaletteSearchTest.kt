@@ -43,6 +43,21 @@ class CommandPaletteSearchTest {
         assertEquals(2L, (results.first() as CommandPaletteItem.Note).note.id)
     }
 
+    @Test
+    fun voiceNote_isUnavailableWhenNotesPageIsDisabled() {
+        val voiceNote = QuickNote(id = 3, text = "", audioFileName = "voice-note.m4a")
+
+        assertEquals(false, voiceNote.isAvailableInCommandPalette(notesPageEnabled = false))
+        assertEquals(true, voiceNote.isAvailableInCommandPalette(notesPageEnabled = true))
+    }
+
+    @Test
+    fun textNote_remainsAvailableWhenNotesPageIsDisabled() {
+        val textNote = QuickNote(id = 4, text = "Project plan")
+
+        assertEquals(true, textNote.isAvailableInCommandPalette(notesPageEnabled = false))
+    }
+
     private companion object {
         val items = listOf(
             CommandPaletteItem.App(
