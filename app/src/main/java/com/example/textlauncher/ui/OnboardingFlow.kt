@@ -16,6 +16,7 @@ import android.view.ViewGroup
 import android.view.accessibility.AccessibilityEvent
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.edit
 import androidx.core.view.ViewCompat
@@ -149,7 +150,9 @@ private class OnboardingStore(context: Context) {
 
 private class OnboardingOverlay(context: Context) : FrameLayout(context) {
     private val scrim = SpotlightScrimView(context)
-    private val card = LinearLayout(context)
+    private val card = OnboardingCardLayout(context)
+    private val textScroll = ScrollView(context)
+    private val textContent = LinearLayout(context)
     private val stepLabel = TextView(context)
     private val title = TextView(context)
     private val body = TextView(context)
@@ -185,12 +188,24 @@ private class OnboardingOverlay(context: Context) : FrameLayout(context) {
             setStroke(1.dp, Color.argb(72, 255, 255, 255))
         }
 
+        textScroll.isFillViewport = false
+        textScroll.overScrollMode = OVER_SCROLL_IF_CONTENT_SCROLLS
+        textContent.orientation = LinearLayout.VERTICAL
+        textContent.gravity = Gravity.START
+        textScroll.addView(
+            textContent,
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
         stepLabel.id = R.id.onboardingStepLabel
         stepLabel.setTextColor(Color.argb(185, 255, 255, 255))
         stepLabel.textSize = 12f
         stepLabel.typeface = Typeface.DEFAULT_BOLD
         stepLabel.letterSpacing = 0.08f
-        card.addView(
+        textContent.addView(
             stepLabel,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -204,7 +219,7 @@ private class OnboardingOverlay(context: Context) : FrameLayout(context) {
         title.typeface = Typeface.DEFAULT_BOLD
         title.setPadding(0, 8.dp, 0, 0)
         ViewCompat.setAccessibilityHeading(title, true)
-        card.addView(
+        textContent.addView(
             title,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -217,8 +232,16 @@ private class OnboardingOverlay(context: Context) : FrameLayout(context) {
         body.textSize = 16f
         body.setLineSpacing(3.dp.toFloat(), 1f)
         body.setPadding(0, 8.dp, 0, 8.dp)
-        card.addView(
+        textContent.addView(
             body,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            ),
+        )
+
+        card.addView(
+            textScroll,
             LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -402,6 +425,42 @@ private class OnboardingOverlay(context: Context) : FrameLayout(context) {
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+}
+
+/** Caps the scrollable copy while reserving space for the action row. */
+private class OnboardingCardLayout(context: Context) : LinearLayout(context) {
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        if (childCount != 2) {
+            super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            return
+        }
+
+        val measuredWidth = MeasureSpec.getSize(widthMeasureSpec)
+        val innerWidth = (measuredWidth - paddingLeft - paddingRight).coerceAtLeast(0)
+        val childWidthSpec = MeasureSpec.makeMeasureSpec(innerWidth, MeasureSpec.EXACTLY)
+        val naturalHeightSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        val scrollableCopy = getChildAt(0)
+        val actions = getChildAt(1)
+
+        scrollableCopy.measure(childWidthSpec, naturalHeightSpec)
+        val naturalCopyHeight = scrollableCopy.measuredHeight
+        actions.measure(childWidthSpec, naturalHeightSpec)
+
+        val naturalHeight = paddingTop + naturalCopyHeight + actions.measuredHeight + paddingBottom
+        val measuredHeight = resolveSize(naturalHeight, heightMeasureSpec)
+        val availableCopyHeight = (
+            measuredHeight - paddingTop - paddingBottom - actions.measuredHeight
+        ).coerceAtLeast(0)
+
+        scrollableCopy.measure(
+            childWidthSpec,
+            MeasureSpec.makeMeasureSpec(
+                naturalCopyHeight.coerceAtMost(availableCopyHeight),
+                MeasureSpec.EXACTLY,
+            ),
+        )
+        setMeasuredDimension(measuredWidth, measuredHeight)
+    }
 }
 
 private class SpotlightScrimView(context: Context) : View(context) {

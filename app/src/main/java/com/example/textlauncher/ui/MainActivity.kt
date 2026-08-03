@@ -585,6 +585,7 @@ class MainActivity : AppCompatActivity() {
             LauncherPage.Calendar -> onCalendarPageVisible()
             LauncherPage.Today -> refreshTodayWidgets()
         }
+        schedulePageOnboarding(page)
     }
 
     @Suppress("DEPRECATION")
@@ -653,6 +654,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (::onboardingController.isInitialized && onboardingController.isShowing) {
+            return super.dispatchTouchEvent(event)
+        }
         if (handleTwoFingerSwipeDownGesture(event)) {
             return true
         }
@@ -1269,6 +1273,10 @@ class MainActivity : AppCompatActivity() {
             LauncherPage.Today,
             LauncherPage.Notes -> Unit
         }
+        schedulePageOnboarding(page)
+    }
+
+    private fun schedulePageOnboarding(page: LauncherPage) {
         binding.root.post {
             maybeShowOnboarding(
                 when (page) {
