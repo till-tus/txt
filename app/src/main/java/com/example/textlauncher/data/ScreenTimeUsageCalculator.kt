@@ -12,6 +12,10 @@ enum class ScreenTimeUsageEventType {
 }
 
 object ScreenTimeUsageCalculator {
+    private val automaticallyIgnoredPackageNames = setOf(
+        ANDROID_AUTO_PACKAGE_NAME,
+    )
+
     fun calculatePackageUsage(
         events: List<ScreenTimeUsageEvent>,
         startMillis: Long,
@@ -24,7 +28,12 @@ object ScreenTimeUsageCalculator {
         val usageByPackage = mutableMapOf<String, Long>()
 
         events.sortedBy { it.timestampMillis }.forEach { event ->
-            if (event.packageName in ignoredPackageNames) return@forEach
+            if (
+                event.packageName in automaticallyIgnoredPackageNames ||
+                event.packageName in ignoredPackageNames
+            ) {
+                return@forEach
+            }
             when (event.type) {
                 ScreenTimeUsageEventType.Foreground -> {
                     activeSinceByPackage.putIfAbsent(event.packageName, event.timestampMillis)
@@ -56,6 +65,8 @@ object ScreenTimeUsageCalculator {
 
         return usageByPackage.filterValues { it > 0 }
     }
+
+    private const val ANDROID_AUTO_PACKAGE_NAME = "com.google.android.projection.gearhead"
 
     private fun addClampedUsage(
         usageByPackage: MutableMap<String, Long>,

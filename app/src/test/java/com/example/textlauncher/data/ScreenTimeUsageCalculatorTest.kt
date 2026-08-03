@@ -66,6 +66,22 @@ class ScreenTimeUsageCalculatorTest {
         assertEquals(mapOf(APP to 300L), usage)
     }
 
+    @Test
+    fun calculatePackageUsage_alwaysIgnoresAndroidAuto() {
+        val usage = ScreenTimeUsageCalculator.calculatePackageUsage(
+            events = listOf(
+                foreground(ANDROID_AUTO, timestampMillis = 1_100L),
+                background(ANDROID_AUTO, timestampMillis = 1_900L),
+                foreground(APP, timestampMillis = 1_200L),
+                background(APP, timestampMillis = 1_500L),
+            ),
+            startMillis = 1_000L,
+            endMillis = 2_000L,
+        )
+
+        assertEquals(mapOf(APP to 300L), usage)
+    }
+
     private fun foreground(packageName: String, timestampMillis: Long): ScreenTimeUsageEvent {
         return ScreenTimeUsageEvent(packageName, timestampMillis, ScreenTimeUsageEventType.Foreground)
     }
@@ -75,6 +91,7 @@ class ScreenTimeUsageCalculatorTest {
     }
 
     private companion object {
+        const val ANDROID_AUTO = "com.google.android.projection.gearhead"
         const val APP = "com.example.app"
         const val LAUNCHER_APP = "com.example.textlauncher"
         const val OTHER_APP = "com.example.other"
