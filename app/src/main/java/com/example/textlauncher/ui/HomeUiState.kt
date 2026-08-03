@@ -23,6 +23,7 @@ data class HomeUiState(
     val shortcutTextAlignment: ShortcutTextAlignment = ShortcutTextAlignment.Left,
     val maxShortcuts: Int = 5,
     val openAppListKeyboardAutomatically: Boolean = true,
+    val universalCommandPaletteEnabled: Boolean = false,
     val openScreenTimeGesture: LauncherGesture = LauncherGesture.TwoFingerSwipeDown,
     val lockScreenGesture: LauncherGesture = LauncherGesture.DoubleTap,
     val showNotesPage: Boolean = true,
