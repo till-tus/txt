@@ -5,6 +5,7 @@ import com.example.textlauncher.data.NoteStore
 import com.example.textlauncher.data.NoteStoreState
 import com.example.textlauncher.data.ShortcutStore
 import com.example.textlauncher.domain.AppShortcut
+import com.example.textlauncher.domain.FocusMode
 import com.example.textlauncher.domain.LauncherSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -102,17 +103,57 @@ class HomeViewModelTest {
         assertEquals("remember this", notes.saved.single().notes.single().text)
     }
 
-    private class FakeShortcutStore : ShortcutStore {
+    @Test
+    fun activeFocusMode_usesItsShortcutsAndAddsRestrictionsToGlobalSettings() = runTest(dispatcher) {
+        val standardShortcut = AppShortcut("Phone", "phone.app", "PhoneActivity")
+        val focusShortcut = AppShortcut("Docs", "docs.app", "DocsActivity")
+        val focusMode = FocusMode(
+            id = "focus",
+            name = "Focus",
+            blockedAppPackageNames = setOf("social.app"),
+            appBudgetMinutesByPackage = mapOf("mail.app" to 15),
+            shortcuts = listOf(focusShortcut),
+        )
+        val settings = FakeSettingsStore(
+            LauncherSettings(
+                blockedAppPackageNames = setOf("games.app"),
+                appBudgetMinutesByPackage = mapOf("mail.app" to 30, "video.app" to 60),
+                focusModesEnabled = true,
+                focusModes = listOf(focusMode),
+                manuallyActiveFocusModeId = focusMode.id,
+            ),
+        )
+        val shortcuts = FakeShortcutStore(listOf(standardShortcut))
+        val viewModel = HomeViewModel(
+            shortcutRepository = shortcuts,
+            settingsRepository = settings,
+            noteRepository = FakeNoteStore(),
+            persistenceDispatcher = dispatcher,
+        )
+
+        val state = viewModel.uiState.value
+        assertEquals(listOf(focusShortcut), state.visibleShortcuts)
+        assertEquals(setOf("games.app", "social.app"), state.effectiveBlockedAppPackageNames)
+        assertEquals(mapOf("mail.app" to 15, "video.app" to 60), state.effectiveAppBudgetMinutesByPackage)
+
+        viewModel.addShortcut(AppShortcut("Calendar", "calendar.app", "CalendarActivity"))
+        advanceUntilIdle()
+
+        assertEquals(2, viewModel.uiState.value.activeFocusMode?.mode?.shortcuts?.size)
+        assertEquals(listOf(standardShortcut), viewModel.uiState.value.shortcuts)
+    }
+
+    private class FakeShortcutStore(private val initial: List<AppShortcut> = emptyList()) : ShortcutStore {
         val saved = mutableListOf<List<AppShortcut>>()
-        override fun loadShortcuts(): List<AppShortcut> = emptyList()
+        override fun loadShortcuts(): List<AppShortcut> = initial
         override fun saveShortcuts(shortcuts: List<AppShortcut>) {
             saved += shortcuts
         }
     }
 
-    private class FakeSettingsStore : LauncherSettingsStore {
+    private class FakeSettingsStore(private val initial: LauncherSettings = LauncherSettings()) : LauncherSettingsStore {
         val saved = mutableListOf<LauncherSettings>()
-        override fun loadSettings(): LauncherSettings = LauncherSettings()
+        override fun loadSettings(): LauncherSettings = initial
         override fun saveSettings(settings: LauncherSettings) {
             saved += settings
         }

@@ -21,6 +21,10 @@ data class LauncherSettings(
     val blockedAppPackageNames: Set<String> = emptySet(),
     val appBudgetMinutesByPackage: Map<String, Int> = emptyMap(),
     val excludedScreenTimePackageNames: Set<String> = emptySet(),
+    val focusModesEnabled: Boolean = false,
+    val focusModes: List<FocusMode> = emptyList(),
+    val manuallyActiveFocusModeId: String? = null,
+    val focusSchedulesPausedUntilEpochMillis: Long = 0L,
     val hasRequestedCalendarPermission: Boolean = false,
 ) {
     val showScreenTimePage: Boolean

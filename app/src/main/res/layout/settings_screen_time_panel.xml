@@ -7,6 +7,82 @@
     android:visibility="gone">
 
     <LinearLayout
+        android:id="@+id/focusModesEnabledRow"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="20dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/focus_modes_title"
+                android:textColor="@color/launcher_text"
+                android:textSize="17sp" />
+
+            <TextView
+                android:id="@+id/focusModesStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@string/focus_modes_disabled"
+                android:textColor="@color/launcher_text_secondary"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/focusModesEnabledSwitch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/focus_modes_title" />
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/addFocusModeButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:text="@string/focus_mode_add"
+        android:textColor="@color/launcher_text"
+        android:textSize="16sp" />
+
+    <LinearLayout
+        android:id="@+id/focusModesList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="16dp"
+        android:text="@string/focus_modes_overlap_explanation"
+        android:textColor="@color/launcher_text_secondary"
+        android:textSize="13sp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginHorizontal="24dp"
+        android:background="@color/settings_option_divider" />
+
+    <LinearLayout
         android:id="@+id/appBlockingHeaderRow"
         android:layout_width="match_parent"
         android:layout_height="64dp"

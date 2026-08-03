@@ -33,6 +33,7 @@ The launcher is organized around a central Home screen. The diagram shows the de
 - Screen-time page with today usage, weekly usage, top-app recap, and daily average.
 - App blocking prompts that slow down impulsive launches.
 - Daily app budgets for selected apps.
+- Opt-in, user-created focus modes with manual or recurring activation, per-mode blocks and budgets, and mode-specific Home shortcuts.
 - Intention tracking so each intentional app launch can be paired with a planned duration.
 - Notes page for quick local text notes and optional voice notes.
 - Calendar page for upcoming events, with selectable calendars.
@@ -70,7 +71,7 @@ Text Launcher can be set as your Android home app. Some features ask for optiona
 - Accessibility access: optional, used only when the lock-screen gesture is enabled and triggered. Text Launcher uses Android's lock-screen accessibility action instead of Device Admin so biometric unlock can continue to behave like a normal screen lock.
 - Package deletion request: used only when you choose Uninstall from an app context menu. Android still shows its normal uninstall confirmation flow, and Text Launcher removes shortcuts for apps after they are uninstalled.
 
-The app stores launcher settings, Today widget layout, text notes, voice-note audio, shortcuts, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
+The app stores launcher settings, Today widget layout, text notes, voice-note audio, shortcuts, focus modes, app budgets, and intention data locally on the device. See `PRIVACY.md` for more detail.
 
 ## Requirements
 
