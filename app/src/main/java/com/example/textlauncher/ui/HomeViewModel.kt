@@ -55,6 +55,7 @@ class HomeViewModel(
             shortcutTextAlignment = initialSettings.shortcutTextAlignment,
             maxShortcuts = initialSettings.maxShortcuts,
             openAppListKeyboardAutomatically = initialSettings.openAppListKeyboardAutomatically,
+            universalCommandPaletteEnabled = initialSettings.universalCommandPaletteEnabled,
             openScreenTimeGesture = initialSettings.openScreenTimeGesture,
             lockScreenGesture = initialSettings.lockScreenGesture,
             showNotesPage = initialSettings.showNotesPage,
@@ -228,6 +229,12 @@ class HomeViewModel(
         _uiState.update { state ->
             val updated = state.copy(openAppListKeyboardAutomatically = openAutomatically)
             updated
+        }
+    }
+
+    fun setUniversalCommandPaletteEnabled(enabled: Boolean) {
+        _uiState.update { state ->
+            state.copy(universalCommandPaletteEnabled = enabled)
         }
     }
 
@@ -484,6 +491,7 @@ class HomeViewModel(
             shortcutTextAlignment = shortcutTextAlignment,
             maxShortcuts = maxShortcuts,
             openAppListKeyboardAutomatically = openAppListKeyboardAutomatically,
+            universalCommandPaletteEnabled = universalCommandPaletteEnabled,
             openScreenTimeGesture = openScreenTimeGesture,
             lockScreenGesture = lockScreenGesture,
             showNotesPage = showNotesPage,
