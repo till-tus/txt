@@ -75,6 +75,38 @@
 
         </FrameLayout>
 
+        <LinearLayout
+            android:id="@+id/focusModeBar"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="24dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/focusModeName"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:gravity="center_vertical"
+                android:maxLines="1"
+                android:textColor="@color/launcher_text"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/deactivateFocusModeButton"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:text="@string/focus_mode_turn_off"
+                android:textColor="@color/launcher_text"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/shortcutList"
             android:layout_width="match_parent"

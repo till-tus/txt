@@ -156,6 +156,48 @@
     <string name="app_blocking_proceed_countdown">Öffnen (%1$d)</string>
     <string name="app_blocking_cancel">Abbrechen</string>
 
+    <!-- Focus modes -->
+    <string name="focus_modes_title">Fokusmodi</string>
+    <string name="focus_modes_disabled">Aus · Launcher bleibt unverändert</string>
+    <string name="focus_modes_ready">Ein · kein Modus aktiv</string>
+    <string name="focus_modes_active">Aktiv: %1$s</string>
+    <string name="focus_modes_paused">Zeitpläne bis morgen pausiert</string>
+    <string name="focus_modes_overlap_explanation">Geplante Modi werden in Listenreihenfolge geprüft. Bei Überschneidungen gilt der erste passende Modus. Manuelle Aktivierung hat Vorrang.</string>
+    <string name="focus_mode_add">+ Fokusmodus erstellen</string>
+    <string name="focus_mode_create_title">Fokusmodus erstellen</string>
+    <string name="focus_mode_edit_title">Fokusmodus bearbeiten</string>
+    <string name="focus_mode_name_hint">Name des Modus</string>
+    <string name="focus_mode_schedule">Wiederkehrender Zeitplan</string>
+    <string name="focus_mode_schedule_days_required">Wähle mindestens einen Wochentag</string>
+    <string name="focus_mode_start_time">Start %1$s</string>
+    <string name="focus_mode_end_time">Ende %1$s</string>
+    <string name="focus_mode_blocked_apps">Gesperrte Apps · %1$d</string>
+    <string name="focus_mode_budgets">App-Limits · %1$d</string>
+    <string name="focus_mode_shortcuts">Startseiten-Apps · %1$d/%2$d</string>
+    <string name="focus_mode_no_schedule">Nur manuell</string>
+    <string name="focus_mode_schedule_summary">%1$s · %2$s–%3$s</string>
+    <string name="focus_mode_activate">Aktivieren</string>
+    <string name="focus_mode_active">Aktiv</string>
+    <string name="focus_mode_turn_off">Ausschalten</string>
+    <string name="focus_mode_home_active">Fokus · %1$s</string>
+    <string name="focus_mode_save">Speichern</string>
+    <string name="focus_mode_delete">Löschen</string>
+    <string name="focus_mode_delete_title">%1$s löschen?</string>
+    <string name="focus_mode_delete_message">Zeitplan, Einschränkungen und Startseiten-Apps werden entfernt.</string>
+    <string name="focus_mode_name_required">Gib einen Namen ein</string>
+    <string name="focus_mode_apps_unavailable">Apps werden noch geladen</string>
+    <string name="focus_mode_budget_picker_title">App-Limit auswählen</string>
+    <string name="focus_mode_budget_for_app">Limit für %1$s</string>
+    <string name="focus_mode_budget_off">Aus</string>
+    <string name="focus_mode_shortcut_limit">App-Limit pro Fokusmodus: %1$d</string>
+    <string name="weekday_monday_short">M</string>
+    <string name="weekday_tuesday_short">D</string>
+    <string name="weekday_wednesday_short">M</string>
+    <string name="weekday_thursday_short">D</string>
+    <string name="weekday_friday_short">F</string>
+    <string name="weekday_saturday_short">S</string>
+    <string name="weekday_sunday_short">S</string>
+
     <!-- Notes -->
     <string name="notes_page_title">Notizen</string>
     <string name="voice_notes_mode">Sprachnotizen</string>

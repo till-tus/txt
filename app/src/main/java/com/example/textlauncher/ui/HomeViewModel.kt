@@ -8,6 +8,8 @@ import com.example.textlauncher.data.NoteStoreState
 import com.example.textlauncher.data.ShortcutStore
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.ClockDisplayMode
+import com.example.textlauncher.domain.FocusMode
+import com.example.textlauncher.domain.FocusModeResolver
 import com.example.textlauncher.domain.GestureAction
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.LauncherSettings
@@ -31,6 +33,9 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import java.time.Instant
+import java.time.ZoneId
+import java.util.UUID
 
 @OptIn(FlowPreview::class)
 class HomeViewModel(
@@ -38,6 +43,8 @@ class HomeViewModel(
     private val settingsRepository: LauncherSettingsStore,
     private val noteRepository: NoteStore,
     persistenceDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val nowEpochMillis: () -> Long = System::currentTimeMillis,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
     private val initialSettings = settingsRepository.loadSettings()
     private val initialNoteState = noteRepository.loadState()
@@ -66,8 +73,12 @@ class HomeViewModel(
             blockedAppPackageNames = initialSettings.blockedAppPackageNames,
             appBudgetMinutesByPackage = initialSettings.appBudgetMinutesByPackage,
             excludedScreenTimePackageNames = initialSettings.excludedScreenTimePackageNames,
+            focusModesEnabled = initialSettings.focusModesEnabled,
+            focusModes = initialSettings.focusModes,
+            manuallyActiveFocusModeId = initialSettings.manuallyActiveFocusModeId,
+            focusSchedulesPausedUntilEpochMillis = initialSettings.focusSchedulesPausedUntilEpochMillis,
             hasRequestedCalendarPermission = initialSettings.hasRequestedCalendarPermission,
-        ),
+        ).withResolvedFocusMode(),
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private val settingsPersistenceLock = Any()
@@ -113,43 +124,57 @@ class HomeViewModel(
 
     fun addShortcut(shortcut: AppShortcut) {
         _uiState.update { state ->
-            if (state.shortcuts.size >= state.maxShortcuts) return@update state
-
-            val updated = state.shortcuts + shortcut
-            state.copy(shortcuts = updated)
+            val activeMode = state.activeFocusMode?.mode
+            if (state.visibleShortcuts.size >= state.maxShortcuts) return@update state
+            if (activeMode == null) {
+                state.copy(shortcuts = state.shortcuts + shortcut)
+            } else {
+                state.updateFocusMode(activeMode.copy(shortcuts = activeMode.shortcuts + shortcut))
+            }
         }
     }
 
     fun canAddShortcut(): Boolean {
-        return _uiState.value.shortcuts.size < _uiState.value.maxShortcuts
+        return _uiState.value.visibleShortcuts.size < _uiState.value.maxShortcuts
     }
 
     fun deleteShortcut(shortcut: AppShortcut) {
         _uiState.update { state ->
-            val updated = state.shortcuts.toMutableList()
+            val activeMode = state.activeFocusMode?.mode
+            val updated = state.visibleShortcuts.toMutableList()
             if (!updated.remove(shortcut)) return@update state
-
-            state.copy(shortcuts = updated)
+            if (activeMode == null) {
+                state.copy(shortcuts = updated)
+            } else {
+                state.updateFocusMode(activeMode.copy(shortcuts = updated))
+            }
         }
     }
 
     fun deleteShortcutsForPackage(packageName: String) {
         _uiState.update { state ->
-            val updated = state.shortcuts.filterNot { it.packageName == packageName }
-            if (updated.size == state.shortcuts.size) return@update state
-
-            state.copy(shortcuts = updated)
+            val standardShortcuts = state.shortcuts.filterNot { it.packageName == packageName }
+            val focusModes = state.focusModes.map { mode ->
+                mode.copy(shortcuts = mode.shortcuts.filterNot { it.packageName == packageName })
+            }
+            if (standardShortcuts == state.shortcuts && focusModes == state.focusModes) return@update state
+            state.copy(shortcuts = standardShortcuts, focusModes = focusModes).withResolvedFocusMode()
         }
     }
 
     fun moveShortcut(fromPosition: Int, toPosition: Int) {
         _uiState.update { state ->
-            val updated = state.shortcuts.toMutableList()
+            val activeMode = state.activeFocusMode?.mode
+            val updated = state.visibleShortcuts.toMutableList()
             if (fromPosition !in updated.indices || toPosition !in updated.indices) return@update state
 
             val moved = updated.removeAt(fromPosition)
             updated.add(toPosition, moved)
-            state.copy(shortcuts = updated)
+            if (activeMode == null) {
+                state.copy(shortcuts = updated)
+            } else {
+                state.updateFocusMode(activeMode.copy(shortcuts = updated))
+            }
         }
     }
 
@@ -192,7 +217,7 @@ class HomeViewModel(
                 rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
             )
             if (updated == state) return@update state
-            updated
+            updated.withResolvedFocusMode()
         }
     }
 
@@ -340,10 +365,86 @@ class HomeViewModel(
                 excludedScreenTimePackageNames = state.excludedScreenTimePackageNames - packageName,
                 leftQuickAccess = state.leftQuickAccess?.takeUnless { it.packageName == packageName },
                 rightQuickAccess = state.rightQuickAccess?.takeUnless { it.packageName == packageName },
+                focusModes = state.focusModes.map { mode ->
+                    mode.copy(
+                        blockedAppPackageNames = mode.blockedAppPackageNames - packageName,
+                        appBudgetMinutesByPackage = mode.appBudgetMinutesByPackage - packageName,
+                        shortcuts = mode.shortcuts.filterNot { it.packageName == packageName },
+                    )
+                },
             )
             if (updated == state) return@update state
             updated
         }
+    }
+
+    fun setFocusModesEnabled(enabled: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                focusModesEnabled = enabled,
+                manuallyActiveFocusModeId = if (enabled) state.manuallyActiveFocusModeId else null,
+                focusSchedulesPausedUntilEpochMillis = if (enabled) state.focusSchedulesPausedUntilEpochMillis else 0L,
+            ).withResolvedFocusMode()
+        }
+    }
+
+    fun createFocusMode(name: String): String? {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty()) return null
+        val mode = FocusMode(id = UUID.randomUUID().toString(), name = trimmedName)
+        _uiState.update { state -> state.copy(focusModes = state.focusModes + mode).withResolvedFocusMode() }
+        return mode.id
+    }
+
+    fun updateFocusMode(mode: FocusMode) {
+        if (mode.name.isBlank()) return
+        _uiState.update { state ->
+            if (state.focusModes.none { it.id == mode.id }) return@update state
+            state.updateFocusMode(mode.copy(name = mode.name.trim()))
+        }
+    }
+
+    fun deleteFocusMode(modeId: String) {
+        _uiState.update { state ->
+            if (state.focusModes.none { it.id == modeId }) return@update state
+            state.copy(
+                focusModes = state.focusModes.filterNot { it.id == modeId },
+                manuallyActiveFocusModeId = state.manuallyActiveFocusModeId?.takeUnless { it == modeId },
+            ).withResolvedFocusMode()
+        }
+    }
+
+    fun activateFocusMode(modeId: String) {
+        _uiState.update { state ->
+            if (state.focusModes.none { it.id == modeId }) return@update state
+            state.copy(
+                focusModesEnabled = true,
+                manuallyActiveFocusModeId = modeId,
+                focusSchedulesPausedUntilEpochMillis = 0L,
+            ).withResolvedFocusMode()
+        }
+    }
+
+    fun deactivateFocusMode() {
+        _uiState.update { state ->
+            state.copy(
+                manuallyActiveFocusModeId = null,
+                focusSchedulesPausedUntilEpochMillis = startOfTomorrowEpochMillis(),
+            ).withResolvedFocusMode()
+        }
+    }
+
+    fun resumeFocusSchedules() {
+        _uiState.update { state ->
+            state.copy(
+                manuallyActiveFocusModeId = null,
+                focusSchedulesPausedUntilEpochMillis = 0L,
+            ).withResolvedFocusMode()
+        }
+    }
+
+    fun refreshFocusMode() {
+        _uiState.update { state -> state.withResolvedFocusMode() }
     }
 
     fun markCalendarPermissionRequested() {
@@ -502,8 +603,41 @@ class HomeViewModel(
             blockedAppPackageNames = blockedAppPackageNames,
             appBudgetMinutesByPackage = appBudgetMinutesByPackage,
             excludedScreenTimePackageNames = excludedScreenTimePackageNames,
+            focusModesEnabled = focusModesEnabled,
+            focusModes = focusModes,
+            manuallyActiveFocusModeId = manuallyActiveFocusModeId,
+            focusSchedulesPausedUntilEpochMillis = focusSchedulesPausedUntilEpochMillis,
             hasRequestedCalendarPermission = hasRequestedCalendarPermission,
         )
+    }
+
+    private fun HomeUiState.updateFocusMode(updatedMode: FocusMode): HomeUiState {
+        return copy(
+            focusModes = focusModes.map { mode -> if (mode.id == updatedMode.id) updatedMode else mode },
+        ).withResolvedFocusMode()
+    }
+
+    private fun HomeUiState.withResolvedFocusMode(): HomeUiState {
+        return copy(
+            activeFocusMode = FocusModeResolver.resolve(
+                focusModesEnabled = focusModesEnabled,
+                focusModes = focusModes,
+                manuallyActiveFocusModeId = manuallyActiveFocusModeId,
+                schedulesPausedUntilEpochMillis = focusSchedulesPausedUntilEpochMillis,
+                nowEpochMillis = nowEpochMillis(),
+                zoneId = zoneId,
+            ),
+        )
+    }
+
+    private fun startOfTomorrowEpochMillis(): Long {
+        return Instant.ofEpochMilli(nowEpochMillis())
+            .atZone(zoneId)
+            .toLocalDate()
+            .plusDays(1)
+            .atStartOfDay(zoneId)
+            .toInstant()
+            .toEpochMilli()
     }
 
     private fun HomeUiState.toNoteStoreState(): NoteStoreState {

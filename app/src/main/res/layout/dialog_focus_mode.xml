@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <EditText
+            android:id="@+id/focusModeNameInput"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="@string/focus_mode_name_hint"
+            android:importantForAutofill="no"
+            android:inputType="textCapSentences"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:textColor="@color/launcher_text"
+            android:textColorHint="@color/launcher_text_secondary" />
+
+        <LinearLayout
+            android:id="@+id/focusModeScheduleRow"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:text="@string/focus_mode_schedule"
+                android:textColor="@color/launcher_text"
+                android:textSize="16sp" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/focusModeScheduleSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/focusModeScheduleOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <CheckBox android:id="@+id/focusMonday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_monday_short" android:textColor="@color/launcher_text" />
+                <CheckBox android:id="@+id/focusTuesday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_tuesday_short" android:textColor="@color/launcher_text" />
+                <CheckBox android:id="@+id/focusWednesday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_wednesday_short" android:textColor="@color/launcher_text" />
+                <CheckBox android:id="@+id/focusThursday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_thursday_short" android:textColor="@color/launcher_text" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <CheckBox android:id="@+id/focusFriday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_friday_short" android:textColor="@color/launcher_text" />
+                <CheckBox android:id="@+id/focusSaturday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_saturday_short" android:textColor="@color/launcher_text" />
+                <CheckBox android:id="@+id/focusSunday" style="@style/Widget.AppCompat.CompoundButton.CheckBox" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:buttonTint="@color/launcher_text" android:gravity="center" android:text="@string/weekday_sunday_short" android:textColor="@color/launcher_text" />
+                <Space android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/focusStartTimeButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textColor="@color/launcher_text"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/focusEndTimeButton"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:textColor="@color/launcher_text"
+                    android:textSize="16sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/focusBlockedAppsButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/launcher_text"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/focusBudgetsButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/launcher_text"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/focusShortcutsButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:textColor="@color/launcher_text"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+
+</ScrollView>

@@ -161,6 +161,48 @@
     <string name="app_blocking_proceed_countdown">Proceed (%1$d)</string>
     <string name="app_blocking_cancel">Cancel</string>
 
+    <!-- Focus modes -->
+    <string name="focus_modes_title">Focus modes</string>
+    <string name="focus_modes_disabled">Off · no launcher behavior changes</string>
+    <string name="focus_modes_ready">On · no mode active</string>
+    <string name="focus_modes_active">Active: %1$s</string>
+    <string name="focus_modes_paused">Schedules paused until tomorrow</string>
+    <string name="focus_modes_overlap_explanation">Scheduled modes are checked in list order. If schedules overlap, the first matching mode wins. Manual activation overrides schedules.</string>
+    <string name="focus_mode_add">+ Create focus mode</string>
+    <string name="focus_mode_create_title">Create focus mode</string>
+    <string name="focus_mode_edit_title">Edit focus mode</string>
+    <string name="focus_mode_name_hint">Mode name</string>
+    <string name="focus_mode_schedule">Recurring schedule</string>
+    <string name="focus_mode_schedule_days_required">Choose at least one schedule day</string>
+    <string name="focus_mode_start_time">Starts %1$s</string>
+    <string name="focus_mode_end_time">Ends %1$s</string>
+    <string name="focus_mode_blocked_apps">Blocked apps · %1$d</string>
+    <string name="focus_mode_budgets">App budgets · %1$d</string>
+    <string name="focus_mode_shortcuts">Home shortcuts · %1$d/%2$d</string>
+    <string name="focus_mode_no_schedule">Manual only</string>
+    <string name="focus_mode_schedule_summary">%1$s · %2$s–%3$s</string>
+    <string name="focus_mode_activate">Activate</string>
+    <string name="focus_mode_active">Active</string>
+    <string name="focus_mode_turn_off">Turn off</string>
+    <string name="focus_mode_home_active">Focus · %1$s</string>
+    <string name="focus_mode_save">Save</string>
+    <string name="focus_mode_delete">Delete</string>
+    <string name="focus_mode_delete_title">Delete %1$s?</string>
+    <string name="focus_mode_delete_message">Its schedule, restrictions, and Home shortcuts will be removed.</string>
+    <string name="focus_mode_name_required">Enter a mode name</string>
+    <string name="focus_mode_apps_unavailable">Apps are still loading</string>
+    <string name="focus_mode_budget_picker_title">Choose an app budget</string>
+    <string name="focus_mode_budget_for_app">Budget for %1$s</string>
+    <string name="focus_mode_budget_off">Off</string>
+    <string name="focus_mode_shortcut_limit">Focus mode shortcut limit: %1$d</string>
+    <string name="weekday_monday_short">M</string>
+    <string name="weekday_tuesday_short">T</string>
+    <string name="weekday_wednesday_short">W</string>
+    <string name="weekday_thursday_short">T</string>
+    <string name="weekday_friday_short">F</string>
+    <string name="weekday_saturday_short">S</string>
+    <string name="weekday_sunday_short">S</string>
+
     <!-- Notes -->
     <string name="notes_page_title">Notes</string>
     <string name="voice_notes_mode">Voice notes</string>

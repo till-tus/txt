@@ -1,7 +1,9 @@
 package com.example.textlauncher.ui
 
 import com.example.textlauncher.domain.ClockDisplayMode
+import com.example.textlauncher.domain.ActiveFocusMode
 import com.example.textlauncher.domain.AppShortcut
+import com.example.textlauncher.domain.FocusMode
 import com.example.textlauncher.domain.LauncherGesture
 import com.example.textlauncher.domain.PageArrangement
 import com.example.textlauncher.domain.QuickNote
@@ -34,8 +36,27 @@ data class HomeUiState(
     val blockedAppPackageNames: Set<String> = emptySet(),
     val appBudgetMinutesByPackage: Map<String, Int> = emptyMap(),
     val excludedScreenTimePackageNames: Set<String> = emptySet(),
+    val focusModesEnabled: Boolean = false,
+    val focusModes: List<FocusMode> = emptyList(),
+    val manuallyActiveFocusModeId: String? = null,
+    val focusSchedulesPausedUntilEpochMillis: Long = 0L,
+    val activeFocusMode: ActiveFocusMode? = null,
     val hasRequestedCalendarPermission: Boolean = false,
 ) {
     val showScreenTimePage: Boolean
         get() = openScreenTimeGesture != LauncherGesture.None
+
+    val visibleShortcuts: List<AppShortcut>
+        get() = activeFocusMode?.mode?.shortcuts ?: shortcuts
+
+    val effectiveBlockedAppPackageNames: Set<String>
+        get() = blockedAppPackageNames + activeFocusMode?.mode?.blockedAppPackageNames.orEmpty()
+
+    val effectiveAppBudgetMinutesByPackage: Map<String, Int>
+        get() = buildMap {
+            putAll(appBudgetMinutesByPackage)
+            activeFocusMode?.mode?.appBudgetMinutesByPackage.orEmpty().forEach { (packageName, minutes) ->
+                put(packageName, minOf(get(packageName) ?: minutes, minutes))
+            }
+        }
 }

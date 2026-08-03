@@ -67,6 +67,15 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
                 KEY_EXCLUDED_SCREEN_TIME_PACKAGE_NAMES,
                 emptySet(),
             ).orEmpty(),
+            focusModesEnabled = preferences.getBoolean(KEY_FOCUS_MODES_ENABLED, false),
+            focusModes = preferences.getString(KEY_FOCUS_MODES, null)
+                ?.let(FocusModeJsonCodec::decodeOrEmpty)
+                .orEmpty(),
+            manuallyActiveFocusModeId = preferences.getString(KEY_MANUALLY_ACTIVE_FOCUS_MODE_ID, null),
+            focusSchedulesPausedUntilEpochMillis = preferences.getLong(
+                KEY_FOCUS_SCHEDULES_PAUSED_UNTIL,
+                0L,
+            ),
             hasRequestedCalendarPermission = preferences.getBoolean(KEY_HAS_REQUESTED_CALENDAR_PERMISSION, false),
         )
     }
@@ -102,6 +111,10 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
                 settings.appBudgetMinutesByPackage.map { (packageName, minutes) -> "$packageName|$minutes" }.toSet(),
             )
             putStringSet(KEY_EXCLUDED_SCREEN_TIME_PACKAGE_NAMES, settings.excludedScreenTimePackageNames)
+            putBoolean(KEY_FOCUS_MODES_ENABLED, settings.focusModesEnabled)
+            putString(KEY_FOCUS_MODES, FocusModeJsonCodec.encode(settings.focusModes))
+            putString(KEY_MANUALLY_ACTIVE_FOCUS_MODE_ID, settings.manuallyActiveFocusModeId)
+            putLong(KEY_FOCUS_SCHEDULES_PAUSED_UNTIL, settings.focusSchedulesPausedUntilEpochMillis)
             putBoolean(KEY_HAS_REQUESTED_CALENDAR_PERMISSION, settings.hasRequestedCalendarPermission)
         }
     }
@@ -114,6 +127,13 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
             blockedAppPackageNames = current.blockedAppPackageNames - packageName,
             appBudgetMinutesByPackage = current.appBudgetMinutesByPackage - packageName,
             excludedScreenTimePackageNames = current.excludedScreenTimePackageNames - packageName,
+            focusModes = current.focusModes.map { mode ->
+                mode.copy(
+                    blockedAppPackageNames = mode.blockedAppPackageNames - packageName,
+                    appBudgetMinutesByPackage = mode.appBudgetMinutesByPackage - packageName,
+                    shortcuts = mode.shortcuts.filterNot { it.packageName == packageName },
+                )
+            },
         )
         if (updated != current) {
             saveSettings(updated)
@@ -232,6 +252,10 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
         const val KEY_BLOCKED_APP_PACKAGE_NAMES = "blockedAppPackageNames"
         const val KEY_APP_BUDGETS = "appBudgets"
         const val KEY_EXCLUDED_SCREEN_TIME_PACKAGE_NAMES = "excludedScreenTimePackageNames"
+        const val KEY_FOCUS_MODES_ENABLED = "focusModesEnabled"
+        const val KEY_FOCUS_MODES = "focusModes"
+        const val KEY_MANUALLY_ACTIVE_FOCUS_MODE_ID = "manuallyActiveFocusModeId"
+        const val KEY_FOCUS_SCHEDULES_PAUSED_UNTIL = "focusSchedulesPausedUntil"
         const val KEY_HAS_REQUESTED_CALENDAR_PERMISSION = "hasRequestedCalendarPermission"
         const val DEFAULT_WALLPAPER_DIM_PERCENT = 70
     }

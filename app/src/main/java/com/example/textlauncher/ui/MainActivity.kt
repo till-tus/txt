@@ -5,6 +5,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.app.PendingIntent
+import android.app.TimePickerDialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ActivityNotFoundException
@@ -88,9 +89,13 @@ import com.example.textlauncher.data.ShortcutRepository
 import com.example.textlauncher.data.TodayNotificationCenter
 import com.example.textlauncher.data.TodayWidgetRepository
 import com.example.textlauncher.databinding.ActivityMainBinding
+import com.example.textlauncher.databinding.DialogFocusModeBinding
 import com.example.textlauncher.databinding.ItemAppBudgetSelectionBinding
 import com.example.textlauncher.databinding.ItemAppBlockSelectionBinding
 import com.example.textlauncher.databinding.ItemCalendarSelectionBinding
+import com.example.textlauncher.databinding.ItemFocusModeBinding
+import com.example.textlauncher.domain.FocusMode
+import com.example.textlauncher.domain.FocusSchedule
 import com.example.textlauncher.domain.ClockDisplayMode
 import com.example.textlauncher.domain.AppShortcut
 import com.example.textlauncher.domain.CalendarEvent
@@ -117,6 +122,11 @@ import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 import java.text.DateFormat
+import java.time.LocalTime
+import java.time.DayOfWeek
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.time.format.TextStyle
 import java.util.Date
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
@@ -163,6 +173,8 @@ class MainActivity : AppCompatActivity() {
     private var blockableApps = emptyList<AppShortcut>()
     private var currentBlockedAppPackageNames = emptySet<String>()
     private var currentAppBudgetMinutesByPackage = emptyMap<String, Int>()
+    private var currentGlobalBlockedAppPackageNames = emptySet<String>()
+    private var currentGlobalAppBudgetMinutesByPackage = emptyMap<String, Int>()
     private var currentExcludedScreenTimePackageNames = emptySet<String>()
     private var currentPageArrangement = PageArrangement.Default
     private var currentLeftQuickAccess: QuickAccessTarget? = null
@@ -214,6 +226,7 @@ class MainActivity : AppCompatActivity() {
     private var isAppBlockingExpanded = false
     private var isAppBudgetsExpanded = false
     private var isScreenTimeExclusionsExpanded = false
+    private var isRenderingFocusModeState = false
     private val packageRemovedReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != Intent.ACTION_PACKAGE_REMOVED) return
@@ -247,6 +260,13 @@ class MainActivity : AppCompatActivity() {
     private var pendingUndoNoteId: Long? = null
     private val noteUndoDismissRunnable = Runnable {
         hideNoteUndo()
+    }
+    private val focusModeRefreshHandler = Handler(Looper.getMainLooper())
+    private val focusModeRefreshRunnable = object : Runnable {
+        override fun run() {
+            viewModel.refreshFocusMode()
+            focusModeRefreshHandler.postDelayed(this, FOCUS_MODE_REFRESH_INTERVAL_MS)
+        }
     }
     private val appUsageIntentionRepository by lazy { AppUsageIntentionRepository(applicationContext) }
     private val launcherDataSource by lazy {
@@ -438,6 +458,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        focusModeRefreshHandler.removeCallbacks(focusModeRefreshRunnable)
+        focusModeRefreshHandler.post(focusModeRefreshRunnable)
         if (hasCalendarPermission()) {
             refreshCalendars()
             if (isCalendarVisible) {
@@ -563,6 +585,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        focusModeRefreshHandler.removeCallbacks(focusModeRefreshRunnable)
         viewModel.flushPendingSettings()
         stopVoiceNoteRecording(save = true)
         stopVoiceNotePlayback()
@@ -583,6 +606,7 @@ class MainActivity : AppCompatActivity() {
         releaseVoiceNotePlayer()
         resetInFlightAppListDrag()
         noteUndoHandler.removeCallbacks(noteUndoDismissRunnable)
+        focusModeRefreshHandler.removeCallbacks(focusModeRefreshRunnable)
         unregisterReceiver(packageRemovedReceiver)
         appBlockPromptController.cancel()
         super.onDestroy()
@@ -1305,9 +1329,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderHomeState(state: HomeUiState) {
-        val shouldScrollToBottom = state.shortcuts.size > renderedShortcutCount
-        renderedShortcutCount = state.shortcuts.size
-        val visibleShortcuts = state.shortcuts.take(state.maxShortcuts)
+        val focusShortcuts = state.visibleShortcuts
+        val shouldScrollToBottom = focusShortcuts.size > renderedShortcutCount
+        renderedShortcutCount = focusShortcuts.size
+        val visibleShortcuts = focusShortcuts.take(state.maxShortcuts)
         shortcutAdapter.shortcutTextAlignment = state.shortcutTextAlignment
         shortcutAdapter.submitList(visibleShortcuts) {
             if (shouldScrollToBottom && visibleShortcuts.isNotEmpty()) {
@@ -1331,6 +1356,11 @@ class MainActivity : AppCompatActivity() {
             renderTodayWidgets()
         }
         binding.dateText.visibility = if (state.showDate) View.VISIBLE else View.GONE
+        val activeFocusMode = state.activeFocusMode?.mode
+        binding.focusModeBar.isVisible = activeFocusMode != null
+        binding.focusModeName.text = activeFocusMode?.let { mode ->
+            getString(R.string.focus_mode_home_active, mode.name)
+        }.orEmpty()
         binding.clockView.setDisplayMode(state.clockDisplayMode)
         if (binding.settingsPanel.settingsAppearancePanel.showDateSwitch.isChecked != state.showDate) {
             binding.settingsPanel.settingsAppearancePanel.showDateSwitch.isChecked = state.showDate
@@ -1375,7 +1405,7 @@ class MainActivity : AppCompatActivity() {
             renderFilteredApps(binding.appSearchInput.text?.toString().orEmpty())
             refreshCommandPaletteEvents()
         }
-        val canAddShortcut = state.shortcuts.size < state.maxShortcuts
+        val canAddShortcut = state.visibleShortcuts.size < state.maxShortcuts
         binding.addShortcutButton.isEnabled = canAddShortcut
         binding.addShortcutButton.alpha = if (canAddShortcut) 1f else DISABLED_ACTION_ALPHA
         if (binding.settingsPanel.showNotesPageSwitch.isChecked != state.showNotesPage) {
@@ -1406,9 +1436,12 @@ class MainActivity : AppCompatActivity() {
         binding.settingsPanel.openScreenTimeGestureValue.text = gestureLabel(state.openScreenTimeGesture)
         binding.settingsPanel.lockScreenGestureValue.text = gestureLabel(state.lockScreenGesture)
         currentSelectedCalendarIds = state.selectedCalendarIds
-        currentBlockedAppPackageNames = state.blockedAppPackageNames
-        currentAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
+        currentGlobalBlockedAppPackageNames = state.blockedAppPackageNames
+        currentGlobalAppBudgetMinutesByPackage = state.appBudgetMinutesByPackage
+        currentBlockedAppPackageNames = state.effectiveBlockedAppPackageNames
+        currentAppBudgetMinutesByPackage = state.effectiveAppBudgetMinutesByPackage
         currentExcludedScreenTimePackageNames = state.excludedScreenTimePackageNames
+        renderFocusModes(state)
         hasRequestedCalendarPermission = state.hasRequestedCalendarPermission
         if (isAppPickerVisible && isUniversalCommandPaletteActive()) {
             renderCommandPalette(binding.appSearchInput.text?.toString().orEmpty())
@@ -1563,6 +1596,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureSettings() {
+        binding.deactivateFocusModeButton.setOnClickListener {
+            viewModel.deactivateFocusMode()
+        }
         binding.settingsPanel.settingsBackButton.setOnClickListener {
             showSettingsPage(SettingsPage.Index)
         }
@@ -1580,6 +1616,17 @@ class MainActivity : AppCompatActivity() {
         }
         binding.settingsPanel.settingsScreenTimeCategory.setOnClickListener {
             showSettingsPage(SettingsPage.ScreenTime)
+        }
+        binding.settingsPanel.settingsScreenTimePanel.focusModesEnabledSwitch.setOnCheckedChangeListener { _, isChecked ->
+            if (!isRenderingFocusModeState) {
+                viewModel.setFocusModesEnabled(isChecked)
+            }
+        }
+        binding.settingsPanel.settingsScreenTimePanel.focusModesEnabledRow.setOnClickListener {
+            viewModel.setFocusModesEnabled(!binding.settingsPanel.settingsScreenTimePanel.focusModesEnabledSwitch.isChecked)
+        }
+        binding.settingsPanel.settingsScreenTimePanel.addFocusModeButton.setOnClickListener {
+            showFocusModeEditor(null)
         }
         binding.settingsPanel.settingsAppearancePanel.showDateSwitch.setOnCheckedChangeListener { _, isChecked ->
             viewModel.setShowDate(isChecked)
@@ -2344,11 +2391,312 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderFocusModes(state: HomeUiState) {
+        val panel = binding.settingsPanel.settingsScreenTimePanel
+        isRenderingFocusModeState = true
+        panel.focusModesEnabledSwitch.isChecked = state.focusModesEnabled
+        isRenderingFocusModeState = false
+        panel.focusModesStatus.text = when {
+            !state.focusModesEnabled -> getString(R.string.focus_modes_disabled)
+            state.activeFocusMode != null -> getString(R.string.focus_modes_active, state.activeFocusMode.mode.name)
+            System.currentTimeMillis() < state.focusSchedulesPausedUntilEpochMillis -> {
+                getString(R.string.focus_modes_paused)
+            }
+            else -> getString(R.string.focus_modes_ready)
+        }
+
+        panel.focusModesList.removeAllViews()
+        state.focusModes.forEach { mode ->
+            val row = ItemFocusModeBinding.inflate(layoutInflater, panel.focusModesList, false)
+            val isActive = mode.id == state.activeFocusMode?.mode?.id
+            row.focusModeName.text = mode.name
+            row.focusModeSummary.text = focusModeScheduleSummary(mode)
+            row.focusModeActivationButton.setText(
+                if (isActive) R.string.focus_mode_active else R.string.focus_mode_activate,
+            )
+            row.focusModeActivationButton.setOnClickListener {
+                if (isActive) viewModel.deactivateFocusMode() else viewModel.activateFocusMode(mode.id)
+            }
+            row.root.setOnClickListener { showFocusModeEditor(mode) }
+            panel.focusModesList.addView(row.root)
+        }
+    }
+
+    private fun focusModeScheduleSummary(mode: FocusMode): String {
+        val schedule = mode.schedule
+        if (!schedule.enabled || schedule.daysOfWeek.isEmpty()) {
+            return getString(R.string.focus_mode_no_schedule)
+        }
+        val locale = resources.configuration.locales[0]
+        val days = schedule.daysOfWeek.sorted().joinToString(", ") { day ->
+            DayOfWeek.of(day).getDisplayName(TextStyle.SHORT, locale)
+        }
+        return getString(
+            R.string.focus_mode_schedule_summary,
+            days,
+            formatFocusTime(schedule.startMinuteOfDay),
+            formatFocusTime(schedule.endMinuteOfDay),
+        )
+    }
+
+    private fun showFocusModeEditor(existingMode: FocusMode?) {
+        val editor = DialogFocusModeBinding.inflate(layoutInflater)
+        val blockedApps = existingMode?.blockedAppPackageNames.orEmpty().toMutableSet()
+        val budgets = existingMode?.appBudgetMinutesByPackage.orEmpty().toMutableMap()
+        val shortcuts = existingMode?.shortcuts.orEmpty().toMutableList()
+        var startMinute = existingMode?.schedule?.startMinuteOfDay ?: 9 * 60
+        var endMinute = existingMode?.schedule?.endMinuteOfDay ?: 17 * 60
+        val selectedDays = existingMode?.schedule?.daysOfWeek.orEmpty().toMutableSet()
+        val dayCheckboxes = listOf(
+            1 to editor.focusMonday,
+            2 to editor.focusTuesday,
+            3 to editor.focusWednesday,
+            4 to editor.focusThursday,
+            5 to editor.focusFriday,
+            6 to editor.focusSaturday,
+            7 to editor.focusSunday,
+        )
+
+        editor.focusModeNameInput.setText(existingMode?.name.orEmpty())
+        editor.focusModeScheduleSwitch.isChecked = existingMode?.schedule?.enabled == true
+        editor.focusModeScheduleOptions.isVisible = editor.focusModeScheduleSwitch.isChecked
+        dayCheckboxes.forEach { (day, checkbox) ->
+            checkbox.isChecked = day in selectedDays
+            checkbox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) selectedDays += day else selectedDays -= day
+            }
+        }
+
+        fun renderEditorValues() {
+            editor.focusStartTimeButton.text = getString(
+                R.string.focus_mode_start_time,
+                formatFocusTime(startMinute),
+            )
+            editor.focusEndTimeButton.text = getString(
+                R.string.focus_mode_end_time,
+                formatFocusTime(endMinute),
+            )
+            editor.focusBlockedAppsButton.text = getString(R.string.focus_mode_blocked_apps, blockedApps.size)
+            editor.focusBudgetsButton.text = getString(R.string.focus_mode_budgets, budgets.size)
+            editor.focusShortcutsButton.text = getString(
+                R.string.focus_mode_shortcuts,
+                shortcuts.size,
+                viewModel.uiState.value.maxShortcuts,
+            )
+        }
+
+        editor.focusModeScheduleSwitch.setOnCheckedChangeListener { _, isChecked ->
+            editor.focusModeScheduleOptions.isVisible = isChecked
+        }
+        editor.focusStartTimeButton.setOnClickListener {
+            showFocusTimePicker(startMinute) { selected ->
+                startMinute = selected
+                renderEditorValues()
+            }
+        }
+        editor.focusEndTimeButton.setOnClickListener {
+            showFocusTimePicker(endMinute) { selected ->
+                endMinute = selected
+                renderEditorValues()
+            }
+        }
+        editor.focusBlockedAppsButton.setOnClickListener {
+            showFocusBlockedAppsPicker(blockedApps, ::renderEditorValues)
+        }
+        editor.focusBudgetsButton.setOnClickListener {
+            showFocusBudgetAppPicker(budgets, ::renderEditorValues)
+        }
+        editor.focusShortcutsButton.setOnClickListener {
+            showFocusShortcutsPicker(shortcuts, ::renderEditorValues)
+        }
+        renderEditorValues()
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle(if (existingMode == null) R.string.focus_mode_create_title else R.string.focus_mode_edit_title)
+            .setView(editor.root)
+            .setNegativeButton(R.string.app_blocking_cancel, null)
+            .setPositiveButton(R.string.focus_mode_save, null)
+        if (existingMode != null) {
+            builder.setNeutralButton(R.string.focus_mode_delete, null)
+        }
+        val dialog = builder.create()
+        dialog.setOnShowListener {
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener {
+                val name = editor.focusModeNameInput.text?.toString().orEmpty().trim()
+                if (name.isEmpty()) {
+                    editor.focusModeNameInput.error = getString(R.string.focus_mode_name_required)
+                    return@setOnClickListener
+                }
+                if (editor.focusModeScheduleSwitch.isChecked && selectedDays.isEmpty()) {
+                    Toast.makeText(this, R.string.focus_mode_schedule_days_required, Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                val schedule = FocusSchedule(
+                    enabled = editor.focusModeScheduleSwitch.isChecked,
+                    daysOfWeek = selectedDays,
+                    startMinuteOfDay = startMinute,
+                    endMinuteOfDay = endMinute,
+                )
+                if (existingMode == null) {
+                    viewModel.createFocusMode(name)?.let { id ->
+                        viewModel.updateFocusMode(
+                            FocusMode(
+                                id = id,
+                                name = name,
+                                blockedAppPackageNames = blockedApps.toSet(),
+                                appBudgetMinutesByPackage = budgets.toMap(),
+                                shortcuts = shortcuts.toList(),
+                                schedule = schedule,
+                            ),
+                        )
+                    }
+                } else {
+                    viewModel.updateFocusMode(
+                        existingMode.copy(
+                            name = name,
+                            blockedAppPackageNames = blockedApps.toSet(),
+                            appBudgetMinutesByPackage = budgets.toMap(),
+                            shortcuts = shortcuts.toList(),
+                            schedule = schedule,
+                        ),
+                    )
+                }
+                dialog.dismiss()
+            }
+            if (existingMode != null) {
+                dialog.getButton(DialogInterface.BUTTON_NEUTRAL).setOnClickListener {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle(getString(R.string.focus_mode_delete_title, existingMode.name))
+                        .setMessage(R.string.focus_mode_delete_message)
+                        .setNegativeButton(R.string.app_blocking_cancel, null)
+                        .setPositiveButton(R.string.focus_mode_delete) { _, _ ->
+                            viewModel.deleteFocusMode(existingMode.id)
+                            dialog.dismiss()
+                        }
+                        .show()
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun showFocusTimePicker(currentMinute: Int, onSelected: (Int) -> Unit) {
+        TimePickerDialog(
+            this,
+            { _, hour, minute -> onSelected(hour * 60 + minute) },
+            currentMinute / 60,
+            currentMinute % 60,
+            android.text.format.DateFormat.is24HourFormat(this),
+        ).show()
+    }
+
+    private fun showFocusBlockedAppsPicker(
+        selectedPackages: MutableSet<String>,
+        onChanged: () -> Unit,
+    ) {
+        if (!ensureFocusAppsAvailable()) return
+        val apps = blockableApps.sortedBy { it.label.lowercase() }
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.app_blocking_title)
+            .setMultiChoiceItems(
+                apps.map { it.label }.toTypedArray(),
+                BooleanArray(apps.size) { index -> apps[index].packageName in selectedPackages },
+            ) { _, index, isChecked ->
+                if (isChecked) selectedPackages += apps[index].packageName else selectedPackages -= apps[index].packageName
+                onChanged()
+            }
+            .setPositiveButton(R.string.today_notification_config_done, null)
+            .show()
+    }
+
+    private fun showFocusShortcutsPicker(
+        selectedShortcuts: MutableList<AppShortcut>,
+        onChanged: () -> Unit,
+    ) {
+        if (!ensureFocusAppsAvailable()) return
+        val apps = blockableApps.sortedBy { it.label.lowercase() }
+        val maxShortcuts = viewModel.uiState.value.maxShortcuts
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.max_shortcuts)
+            .setMultiChoiceItems(
+                apps.map { it.label }.toTypedArray(),
+                BooleanArray(apps.size) { index -> apps[index] in selectedShortcuts },
+            ) { dialog, index, isChecked ->
+                val app = apps[index]
+                if (isChecked && selectedShortcuts.size >= maxShortcuts) {
+                    (dialog as? androidx.appcompat.app.AlertDialog)?.listView?.setItemChecked(index, false)
+                    Toast.makeText(
+                        this,
+                        getString(R.string.focus_mode_shortcut_limit, maxShortcuts),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@setMultiChoiceItems
+                }
+                if (isChecked) {
+                    if (app !in selectedShortcuts) selectedShortcuts += app
+                } else {
+                    selectedShortcuts.remove(app)
+                }
+                onChanged()
+            }
+            .setPositiveButton(R.string.today_notification_config_done, null)
+            .show()
+    }
+
+    private fun showFocusBudgetAppPicker(
+        budgets: MutableMap<String, Int>,
+        onChanged: () -> Unit,
+    ) {
+        if (!ensureFocusAppsAvailable()) return
+        val apps = blockableApps.sortedBy { it.label.lowercase() }
+        val labels = apps.map { app ->
+            budgets[app.packageName]?.let { minutes -> "${app.label} · ${minutes}m" } ?: app.label
+        }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.focus_mode_budget_picker_title)
+            .setItems(labels) { _, index ->
+                val app = apps[index]
+                val options = arrayOf(
+                    getString(R.string.focus_mode_budget_off),
+                    getString(R.string.app_budget_15),
+                    getString(R.string.app_budget_30),
+                    getString(R.string.app_budget_60),
+                )
+                val values = arrayOf(null, 15, 30, 60)
+                val currentIndex = values.indexOf(budgets[app.packageName]).coerceAtLeast(0)
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.focus_mode_budget_for_app, app.label))
+                    .setSingleChoiceItems(options, currentIndex) { valueDialog, valueIndex ->
+                        val minutes = values[valueIndex]
+                        if (minutes == null) budgets.remove(app.packageName) else budgets[app.packageName] = minutes
+                        onChanged()
+                        valueDialog.dismiss()
+                    }
+                    .setNegativeButton(R.string.app_blocking_cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.app_blocking_cancel, null)
+            .show()
+    }
+
+    private fun ensureFocusAppsAvailable(): Boolean {
+        if (blockableApps.isNotEmpty()) return true
+        refreshBlockableApps()
+        Toast.makeText(this, R.string.focus_mode_apps_unavailable, Toast.LENGTH_SHORT).show()
+        return false
+    }
+
+    private fun formatFocusTime(minuteOfDay: Int): String {
+        val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(resources.configuration.locales[0])
+        return LocalTime.of(minuteOfDay / 60, minuteOfDay % 60).format(formatter)
+    }
+
     private fun renderAppBlockingSelection() {
         binding.settingsPanel.settingsScreenTimePanel.appBlockingCount.text = resources.getQuantityString(
             R.plurals.app_blocking_count,
-            currentBlockedAppPackageNames.size,
-            currentBlockedAppPackageNames.size,
+            currentGlobalBlockedAppPackageNames.size,
+            currentGlobalBlockedAppPackageNames.size,
         )
         binding.settingsPanel.settingsScreenTimePanel.appBlockingExpandIcon.setImageResource(
             if (isAppBlockingExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
@@ -2363,7 +2711,7 @@ class MainActivity : AppCompatActivity() {
         }
         val query = binding.settingsPanel.settingsScreenTimePanel.appBlockingSearchInput.text?.toString().orEmpty().trim()
         val displayedApps = if (query.isEmpty()) {
-            blockableApps.filter { it.packageName in currentBlockedAppPackageNames }
+            blockableApps.filter { it.packageName in currentGlobalBlockedAppPackageNames }
         } else {
             FuzzyAppSearch.filter(blockableApps, query)
         }
@@ -2375,7 +2723,7 @@ class MainActivity : AppCompatActivity() {
             )
             row.blockedAppName.text = shortcut.label
             row.blockedAppCheckbox.setOnCheckedChangeListener(null)
-            row.blockedAppCheckbox.isChecked = shortcut.packageName in currentBlockedAppPackageNames
+            row.blockedAppCheckbox.isChecked = shortcut.packageName in currentGlobalBlockedAppPackageNames
             row.root.setOnClickListener {
                 viewModel.setAppBlocked(shortcut.packageName, !row.blockedAppCheckbox.isChecked)
             }
@@ -2389,8 +2737,8 @@ class MainActivity : AppCompatActivity() {
     private fun renderAppBudgetsSelection() {
         binding.settingsPanel.settingsScreenTimePanel.appBudgetsCount.text = resources.getQuantityString(
             R.plurals.app_budgets_count,
-            currentAppBudgetMinutesByPackage.size,
-            currentAppBudgetMinutesByPackage.size,
+            currentGlobalAppBudgetMinutesByPackage.size,
+            currentGlobalAppBudgetMinutesByPackage.size,
         )
         binding.settingsPanel.settingsScreenTimePanel.appBudgetsExpandIcon.setImageResource(
             if (isAppBudgetsExpanded) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
@@ -2405,7 +2753,7 @@ class MainActivity : AppCompatActivity() {
         }
         val query = binding.settingsPanel.settingsScreenTimePanel.appBudgetsSearchInput.text?.toString().orEmpty().trim()
         val displayedApps = if (query.isEmpty()) {
-            blockableApps.filter { it.packageName in currentAppBudgetMinutesByPackage }
+            blockableApps.filter { it.packageName in currentGlobalAppBudgetMinutesByPackage }
         } else {
             FuzzyAppSearch.filter(blockableApps, query)
         }
@@ -2416,7 +2764,7 @@ class MainActivity : AppCompatActivity() {
                 false,
             )
             row.budgetAppName.text = shortcut.label
-            val selectedMinutes = currentAppBudgetMinutesByPackage[shortcut.packageName]
+            val selectedMinutes = currentGlobalAppBudgetMinutesByPackage[shortcut.packageName]
             renderBudgetOption(row.budget15Button, selectedMinutes, 15, shortcut.packageName)
             renderBudgetOption(row.budget30Button, selectedMinutes, 30, shortcut.packageName)
             renderBudgetOption(row.budget60Button, selectedMinutes, 60, shortcut.packageName)
@@ -5287,6 +5635,7 @@ class MainActivity : AppCompatActivity() {
         const val TODAY_WIDGET_EDIT_STROKE_DP = 1
         const val DISABLED_ACTION_ALPHA = 0.34f
         const val MILLIS_PER_MINUTE = 60_000L
+        const val FOCUS_MODE_REFRESH_INTERVAL_MS = MILLIS_PER_MINUTE
         const val WEATHER_CACHE_MS = 30 * MILLIS_PER_MINUTE
         const val MINUTES_PER_HOUR = 60L
         const val VOICE_NOTES_DIRECTORY = "voice_notes"
