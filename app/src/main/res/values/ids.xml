@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="onboardingOverlay" type="id" />
+    <item name="onboardingStepLabel" type="id" />
+    <item name="onboardingTitle" type="id" />
+    <item name="onboardingBody" type="id" />
+    <item name="onboardingSkipButton" type="id" />
+    <item name="onboardingNextButton" type="id" />
+</resources>
