@@ -40,6 +40,7 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
                 KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY,
                 true,
             ),
+            universalCommandPaletteEnabled = preferences.getBoolean(KEY_UNIVERSAL_COMMAND_PALETTE_ENABLED, false),
             openScreenTimeGesture = loadGesture(
                 key = KEY_OPEN_SCREEN_TIME_GESTURE,
                 defaultGesture = if (preferences.getBoolean(KEY_SHOW_SCREEN_TIME_PAGE, true)) {
@@ -84,6 +85,7 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
                 KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY,
                 settings.openAppListKeyboardAutomatically,
             )
+            putBoolean(KEY_UNIVERSAL_COMMAND_PALETTE_ENABLED, settings.universalCommandPaletteEnabled)
             putBoolean(KEY_SHOW_SCREEN_TIME_PAGE, settings.showScreenTimePage)
             putString(KEY_OPEN_SCREEN_TIME_GESTURE, settings.openScreenTimeGesture.name)
             putString(KEY_LOCK_SCREEN_GESTURE, settings.lockScreenGesture.name)
@@ -216,6 +218,7 @@ class LauncherSettingsRepository(context: Context) : LauncherSettingsStore {
         const val KEY_SHORTCUT_TEXT_ALIGNMENT = "shortcutTextAlignment"
         const val KEY_MAX_SHORTCUTS = "maxShortcuts"
         const val KEY_OPEN_APP_LIST_KEYBOARD_AUTOMATICALLY = "openAppListKeyboardAutomatically"
+        const val KEY_UNIVERSAL_COMMAND_PALETTE_ENABLED = "universalCommandPaletteEnabled"
         const val KEY_SHOW_SCREEN_TIME_PAGE = "showScreenTimePage"
         const val KEY_OPEN_SCREEN_TIME_GESTURE = "openScreenTimeGesture"
         const val KEY_LOCK_SCREEN_GESTURE = "lockScreenGesture"
